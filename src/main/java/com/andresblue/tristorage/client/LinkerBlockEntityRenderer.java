@@ -3,7 +3,6 @@ package com.andresblue.tristorage.client;
 import com.andresblue.tristorage.version.Ids;
 import com.andresblue.tristorage.version.Stacks;
 import com.andresblue.tristorage.TriStorageMod;
-import com.andresblue.tristorage.block.AntennaMount;
 import com.andresblue.tristorage.blockentity.LinkerBlockEntity;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import com.andresblue.tristorage.storage.StorageNetwork;
@@ -15,14 +14,10 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
-import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -31,9 +26,31 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
+//? if >=1.21.9 {
+/*import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.CameraRenderState;
+import org.jetbrains.annotations.Nullable;
+*///?} else {
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.entity.ItemRenderer;
+//?}
 
 /** Client-only miniature item projections orbiting an active dimensional singularity. */
+//? if >=1.21.9 {
+/*public final class LinkerBlockEntityRenderer
+        implements BlockEntityRenderer<LinkerBlockEntity, LinkerBlockEntityRenderer.State> {
+*///?} else {
 public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<LinkerBlockEntity> {
+//?}
     private static final int MAX_ORBIT_ITEMS = 8;
     private static final double SINGULARITY_DISTANCE = 1.03125;
     private static final int SINGULARITY_FRAMES = 8;
@@ -44,10 +61,27 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
     private static final ResourceLocation SINGULARITY_TEXTURE = Ids.of(
             TriStorageMod.MOD_ID,
             "textures/block/dimensional_singularity_billboard_animated.png");
+    //? if >=1.21.9 {
+    /*private static final RenderType SINGULARITY_LAYER =
+            RenderTypes.entityCutoutNoCull(SINGULARITY_TEXTURE);
+    // Since 1.21.4 item models, the GUI transform falls back to oversized icons
+    // in the world; FIXED keeps real models, which then need a larger scale.
+    private static final ItemDisplayContext ORBIT_DISPLAY = ItemDisplayContext.FIXED;
+    private static final double ORBIT_SCALE = 0.12;
+    private static final double ABSORBED_SCALE = 0.14;
+    *///?} else {
     private static final RenderType SINGULARITY_LAYER =
             RenderType.entityCutoutNoCull(SINGULARITY_TEXTURE);
+    private static final ItemDisplayContext ORBIT_DISPLAY = ItemDisplayContext.GUI;
+    private static final double ORBIT_SCALE = 0.078;
+    private static final double ABSORBED_SCALE = 0.095;
+    //?}
 
+    //? if >=1.21.9 {
+    /*private final ItemModelResolver itemModelResolver;
+    *///?} else {
     private final ItemRenderer itemRenderer;
+    //?}
     private final Map<BlockPos, CachedOrbit> orbitCache = new LinkedHashMap<>(64, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<BlockPos, CachedOrbit> eldest) {
@@ -71,72 +105,106 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
     private ClientLevel emitterWorld;
 
     public LinkerBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
+        //? if >=1.21.9 {
+        /*itemModelResolver = context.itemModelResolver();
+        *///?} else {
         itemRenderer = context.getItemRenderer();
+        //?}
     }
 
+    //? if >=1.21.9 {
+    /*/^* What one frame of a Linker needs, gathered before rendering since 1.21.9. ^/
+    public static final class State extends BlockEntityRenderState {
+        @Nullable
+        Direction direction;
+        double time;
+        final List<ItemStackRenderState> orbitItems = new ArrayList<>();
+    }
+
+    @Override
+    public State createRenderState() {
+        return new State();
+    }
+
+    @Override
+    public void extractRenderState(LinkerBlockEntity linker, State state, float tickDelta,
+                                   Vec3 cameraPos,
+                                   @Nullable ModelFeatureRenderer.CrumblingOverlay crumbling) {
+        BlockEntityRenderer.super.extractRenderState(linker, state, tickDelta, cameraPos,
+                crumbling);
+        state.orbitItems.clear();
+        state.direction = linker.antennaMount().direction();
+        if (!(linker.getLevel() instanceof ClientLevel world) || state.direction == null) {
+            state.direction = null;
+            return;
+        }
+        state.time = world.getGameTime() + tickDelta;
+        emitSingularityParticle(world, linker.getBlockPos(), singularityCenter(state.direction));
+        List<ItemStack> items = orbitItemsForFrame(linker.getBlockPos(), orbitPool(linker),
+                state.time);
+        int seed = linker.getBlockPos().hashCode();
+        for (int index = 0; index < items.size(); index++) {
+            ItemStackRenderState item = new ItemStackRenderState();
+            itemModelResolver.updateForTopItem(item, items.get(index), ORBIT_DISPLAY, world,
+                    null, seed + index);
+            state.orbitItems.add(item);
+        }
+    }
+
+    @Override
+    public void submit(State state, PoseStack matrices, SubmitNodeCollector collector,
+                       CameraRenderState camera) {
+        if (state.direction == null) {
+            return;
+        }
+        Vec3 center = singularityCenter(state.direction);
+        matrices.pushPose();
+        orientSingularity(matrices, center, state.time, camera.orientation);
+        collector.submitCustomGeometry(matrices, SINGULARITY_LAYER,
+                (entry, vertices) -> drawSingularity(vertices, entry, state.time));
+        matrices.popPose();
+        for (int index = 0; index < state.orbitItems.size(); index++) {
+            matrices.pushPose();
+            orientOrbitItem(matrices, state.direction, center, index,
+                    state.orbitItems.size(), state.time, camera.orientation);
+            state.orbitItems.get(index).submit(matrices, collector, LightTexture.FULL_BRIGHT,
+                    OverlayTexture.NO_OVERLAY, 0);
+            matrices.popPose();
+        }
+    }
+
+    @Override
+    public boolean shouldRenderOffScreen() {
+        return true;
+    }
+    *///?} else {
     @Override
     public void render(LinkerBlockEntity linker, float tickDelta, PoseStack matrices,
                        MultiBufferSource vertexConsumers, int light, int overlay) {
         if (!(linker.getLevel() instanceof ClientLevel world)) {
             return;
         }
-        AntennaMount mount = linker.antennaMount();
-        Direction direction = mount.direction();
+        Direction direction = linker.antennaMount().direction();
         if (direction == null) {
             return;
         }
-
-        Vec3 axis = new Vec3(direction.getStepX(), direction.getStepY(),
-                direction.getStepZ());
-        Vec3 reference = direction.getAxis().isVertical()
-                ? new Vec3(1.0, 0.0, 0.0)
-                : new Vec3(0.0, 1.0, 0.0);
-        Vec3 tangent = axis.cross(reference).normalize();
-        Vec3 bitangent = axis.cross(tangent).normalize();
-        Vec3 center = new Vec3(0.5, 0.5, 0.5).add(axis.scale(SINGULARITY_DISTANCE));
+        Vec3 center = singularityCenter(direction);
         double time = world.getGameTime() + tickDelta;
-        renderSingularityBillboard(center, time, matrices, vertexConsumers);
+        Quaternionf camera = Minecraft.getInstance().getEntityRenderDispatcher()
+                .cameraOrientation();
+        matrices.pushPose();
+        orientSingularity(matrices, center, time, camera);
+        drawSingularity(vertexConsumers.getBuffer(SINGULARITY_LAYER), matrices.last(), time);
+        matrices.popPose();
         emitSingularityParticle(world, linker.getBlockPos(), center);
 
-        List<ItemStack> orbitItems = orbitItemsForFrame(linker, orbitPool(linker), time);
-        if (orbitItems.isEmpty()) {
-            return;
-        }
-
+        List<ItemStack> orbitItems = orbitItemsForFrame(linker.getBlockPos(),
+                orbitPool(linker), time);
         for (int index = 0; index < orbitItems.size(); index++) {
-            boolean absorbed = index >= Math.max(1, orbitItems.size() / 2);
-            double phase = index * 2.173;
-            double radius;
-            double scale;
-            double angle;
-
-            if (absorbed) {
-                double cycle = positiveModulo(time * 0.012 + index * 0.271, 1.0);
-                double eased = cycle * cycle * (3.0 - 2.0 * cycle);
-                radius = 0.52 * (1.0 - eased) + 0.018;
-                double appear = Math.min(1.0, cycle / 0.10);
-                scale = 0.095 * appear * Math.max(0.08, 1.0 - eased);
-                angle = phase + cycle * Math.PI * 5.0;
-            } else {
-                radius = 0.31 + Math.sin(time * 0.045 + phase) * 0.035;
-                scale = 0.078;
-                angle = phase + time * (index % 2 == 0 ? 0.055 : -0.048);
-            }
-
-            double axialWobble = Math.sin(time * 0.037 + phase) * 0.055;
-            Vec3 position = center
-                    .add(tangent.scale(Math.cos(angle) * radius))
-                    .add(bitangent.scale(Math.sin(angle) * radius))
-                    .add(axis.scale(axialWobble));
-
             matrices.pushPose();
-            matrices.translate(position.x, position.y, position.z);
-            matrices.mulPose(Minecraft.getInstance()
-                    .getEntityRenderDispatcher().cameraOrientation());
-            matrices.mulPose(Axis.ZP.rotationDegrees(
-                    (float) (time * 1.8 + index * 41.0)));
-            matrices.scale((float) scale, (float) scale, (float) scale);
-            itemRenderer.renderStatic(orbitItems.get(index), ItemDisplayContext.GUI,
+            orientOrbitItem(matrices, direction, center, index, orbitItems.size(), time,
+                    camera);
+            itemRenderer.renderStatic(orbitItems.get(index), ORBIT_DISPLAY,
                     LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
                     matrices, vertexConsumers, linker.getLevel(),
                     linker.getBlockPos().hashCode() + index);
@@ -148,26 +216,77 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
     public boolean shouldRenderOffScreen(LinkerBlockEntity blockEntity) {
         return true;
     }
+    //?}
+
+    private static Vec3 singularityCenter(Direction direction) {
+        return new Vec3(0.5, 0.5, 0.5).add(axisOf(direction).scale(SINGULARITY_DISTANCE));
+    }
+
+    private static Vec3 axisOf(Direction direction) {
+        return new Vec3(direction.getStepX(), direction.getStepY(), direction.getStepZ());
+    }
+
+    /**
+     * Places an orbiting item. The first half circles the singularity; the
+     * rest are pulled in and shrink until they vanish at its center.
+     */
+    private static void orientOrbitItem(PoseStack matrices, Direction direction, Vec3 center,
+                                        int index, int count, double time,
+                                        Quaternionf camera) {
+        Vec3 axis = axisOf(direction);
+        Vec3 reference = direction.getAxis().isVertical()
+                ? new Vec3(1.0, 0.0, 0.0)
+                : new Vec3(0.0, 1.0, 0.0);
+        Vec3 tangent = axis.cross(reference).normalize();
+        Vec3 bitangent = axis.cross(tangent).normalize();
+        boolean absorbed = index >= Math.max(1, count / 2);
+        double phase = index * 2.173;
+        double radius;
+        double scale;
+        double angle;
+
+        if (absorbed) {
+            double cycle = positiveModulo(time * 0.012 + index * 0.271, 1.0);
+            double eased = cycle * cycle * (3.0 - 2.0 * cycle);
+            radius = 0.52 * (1.0 - eased) + 0.018;
+            double appear = Math.min(1.0, cycle / 0.10);
+            scale = ABSORBED_SCALE * appear * Math.max(0.08, 1.0 - eased);
+            angle = phase + cycle * Math.PI * 5.0;
+        } else {
+            radius = 0.31 + Math.sin(time * 0.045 + phase) * 0.035;
+            scale = ORBIT_SCALE;
+            angle = phase + time * (index % 2 == 0 ? 0.055 : -0.048);
+        }
+
+        double axialWobble = Math.sin(time * 0.037 + phase) * 0.055;
+        Vec3 position = center
+                .add(tangent.scale(Math.cos(angle) * radius))
+                .add(bitangent.scale(Math.sin(angle) * radius))
+                .add(axis.scale(axialWobble));
+        matrices.translate(position.x, position.y, position.z);
+        matrices.mulPose(camera);
+        matrices.mulPose(Axis.ZP.rotationDegrees((float) (time * 1.8 + index * 41.0)));
+        matrices.scale((float) scale, (float) scale, (float) scale);
+    }
 
     private static double positiveModulo(double value, double modulus) {
         double result = value % modulus;
         return result < 0.0 ? result + modulus : result;
     }
 
-    /** Draws one opaque cutout that faces the local player's camera. */
-    private static void renderSingularityBillboard(Vec3 center, double time,
-                                                   PoseStack matrices,
-                                                   MultiBufferSource vertexConsumers) {
-        matrices.pushPose();
+    /** Turns the singularity's cutout toward the camera, pulsing slightly. */
+    private static void orientSingularity(PoseStack matrices, Vec3 center, double time,
+                                          Quaternionf camera) {
         matrices.translate(center.x, center.y, center.z);
-        matrices.mulPose(Minecraft.getInstance()
-                .getEntityRenderDispatcher().cameraOrientation());
+        matrices.mulPose(camera);
         matrices.mulPose(Axis.YP.rotationDegrees(180.0f));
         float pulse = 0.38f + (float) Math.sin(time * 0.16) * 0.008f;
         matrices.scale(pulse, pulse, pulse);
+    }
 
-        PoseStack.Pose entry = matrices.last();
-        VertexConsumer vertices = vertexConsumers.getBuffer(SINGULARITY_LAYER);
+    /** One animated frame of the singularity texture on a unit quad. */
+    private static void drawSingularity(VertexConsumer vertices, PoseStack.Pose entry,
+                                        double time) {
         int frame = Math.floorMod((int) (time / SINGULARITY_FRAME_TICKS),
                 SINGULARITY_FRAMES);
         float u0 = frame / (float) SINGULARITY_FRAMES;
@@ -176,7 +295,6 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
         billboardVertex(vertices, entry, 0.5f, -0.5f, 0.0f, u1, 1.0f);
         billboardVertex(vertices, entry, 0.5f, 0.5f, 0.0f, u1, 0.0f);
         billboardVertex(vertices, entry, -0.5f, 0.5f, 0.0f, u0, 0.0f);
-        matrices.popPose();
     }
 
     private static void billboardVertex(VertexConsumer vertices, PoseStack.Pose entry,
@@ -198,6 +316,7 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
                 .endVertex();
         //?}
     }
+
 
     /**
      * Emits from a deterministic Fibonacci sphere instead of relying on the
@@ -308,9 +427,9 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
      * item is at zero scale in the singularity. Candidates already visible in
      * another slot are excluded whenever the storage pool has enough variety.
      */
-    private List<ItemStack> orbitItemsForFrame(LinkerBlockEntity linker,
-                                                List<ItemStack> pool, double time) {
-        BlockPos linkerPos = linker.getBlockPos().immutable();
+    private List<ItemStack> orbitItemsForFrame(BlockPos pos, List<ItemStack> pool,
+                                               double time) {
+        BlockPos linkerPos = pos.immutable();
         if (pool.isEmpty()) {
             orbitVisualStates.remove(linkerPos);
             return List.of();

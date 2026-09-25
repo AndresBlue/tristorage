@@ -6,6 +6,7 @@ import com.andresblue.tristorage.storage.StorageNetwork;
 import com.andresblue.tristorage.storage.TerminalFilter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
@@ -30,14 +31,23 @@ public final class CraftingTerminalBlock extends Block implements NetworkBlock {
         StorageNetwork.markTopologyChanged(world);
     }
 
+    //? if >=1.21.5 {
+    /*@Override
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel world, BlockPos pos,
+                                               boolean moved) {
+        super.affectNeighborsAfterRemoval(state, world, pos, moved);
+        StorageNetwork.markTopologyChanged(world);
+    }
+    *///?} else {
     @Override
     public void onRemove(BlockState state, Level world, BlockPos pos,
-                                BlockState newState, boolean moved) {
+                         BlockState newState, boolean moved) {
         if (!state.is(newState.getBlock())) {
             StorageNetwork.markTopologyChanged(world);
         }
         super.onRemove(state, world, pos, newState, moved);
     }
+    //?}
 
     //? if >=1.20.5 {
     /*@Override
@@ -48,7 +58,7 @@ public final class CraftingTerminalBlock extends Block implements NetworkBlock {
     public InteractionResult use(BlockState state, Level world, BlockPos pos,
                                  Player player, InteractionHand hand, BlockHitResult hit) {
     //?}
-        if (world.isClientSide) {
+        if (world.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {

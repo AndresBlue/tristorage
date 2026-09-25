@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Nbt;
 import com.andresblue.tristorage.TriStorageMod;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -40,15 +41,15 @@ public final class PortableCoreData {
     private static CompoundTag carried(ItemStack stack) {
         CompoundTag data = Stacks.blockEntityData(stack);
         if (data != null) {
-            return data.contains(NEOFORGE_PORT_PAYLOAD, Tag.TAG_COMPOUND)
-                    ? data.getCompound(NEOFORGE_PORT_PAYLOAD) : data;
+            return Nbt.hasCompound(data, NEOFORGE_PORT_PAYLOAD)
+                    ? Nbt.getCompound(data, NEOFORGE_PORT_PAYLOAD) : data;
         }
         CompoundTag custom = Stacks.customData(stack);
-        if (custom.contains(NEOFORGE_PORT_PAYLOAD, Tag.TAG_COMPOUND)) {
-            return custom.getCompound(NEOFORGE_PORT_PAYLOAD);
+        if (Nbt.hasCompound(custom, NEOFORGE_PORT_PAYLOAD)) {
+            return Nbt.getCompound(custom, NEOFORGE_PORT_PAYLOAD);
         }
-        return custom.contains(CHESTS_KEY, Tag.TAG_ANY_NUMERIC)
-                || custom.contains(ENTRIES_KEY, Tag.TAG_LIST) ? custom : null;
+        return Nbt.hasNumber(custom, CHESTS_KEY)
+                || Nbt.hasList(custom, ENTRIES_KEY) ? custom : null;
     }
 
     /**
@@ -77,32 +78,32 @@ public final class PortableCoreData {
             return null;
         }
         CompoundTag portable = new CompoundTag();
-        if (blockEntityData.contains(CHESTS_KEY, Tag.TAG_ANY_NUMERIC)) {
-            portable.putInt(CHESTS_KEY, Math.max(0, blockEntityData.getInt(CHESTS_KEY)));
+        if (Nbt.hasNumber(blockEntityData, CHESTS_KEY)) {
+            portable.putInt(CHESTS_KEY, Math.max(0, Nbt.getInt(blockEntityData, CHESTS_KEY)));
         }
-        if (blockEntityData.contains(ENTRIES_KEY, Tag.TAG_LIST)) {
-            portable.put(ENTRIES_KEY, blockEntityData.getList(
-                    ENTRIES_KEY, Tag.TAG_COMPOUND).copy());
+        if (Nbt.hasList(blockEntityData, ENTRIES_KEY)) {
+            portable.put(ENTRIES_KEY, Nbt.getCompoundList(blockEntityData, 
+                    ENTRIES_KEY).copy());
         }
-        if (blockEntityData.contains(STORAGE_ID_KEY, Tag.TAG_STRING)) {
-            portable.putString(STORAGE_ID_KEY, blockEntityData.getString(STORAGE_ID_KEY));
+        if (Nbt.hasString(blockEntityData, STORAGE_ID_KEY)) {
+            portable.putString(STORAGE_ID_KEY, Nbt.getString(blockEntityData, STORAGE_ID_KEY));
         }
-        if (blockEntityData.contains(OWNERSHIP_TOKEN_KEY, Tag.TAG_STRING)) {
+        if (Nbt.hasString(blockEntityData, OWNERSHIP_TOKEN_KEY)) {
             portable.putString(OWNERSHIP_TOKEN_KEY,
-                    blockEntityData.getString(OWNERSHIP_TOKEN_KEY));
+                    Nbt.getString(blockEntityData, OWNERSHIP_TOKEN_KEY));
         }
         portable.putInt(FORMAT_VERSION_KEY,
-                Math.max(1, blockEntityData.getInt(FORMAT_VERSION_KEY)));
-        if (blockEntityData.contains(DATA_VERSION_KEY, Tag.TAG_INT)) {
-            portable.putInt(DATA_VERSION_KEY, blockEntityData.getInt(DATA_VERSION_KEY));
+                Math.max(1, Nbt.getInt(blockEntityData, FORMAT_VERSION_KEY)));
+        if (Nbt.hasInt(blockEntityData, DATA_VERSION_KEY)) {
+            portable.putInt(DATA_VERSION_KEY, Nbt.getInt(blockEntityData, DATA_VERSION_KEY));
         }
-        if (blockEntityData.contains(TYPES_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)) {
+        if (Nbt.hasNumber(blockEntityData, TYPES_SUMMARY_KEY)) {
             portable.putInt(TYPES_SUMMARY_KEY,
-                    Math.max(0, blockEntityData.getInt(TYPES_SUMMARY_KEY)));
+                    Math.max(0, Nbt.getInt(blockEntityData, TYPES_SUMMARY_KEY)));
         }
-        if (blockEntityData.contains(ITEMS_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)) {
+        if (Nbt.hasNumber(blockEntityData, ITEMS_SUMMARY_KEY)) {
             portable.putLong(ITEMS_SUMMARY_KEY,
-                    Math.max(0, blockEntityData.getLong(ITEMS_SUMMARY_KEY)));
+                    Math.max(0, Nbt.getLong(blockEntityData, ITEMS_SUMMARY_KEY)));
         }
         return portable.isEmpty() ? null : portable;
     }
@@ -117,7 +118,7 @@ public final class PortableCoreData {
 
     public static int installedChests(ItemStack stack) {
         CompoundTag data = carried(stack);
-        return data == null ? 0 : Math.max(0, data.getInt(CHESTS_KEY));
+        return data == null ? 0 : Math.max(0, Nbt.getInt(data, CHESTS_KEY));
     }
 
     public static int storedTypes(ItemStack stack) {
@@ -125,9 +126,9 @@ public final class PortableCoreData {
         if (data == null) {
             return 0;
         }
-        return data.contains(TYPES_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)
-                ? Math.max(0, data.getInt(TYPES_SUMMARY_KEY))
-                : data.getList(ENTRIES_KEY, Tag.TAG_COMPOUND).size();
+        return Nbt.hasNumber(data, TYPES_SUMMARY_KEY)
+                ? Math.max(0, Nbt.getInt(data, TYPES_SUMMARY_KEY))
+                : Nbt.getCompoundList(data, ENTRIES_KEY).size();
     }
 
     public static long totalItems(ItemStack stack) {
@@ -135,13 +136,13 @@ public final class PortableCoreData {
         if (data == null) {
             return 0;
         }
-        if (data.contains(ITEMS_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)) {
-            return Math.max(0, data.getLong(ITEMS_SUMMARY_KEY));
+        if (Nbt.hasNumber(data, ITEMS_SUMMARY_KEY)) {
+            return Math.max(0, Nbt.getLong(data, ITEMS_SUMMARY_KEY));
         }
         long total = 0;
-        var entries = data.getList(ENTRIES_KEY, Tag.TAG_COMPOUND);
+        var entries = Nbt.getCompoundList(data, ENTRIES_KEY);
         for (int index = 0; index < entries.size(); index++) {
-            long count = Math.max(0, entries.getCompound(index).getLong("Count"));
+            long count = Math.max(0, Nbt.getLong(Nbt.getCompound(entries, index), "Count"));
             total = Long.MAX_VALUE - total < count ? Long.MAX_VALUE : total + count;
         }
         return total;

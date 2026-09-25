@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.network;
 
+import com.andresblue.tristorage.version.Players;
+
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
@@ -88,7 +90,7 @@ public final class TerminalPackets {
                                 ? RecipeTransferPlanner.MAX_TRANSFER
                                 : Math.max(1, Math.min(64, requested));
                         CraftingRecipe craftingRecipe = Recipes.crafting(
-                                player.getServer().getRecipeManager(), recipeId);
+                                Players.server(player).getRecipeManager(), recipeId);
                         if (craftingRecipe != null) {
                             success = terminal.fillRecipe(
                                     player, recipeId, craftingRecipe, safeRequested);
@@ -111,11 +113,11 @@ public final class TerminalPackets {
                         }
                         if (!terminal.acceptRecipeAvailabilityRequest(
                                 clientRevision, localFingerprint,
-                                player.serverLevel().getGameTime())) {
+                                Players.level(player).getGameTime())) {
                             return;
                         }
                         CraftingRecipe craftingRecipe = Recipes.crafting(
-                                player.getServer().getRecipeManager(), recipeId);
+                                Players.server(player).getRecipeManager(), recipeId);
                         if (craftingRecipe == null) {
                             sendRecipeAvailabilityState(player, syncId, clientRevision,
                                     localFingerprint, recipeId,

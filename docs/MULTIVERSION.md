@@ -98,6 +98,14 @@ que las entradas guardadas deben convertirse al formato de cada versión.
 - Red: los paquetes siguen escribiéndose como bytes. Desde 1.20.5 cada
   dirección usa un único payload tipado con el canal y esos bytes
   (`ChannelPayload`); Fabric y NeoForge solo lo registran a su manera.
+- Nombres que Mojang cambió en 1.21.11 (`ResourceLocation` → `Identifier`,
+  `net.minecraft.Util`, `ResourceKey.location()`): el código se escribe con
+  los nombres viejos y `stonecutter.gradle.kts` los reemplaza en los nodos
+  nuevos.
+- NBT (`Nbt`), block entities con `ValueOutput`/`ValueInput` (`ValueTags`),
+  jugador y servidor (`Players`) y recetas sin `getIngredients` (`Recipes`)
+  pasan por helpers de `version/`. Los colores de texto de la GUI llevan alfa
+  (`0xFF…`), que 1.21.6 exige y las versiones anteriores aceptan.
 - Pantallas: `TriStorageClient.registerScreens` recibe el registro del
   loader (`MenuScreens::register` en Fabric y Forge,
   `RegisterMenuScreensEvent` en NeoForge, donde ese método es privado).
@@ -140,7 +148,11 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   `TriStorageCore`) se leen y pasan a `block_entity_data` al colocarlos.
   Falta probar en el juego terminales, tableta y un Core portátil de
   NeoForge 1.x.
-- [ ] Fase 4
+- [x] Fase 4: nodo `1.21.11-fabric` (Fabric API 0.141.6, JEI 27; EMI no se
+  publica para 1.21.11 y su puente queda fuera con `//? if emi {`). Los 75
+  tests pasan en los tres nodos Fabric. El cliente carga sin errores; falta
+  abrir un mundo y probar la interfaz en el juego. Arreglado de paso: las
+  sesiones remotas cargaban un radio de 33 chunks por Linker y Core.
 - [ ] Fase 5
 - [ ] Fase 6
 - [ ] Fase 7

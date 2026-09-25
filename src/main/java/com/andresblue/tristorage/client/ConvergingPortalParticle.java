@@ -3,14 +3,23 @@ package com.andresblue.tristorage.client;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleProvider;
-import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.client.particle.SpriteSet;
-import net.minecraft.client.particle.TextureSheetParticle;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.world.phys.Vec3;
+//? if >=1.21.9 {
+/*import net.minecraft.client.particle.SingleQuadParticle;
+import net.minecraft.util.RandomSource;
+*///?} else {
+import net.minecraft.client.particle.ParticleRenderType;
+import net.minecraft.client.particle.TextureSheetParticle;
+//?}
 
 /** A small accretion mote that spirals smoothly into an explicit target. */
+//? if >=1.21.9 {
+/*public final class ConvergingPortalParticle extends SingleQuadParticle {
+*///?} else {
 public final class ConvergingPortalParticle extends TextureSheetParticle {
+//?}
     private final SpriteSet sprites;
     private final double targetX;
     private final double targetY;
@@ -27,7 +36,11 @@ public final class ConvergingPortalParticle extends TextureSheetParticle {
     private ConvergingPortalParticle(ClientLevel world, double x, double y, double z,
                                      double targetX, double targetY, double targetZ,
                                      SpriteSet sprites, boolean endPortal) {
+        //? if >=1.21.9 {
+        /*super(world, x, y, z, sprites.first());
+        *///?} else {
         super(world, x, y, z, 0.0, 0.0, 0.0);
+        //?}
         this.sprites = sprites;
         this.targetX = targetX;
         this.targetY = targetY;
@@ -108,10 +121,17 @@ public final class ConvergingPortalParticle extends TextureSheetParticle {
         setSprite(sprites.get(safeAge, travelAge));
     }
 
+    //? if >=1.21.9 {
+    /*@Override
+    protected Layer getLayer() {
+        return Layer.TRANSLUCENT;
+    }
+    *///?} else {
     @Override
     public ParticleRenderType getRenderType() {
         return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
     }
+    //?}
 
     public static final class Factory implements ParticleProvider<SimpleParticleType> {
         private final SpriteSet sprites;
@@ -123,7 +143,12 @@ public final class ConvergingPortalParticle extends TextureSheetParticle {
         @Override
         public Particle createParticle(SimpleParticleType parameters, ClientLevel world,
                                        double x, double y, double z,
+                                       //? if >=1.21.9 {
+                                       /*double targetX, double targetY, double targetZ,
+                                       RandomSource random) {
+                                       *///?} else {
                                        double targetX, double targetY, double targetZ) {
+                                       //?}
             return new ConvergingPortalParticle(world, x, y, z,
                     targetX, targetY, targetZ, sprites, false);
         }
@@ -139,7 +164,12 @@ public final class ConvergingPortalParticle extends TextureSheetParticle {
         @Override
         public Particle createParticle(SimpleParticleType parameters, ClientLevel world,
                                        double x, double y, double z,
+                                       //? if >=1.21.9 {
+                                       /*double targetX, double targetY, double targetZ,
+                                       RandomSource random) {
+                                       *///?} else {
                                        double targetX, double targetY, double targetZ) {
+                                       //?}
             return new ConvergingPortalParticle(world, x, y, z,
                     targetX, targetY, targetZ, sprites, true);
         }

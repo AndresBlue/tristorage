@@ -1,5 +1,9 @@
 package com.andresblue.tristorage.screen;
 
+import com.andresblue.tristorage.version.Recipes;
+
+import com.andresblue.tristorage.version.Players;
+
 import com.andresblue.tristorage.version.Stacks;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
@@ -96,13 +100,12 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
                               CraftingRecipe recipe, int requestedCrafts) {
         if (requester != player || requester.containerMenu != this
                 || !coreIsAttached() || !stillValid(requester)
-                || recipe == null || !recipe.canCraftInDimensions(3, 3)
-                || recipe.getIngredients().stream().allMatch(ingredient -> ingredient.isEmpty())) {
+                || recipe == null || !Recipes.fitsGrid(recipe)) {
             requester.displayClientMessage(Component.translatable(
                     "message.tristorage.recipe_transfer_unsupported"), true);
             return false;
         }
-        long serverTick = requester.serverLevel().getGameTime();
+        long serverTick = Players.level(requester).getGameTime();
         if (serverTick < nextRecipeTransferTick) {
             return false;
         }
@@ -152,7 +155,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
     /** Real local slots exposed to optional client recipe-viewer integrations. */
     public List<ItemStack> recipeTransferClientStacks() {
         List<ItemStack> result = new ArrayList<>(45);
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : Players.mainItems(player)) {
             result.add(stack.copy());
         }
         for (int slot = 0; slot < craftingInput.getContainerSize(); slot++) {
@@ -164,7 +167,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
     /** Cheap client-side identity for local ingredients included in preflight. */
     public long recipeTransferClientFingerprint() {
         long hash = 0xCBF29CE484222325L;
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : Players.mainItems(player)) {
             hash = fingerprintStack(hash, stack);
         }
         for (int slot = 0; slot < craftingInput.getContainerSize(); slot++) {
@@ -182,7 +185,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
     /** Server-authoritative preflight used by optional recipe viewers. */
     public RecipeTransferPlanner.Availability recipeAvailability(ResourceLocation recipeId,
                                                                   CraftingRecipe recipe) {
-        if (recipe == null || !recipe.canCraftInDimensions(3, 3) || !coreIsAttached()) {
+        if (recipe == null || Recipes.gridIngredients(recipe) == null || !coreIsAttached()) {
             return new RecipeTransferPlanner.Availability(0, 0);
         }
         RecipeAvailabilityKey key = new RecipeAvailabilityKey(recipeId,
@@ -233,12 +236,13 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
         Map<ItemKey, StorageRuntime.SnapshotEntry> stored = new LinkedHashMap<>();
         if (fullScan) {
             for (StorageRuntime.SnapshotEntry entry : core.matchingRecipeEntries(
-                    recipe.getIngredients())) {
+                    Recipes.gridIngredients(recipe))) {
                 stored.putIfAbsent(ItemKey.frozen(entry.stack()), entry);
             }
         } else {
-            for (net.minecraft.world.item.crafting.Ingredient ingredient : recipe.getIngredients()) {
-                if (ingredient.isEmpty()) {
+            for (net.minecraft.world.item.crafting.Ingredient ingredient
+                    : Recipes.gridIngredients(recipe)) {
+                if (!Recipes.isPresent(ingredient)) {
                     continue;
                 }
                 for (StorageRuntime.SnapshotEntry entry : core.matchingEntries(ingredient)) {
@@ -255,7 +259,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
             ItemStack stack = craftingInput.getItem(slot);
             resources.add(new RecipeTransferPlanner.Resource(stack, stack.getCount()));
         }
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : Players.mainItems(player)) {
             resources.add(new RecipeTransferPlanner.Resource(stack, stack.getCount()));
         }
         ItemStack cursor = getCarried();
@@ -269,8 +273,8 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
         List<ItemStack> gridRemainders = copyStacks(craftingInput.getContainerSize(),
                 craftingInput::getItem);
         List<ItemStack> playerRemainders = copyStacks(
-                requester.getInventory().items.size(),
-                index -> requester.getInventory().items.get(index));
+                Players.mainItems(requester).size(),
+                index -> Players.mainItems(requester).get(index));
         ItemStack cursorRemainder = getCarried().copy();
         Map<ItemKey, Integer> needed = new LinkedHashMap<>(plan.consumption());
 
@@ -304,7 +308,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
         // No fallible operation remains below this point. Commit local source
         // decrements, replace the grid once, then return displaced leftovers.
         for (int slot = 0; slot < playerRemainders.size(); slot++) {
-            requester.getInventory().items.set(slot, playerRemainders.get(slot));
+            Players.mainItems(requester).set(slot, playerRemainders.get(slot));
         }
         setCarried(cursorRemainder);
         recipeTransferInProgress = true;
@@ -375,22 +379,27 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
     }
 
     private void updateCraftingResult() {
-        if (player.level().isClientSide || !(player instanceof ServerPlayer serverPlayer)) {
+        if (player.level().isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
 
         ItemStack output = ItemStack.EMPTY;
         //? if >=1.21 {
         /*CraftingInput input = craftingInput.asCraftInput();
-        Optional<RecipeHolder<CraftingRecipe>> match = serverPlayer.getServer()
+        Optional<RecipeHolder<CraftingRecipe>> match = Players.server(serverPlayer)
                 .getRecipeManager()
                 .getRecipeFor(RecipeType.CRAFTING, input, player.level());
         if (match.isPresent()) {
             CraftingRecipe recipe = match.get().value();
-            if (craftingResult.setRecipeUsed(player.level(), serverPlayer, match.get())) {
+            //? if >=1.21.2 {
+            /^boolean used = craftingResult.setRecipeUsed(serverPlayer, match.get());
+            ^///?} else {
+            boolean used = craftingResult.setRecipeUsed(player.level(), serverPlayer, match.get());
+            //?}
+            if (used) {
                 ItemStack crafted = recipe.assemble(input, player.level().registryAccess());
         *///?} else {
-        Optional<CraftingRecipe> match = serverPlayer.getServer()
+        Optional<CraftingRecipe> match = Players.server(serverPlayer)
                 .getRecipeManager()
                 .getRecipeFor(RecipeType.CRAFTING, craftingInput, player.level());
         if (match.isPresent()) {
@@ -551,7 +560,11 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
         ItemStack original = source.copy();
 
         if (slotIndex == RESULT_SLOT) {
+            //? if >=1.21.2 {
+            /*source.getItem().onCraftedBy(source, player);
+            *///?} else {
             source.getItem().onCraftedBy(source, player.level(), player);
+            //?}
             if (!moveItemStackTo(source, PLAYER_START, PLAYER_END, true)) {
                 return ItemStack.EMPTY;
             }
@@ -638,7 +651,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
                 // Vanilla remains responsible for consuming ingredients and
                 // placing recipe remainders such as buckets or reusable tools.
                 super.onTake(player, craftedStack);
-                if (coreIsAttached() && !player.level().isClientSide) {
+                if (coreIsAttached() && !player.level().isClientSide()) {
                     for (int slot = 0; slot < craftingInput.getContainerSize(); slot++) {
                         ItemStack before = templates.get(slot);
                         ItemStack after = craftingInput.getItem(slot);

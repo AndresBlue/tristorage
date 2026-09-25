@@ -11,6 +11,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.Containers;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -19,6 +20,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+//? if >=1.21.6 {
+/*import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+*///?}
 
 public final class LinkerBlockEntity extends BlockEntity
         implements Container, MenuProvider {
@@ -45,7 +50,7 @@ public final class LinkerBlockEntity extends BlockEntity
     }
 
     public void refreshAntennaMount() {
-        if (level == null || level.isClientSide || !(getBlockState().getBlock() instanceof LinkerBlock)) {
+        if (level == null || level.isClientSide() || !(getBlockState().getBlock() instanceof LinkerBlock)) {
             return;
         }
         AntennaMount wanted = hasAntenna()
@@ -121,12 +126,35 @@ public final class LinkerBlockEntity extends BlockEntity
         inventoryChanged();
     }
 
+    //? if >=1.21.5 {
+    /*// Replaces the drop in LinkerBlock.onRemove, which 1.21.5 removed.
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) {
+            Containers.dropContents(level, pos, this);
+        }
+    }
+    *///?}
+
     private void inventoryChanged() {
         setChanged();
         refreshAntennaMount();
     }
 
-    //? if >=1.20.5 {
+    //? if >=1.21.6 {
+    /*@Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        ContainerHelper.saveAllItems(output, stacks);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        stacks.clear();
+        ContainerHelper.loadAllItems(input, stacks);
+    }
+    *///?} elif >=1.20.5 {
     /*@Override
     protected void saveAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
         super.saveAdditional(nbt, registries);

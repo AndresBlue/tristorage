@@ -8,6 +8,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
+import java.util.function.BiFunction;
 
 import java.nio.file.Path;
 import java.util.Optional;
@@ -23,6 +29,10 @@ public interface PlatformHooks {
 
     /** A creative tab builder the loader places in its own tab pages. */
     CreativeModeTab.Builder creativeTabBuilder();
+
+    /** A block entity type for these blocks; vanilla builds them differently since 1.21.2. */
+    <T extends BlockEntity> BlockEntityType<T> blockEntityType(
+            BiFunction<BlockPos, BlockState, T> factory, Block... blocks);
 
     /**
      * Registers a client-to-server packet. The receiver runs on the network

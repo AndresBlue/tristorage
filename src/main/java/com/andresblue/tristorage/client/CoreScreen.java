@@ -57,24 +57,24 @@ public final class CoreScreen extends AbstractContainerScreen<CoreScreenHandler>
 
     @Override
     protected void renderLabels(GuiGraphics context, int mouseX, int mouseY) {
-        context.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
+        context.drawString(font, title, titleLabelX, titleLabelY, 0xFF404040, false);
         context.drawString(font, playerInventoryTitle,
-                inventoryLabelX, inventoryLabelY, 0x404040, false);
+                inventoryLabelX, inventoryLabelY, 0xFF404040, false);
         context.drawString(font,
                 Component.translatable("screen.tristorage.insert_chests"),
-                8, 21, 0x404040, false);
+                8, 21, 0xFF404040, false);
         context.drawString(font,
                 Component.translatable("screen.tristorage.chests",
                         menu.installedChests(), menu.maxChests()),
-                8, 68, 0x404040, false);
+                8, 68, 0xFF404040, false);
         context.drawString(font,
                 Component.translatable("screen.tristorage.types",
                         menu.storedTypes(), menu.typeCapacity()),
-                8, 80, 0x404040, false);
+                8, 80, 0xFF404040, false);
         context.drawString(font,
                 Component.translatable("screen.tristorage.items",
                         menu.totalItems(), menu.itemCapacity()),
-                8, 92, 0x404040, false);
+                8, 92, 0xFF404040, false);
     }
 
     @Override

@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Recipes;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -370,16 +372,12 @@ public final class StorageRuntime {
     }
 
     public List<SnapshotEntry> matchingEntries(Ingredient ingredient, int limit) {
-        if (!ready || ingredient == null || ingredient.isEmpty()) {
+        if (!ready || !Recipes.isPresent(ingredient)) {
             return List.of();
         }
         int safeLimit = Math.max(1, limit);
         Set<Item> candidates = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
-        for (ItemStack matching : ingredient.getItems()) {
-            if (!matching.isEmpty()) {
-                candidates.add(matching.getItem());
-            }
-        }
+        candidates.addAll(Recipes.candidateItems(ingredient));
         Collection<Entry> source;
         if (candidates.isEmpty()) {
             // Compatibility fallback for custom ingredients that implement
@@ -431,7 +429,7 @@ public final class StorageRuntime {
         for (Entry entry : byInsertion) {
             for (int index = 0; index < ingredients.size(); index++) {
                 Ingredient ingredient = ingredients.get(index);
-                if (!ingredient.isEmpty() && ingredient.test(entry.template)) {
+                if (Recipes.isPresent(ingredient) && ingredient.test(entry.template)) {
                     retainCandidate(selected.get(index), entry, limit);
                 }
             }

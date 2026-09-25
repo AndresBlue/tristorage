@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.compat.emi;
 
+//? if emi {
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.client.TerminalClientNetworking;
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
@@ -254,3 +255,4 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
         }
     }
 }
+//?}

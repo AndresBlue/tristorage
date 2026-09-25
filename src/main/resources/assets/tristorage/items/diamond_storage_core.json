@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "tristorage:item/diamond_storage_core"
+  }
+}

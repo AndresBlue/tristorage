@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Players;
+
 import com.andresblue.tristorage.platform.Platform;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -51,7 +53,7 @@ public final class TerminalFilter {
                 id.getNamespace(),
                 modName,
                 id.getPath().replace('_', ' '),
-                stack.getDescriptionId(),
+                stack.getItem().getDescriptionId(),
                 stack.getHoverName().getString()
         ));
     }
@@ -61,7 +63,7 @@ public final class TerminalFilter {
     }
 
     public static void prepareCreativeGroups(ServerPlayer player) {
-        prepareCreativeGroups(player.serverLevel());
+        prepareCreativeGroups(Players.level(player));
     }
 
     /**

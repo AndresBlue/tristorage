@@ -8,6 +8,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
+import java.util.function.BiFunction;
 
 import java.nio.file.Path;
 import java.util.Optional;
@@ -46,6 +52,12 @@ public final class Platform {
 
         @Override
         public CreativeModeTab.Builder creativeTabBuilder() {
+            throw missing();
+        }
+
+        @Override
+        public <T extends BlockEntity> BlockEntityType<T> blockEntityType(
+                BiFunction<BlockPos, BlockState, T> factory, Block... blocks) {
             throw missing();
         }
 

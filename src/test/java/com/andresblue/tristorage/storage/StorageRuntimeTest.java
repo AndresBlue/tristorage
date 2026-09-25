@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Nbt;
+
 import com.andresblue.tristorage.TestStacks;
 
 import net.minecraft.SharedConstants;
@@ -121,7 +123,7 @@ class StorageRuntimeTest {
         ItemStack extracted = runtime.extractMatching(named, 1);
 
         assertEquals(1, extracted.getCount());
-        assertEquals("named", TestStacks.data(extracted).getString("TriStorageTest"));
+        assertEquals("named", Nbt.getString(TestStacks.data(extracted), "TriStorageTest"));
         assertEquals(7, runtime.totalItems());
     }
 

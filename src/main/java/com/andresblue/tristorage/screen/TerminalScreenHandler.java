@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.screen;
 
+import com.andresblue.tristorage.version.Players;
+
 import com.andresblue.tristorage.version.Stacks;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.block.NetworkBlock;
@@ -339,7 +341,7 @@ public class TerminalScreenHandler extends AbstractContainerMenu {
         if (pendingFilter == null || serverPlayer == null) {
             return false;
         }
-        long now = serverPlayer.getServer().getTickCount();
+        long now = Players.server(serverPlayer).getTickCount();
         if (now < nextFilterTick) {
             return false;
         }

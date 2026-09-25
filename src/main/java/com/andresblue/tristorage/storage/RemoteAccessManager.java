@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Players;
+
 import com.andresblue.tristorage.block.LinkerBlock;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import com.andresblue.tristorage.blockentity.LinkerBlockEntity;
@@ -65,24 +67,24 @@ public final class RemoteAccessManager {
         SessionKey key = new SessionKey(targetWorld, linkerPos.immutable());
         PendingRequest current = PENDING.get(playerId);
         if (current != null && current.matches(key, hand, mode)) {
-            current.session().touch(player.getServer().getTickCount());
+            current.session().touch(Players.server(player).getTickCount());
             StorageMetrics.increment("remote.inflight_request_hits");
             player.displayClientMessage(Component.translatable("message.tristorage.remote_loading"), true);
             return;
         }
         cancelPending(playerId);
 
-        SharedSession candidate = getOrCreateSession(player.getServer(), key);
+        SharedSession candidate = getOrCreateSession(Players.server(player), key);
         StorageCoreBlockEntity readyCore = validateReadyCore(candidate);
         if (!isActive(candidate)) {
-            candidate = getOrCreateSession(player.getServer(), key);
+            candidate = getOrCreateSession(Players.server(player), key);
             readyCore = null;
         }
         SharedSession session = candidate;
-        int now = player.getServer().getTickCount();
+        int now = Players.server(player).getTickCount();
         session.touch(now);
         PendingRequest pending = new PendingRequest(
-                player.getServer(), playerId, hand, mode, session, now,
+                Players.server(player), playerId, hand, mode, session, now,
                 StorageMetrics.startTimer());
         PENDING.put(playerId, pending);
         StorageMetrics.increment("remote.requests");
@@ -265,7 +267,7 @@ public final class RemoteAccessManager {
             StorageMetrics.increment("remote.open_failures");
             player.displayClientMessage(Component.translatable("message.tristorage.remote_unavailable"), true);
             LOGGER.error("Could not open remote storage for {}",
-                    player.getGameProfile().getName(), exception);
+                    player.getScoreboardName(), exception);
         }
     }
 

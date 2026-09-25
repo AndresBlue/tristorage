@@ -21,9 +21,21 @@ import java.util.concurrent.CompletableFuture;
  * session instead of creating duplicate chunk requests.
  */
 public final class RemoteChunkLease {
-    private static final int TICKET_LEVEL = 33;
+    /**
+     * Keeps the anchor chunk and its neighbours loaded, and block-ticks the
+     * anchor. Before 2.0 the radius was passed as 33, which loaded 33 chunks
+     * around every Linker and Core in a remote session.
+     */
+    private static final int TICKET_RADIUS = 1;
+    //? if >=1.21.5 {
+    /*// Registered by TriStorageMod.registerTicketTypes. It keeps a dimension
+    // active so a remote session into it keeps working without players there.
+    public static final TicketType TICKET_TYPE = new TicketType(TicketType.NO_TIMEOUT,
+            TicketType.FLAG_LOADING | TicketType.FLAG_KEEP_DIMENSION_ACTIVE);
+    *///?} else {
     private static final TicketType<UUID> TICKET_TYPE =
             TicketType.create("tristorage_remote", UUID::compareTo);
+    //?}
 
     private final ServerLevel world;
     private final UUID ticketId;
@@ -58,7 +70,7 @@ public final class RemoteChunkLease {
             return existing;
         }
         long loadStarted = StorageMetrics.startTimer();
-        world.getChunkSource().addRegionTicket(TICKET_TYPE, chunkPos, TICKET_LEVEL, ticketId);
+        addTicket(chunkPos);
         try {
             CompletableFuture<Boolean> load;
             if (world.getChunkSource().hasChunk(chunkPos.x, chunkPos.z)) {
@@ -82,8 +94,7 @@ public final class RemoteChunkLease {
             chunkLoads.put(chunkPos, load);
             return load;
         } catch (RuntimeException exception) {
-            world.getChunkSource().removeRegionTicket(
-                    TICKET_TYPE, chunkPos, TICKET_LEVEL, ticketId);
+            removeTicket(chunkPos);
             throw exception;
         }
     }
@@ -111,9 +122,24 @@ public final class RemoteChunkLease {
         released = true;
         StorageMetrics.add("remote.chunk_tickets_released", chunkLoads.size());
         for (ChunkPos chunkPos : chunkLoads.keySet()) {
-            world.getChunkSource().removeRegionTicket(
-                    TICKET_TYPE, chunkPos, TICKET_LEVEL, ticketId);
+            removeTicket(chunkPos);
         }
         chunkLoads.clear();
+    }
+
+    private void addTicket(ChunkPos chunkPos) {
+        //? if >=1.21.5 {
+        /*world.getChunkSource().addTicketWithRadius(TICKET_TYPE, chunkPos, TICKET_RADIUS);
+        *///?} else {
+        world.getChunkSource().addRegionTicket(TICKET_TYPE, chunkPos, TICKET_RADIUS, ticketId);
+        //?}
+    }
+
+    private void removeTicket(ChunkPos chunkPos) {
+        //? if >=1.21.5 {
+        /*world.getChunkSource().removeTicketWithRadius(TICKET_TYPE, chunkPos, TICKET_RADIUS);
+        *///?} else {
+        world.getChunkSource().removeRegionTicket(TICKET_TYPE, chunkPos, TICKET_RADIUS, ticketId);
+        //?}
     }
 }

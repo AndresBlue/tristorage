@@ -24,7 +24,7 @@ public final class StorageNetwork {
     }
 
     public static void markTopologyChanged(Level world) {
-        if (!world.isClientSide) {
+        if (!world.isClientSide()) {
             TOPOLOGY_VERSIONS.merge(world, 1L, Long::sum);
         }
     }

@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
+import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 //? if >=1.20.5 {
@@ -22,6 +23,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
+import java.util.function.BiFunction;
 
 import java.nio.file.Path;
 import java.util.Map;
@@ -45,6 +52,12 @@ public final class FabricPlatformHooks implements PlatformHooks {
     @Override
     public CreativeModeTab.Builder creativeTabBuilder() {
         return FabricItemGroup.builder();
+    }
+
+    @Override
+    public <T extends BlockEntity> BlockEntityType<T> blockEntityType(
+            BiFunction<BlockPos, BlockState, T> factory, Block... blocks) {
+        return FabricBlockEntityTypeBuilder.create(factory::apply, blocks).build();
     }
 
     //? if >=1.20.5 {

@@ -10,7 +10,7 @@ builds every Minecraft version and loader through Stonecutter.
 | `src/` | The only source tree. Mojang mappings. |
 | `src/main/java/.../platform/` | `PlatformHooks`, `ClientPlatformHooks`, `Registrar`: the loader seam. |
 | `src/main/java/.../platform/fabric/`, `platform/forge/`, `platform/neoforge/` | Loader code, wrapped in `//? if fabric {`, `//? if forge {` or `//? if neoforge {` blocks. |
-| `src/main/java/.../version/` | Helpers for APIs that changed between Minecraft versions (`Stacks`, `SavedStacks`, `Ids`, `NbtFiles`, `Recipes`). Common code calls these. |
+| `src/main/java/.../version/` | Helpers for APIs that changed between Minecraft versions (`Stacks`, `SavedStacks`, `Nbt`, `ValueTags`, `Players`, `Ids`, `NbtFiles`, `Recipes`). Common code calls these. |
 | `buildSrc/` | Build logic shared by the loader scripts: data pack upgrade per version, versioned mixins. |
 | `stonecutter.properties.toml` | Mod and dependency versions per Minecraft version and loader. |
 | `build.fabric.gradle.kts`, `build.forge.gradle.kts`, `build.neoforge.gradle.kts` | One build script per loader. |
@@ -47,6 +47,11 @@ only; a block comment would end the wrapper early.
 
 To work on another version, run the `"Set active project to <node>"` task so
 the sources switch to it; run `"Reset active project"` before committing.
+
+Sources use the pre-1.21.11 Mojang names (`ResourceLocation`, `net.minecraft.Util`,
+`ResourceKey.location()`); the replacements in `stonecutter.gradle.kts` rename them
+for newer nodes. While a 1.21.11+ node is active, files show the new names.
+GUI text colors need an alpha byte (`0xFF404040`), or 1.21.6+ draws nothing.
 
 Published JARs: GitHub releases on `AndresBlue/tristorage`. `dist/` is a local,
 untracked copy.

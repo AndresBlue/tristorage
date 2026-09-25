@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.recipe;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
@@ -35,19 +36,25 @@ class WirelessCraftingTerminalRecipeTest {
 
             JsonObject keys = recipe.getAsJsonObject("key");
             assertEquals("minecraft:ender_pearl",
-                    keys.getAsJsonObject("E").get("item").getAsString());
+                    itemOf(keys.get("E")));
             assertEquals("minecraft:netherite_ingot",
-                    keys.getAsJsonObject("N").get("item").getAsString());
+                    itemOf(keys.get("N")));
             assertEquals("minecraft:blaze_rod",
-                    keys.getAsJsonObject("B").get("item").getAsString());
+                    itemOf(keys.get("B")));
             assertEquals("minecraft:crafting_table",
-                    keys.getAsJsonObject("C").get("item").getAsString());
+                    itemOf(keys.get("C")));
             assertEquals("minecraft:quartz",
-                    keys.getAsJsonObject("Q").get("item").getAsString());
+                    itemOf(keys.get("Q")));
             assertEquals("tristorage:remote_tablet",
-                    keys.getAsJsonObject("T").get("item").getAsString());
+                    itemOf(keys.get("T")));
             assertEquals("tristorage:wireless_crafting_terminal",
                     recipe.getAsJsonObject("result").get(resultKey).getAsString());
         }
+    }
+
+    /** An ingredient's item: an object before 1.21.2, a plain id from then on. */
+    private static String itemOf(JsonElement ingredient) {
+        return ingredient.isJsonPrimitive() ? ingredient.getAsString()
+                : ingredient.getAsJsonObject().get("item").getAsString();
     }
 }

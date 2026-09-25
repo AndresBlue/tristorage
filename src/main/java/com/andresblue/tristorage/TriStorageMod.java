@@ -26,11 +26,17 @@ import com.andresblue.tristorage.storage.StorageRepositories;
 import com.andresblue.tristorage.storage.StorageDiagnostics;
 import com.andresblue.tristorage.storage.RemoteAccessManager;
 import com.andresblue.tristorage.storage.RemoteTerminalMode;
+import com.andresblue.tristorage.storage.RemoteChunkLease;
 import com.andresblue.tristorage.network.TerminalPackets;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
+//? if >=1.21.5 {
+/*import net.minecraft.server.level.TicketType;
+*///?}
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -102,25 +108,28 @@ public final class TriStorageMod {
 
     public static void registerBlocks(Registrar<Block> registrar) {
         IRON_CORE = registrar.register("iron_storage_core", new StorageCoreBlock(StorageTier.IRON,
-                copyOf(Blocks.IRON_BLOCK)
+                copyOf("iron_storage_core", Blocks.IRON_BLOCK)
                         .strength(3.5f, CORE_BLAST_RESISTANCE)));
         DIAMOND_CORE = registrar.register("diamond_storage_core", new StorageCoreBlock(
-                StorageTier.DIAMOND, copyOf(Blocks.DIAMOND_BLOCK)
+                StorageTier.DIAMOND,
+                copyOf("diamond_storage_core", Blocks.DIAMOND_BLOCK)
                         .strength(4.5f, CORE_BLAST_RESISTANCE)));
-        BLAZE_CORE = registrar.register("blaze_storage_core", new StorageCoreBlock(StorageTier.BLAZE,
-                copyOf(Blocks.OBSIDIAN)
+        BLAZE_CORE = registrar.register("blaze_storage_core", new StorageCoreBlock(
+                StorageTier.BLAZE,
+                copyOf("blaze_storage_core", Blocks.OBSIDIAN)
                         .strength(12.0f, CORE_BLAST_RESISTANCE).lightLevel(state -> 4)));
         COSMIC_CORE = registrar.register("cosmic_storage_core", new StorageCoreBlock(
-                StorageTier.COSMIC, copyOf(Blocks.OBSIDIAN)
+                StorageTier.COSMIC,
+                copyOf("cosmic_storage_core", Blocks.OBSIDIAN)
                         .strength(18.0f, CORE_BLAST_RESISTANCE).lightLevel(state -> 7)));
         TERMINAL = registrar.register("storage_terminal", new TerminalBlock(
-                copyOf(Blocks.IRON_BLOCK).strength(3.5f)
+                copyOf("storage_terminal", Blocks.IRON_BLOCK).strength(3.5f)
                         .lightLevel(state -> 5)));
         CRAFTING_TERMINAL = registrar.register("crafting_terminal", new CraftingTerminalBlock(
-                copyOf(Blocks.IRON_BLOCK).strength(3.5f)
+                copyOf("crafting_terminal", Blocks.IRON_BLOCK).strength(3.5f)
                         .lightLevel(state -> 5)));
         LINKER = registrar.register("storage_linker", new LinkerBlock(
-                copyOf(Blocks.COPPER_BLOCK).strength(3.0f)
+                copyOf("storage_linker", Blocks.COPPER_BLOCK).strength(3.0f)
                         .lightLevel(state -> 3)));
     }
 
@@ -133,12 +142,12 @@ public final class TriStorageMod {
         registerBlockItem(registrar, "crafting_terminal", CRAFTING_TERMINAL);
         registerBlockItem(registrar, "storage_linker", LINKER);
         REMOTE_TABLET = registrar.register("remote_tablet", new RemoteTabletItem(
-                new Item.Properties().stacksTo(1), RemoteTerminalMode.STORAGE));
+                itemProperties("remote_tablet").stacksTo(1), RemoteTerminalMode.STORAGE));
         WIRELESS_CRAFTING_TERMINAL = registrar.register("wireless_crafting_terminal",
-                new RemoteTabletItem(new Item.Properties().stacksTo(1),
+                new RemoteTabletItem(itemProperties("wireless_crafting_terminal").stacksTo(1),
                         RemoteTerminalMode.CRAFTING));
         DIMENSIONAL_ANTENNA = registrar.register("dimensional_antenna",
-                new DimensionalAntennaItem(new Item.Properties().stacksTo(16)));
+                new DimensionalAntennaItem(itemProperties("dimensional_antenna").stacksTo(16)));
     }
 
     public static void registerRecipeSerializers(Registrar<RecipeSerializer<?>> registrar) {
@@ -153,11 +162,18 @@ public final class TriStorageMod {
 
     public static void registerBlockEntities(Registrar<BlockEntityType<?>> registrar) {
         STORAGE_CORE_BLOCK_ENTITY = registrar.register("storage_core",
-                BlockEntityType.Builder.of(StorageCoreBlockEntity::new,
-                        IRON_CORE, DIAMOND_CORE, BLAZE_CORE, COSMIC_CORE).build(null));
+                Platform.get().blockEntityType(StorageCoreBlockEntity::new,
+                        IRON_CORE, DIAMOND_CORE, BLAZE_CORE, COSMIC_CORE));
         LINKER_BLOCK_ENTITY = registrar.register("storage_linker",
-                BlockEntityType.Builder.of(LinkerBlockEntity::new, LINKER).build(null));
+                Platform.get().blockEntityType(LinkerBlockEntity::new, LINKER));
     }
+
+    //? if >=1.21.5 {
+    /*// Since 1.21.5 chunk ticket types are registered.
+    public static void registerTicketTypes(Registrar<TicketType> registrar) {
+        registrar.register("remote_access", RemoteChunkLease.TICKET_TYPE);
+    }
+    *///?}
 
     public static void registerMenus(Registrar<MenuType<?>> registrar) {
         CORE_SCREEN_HANDLER = registrar.register("storage_core",
@@ -200,14 +216,14 @@ public final class TriStorageMod {
             return true;
         }
         if (!StorageCoreBlock.canBreakSafely(player, state)) {
-            if (!level.isClientSide) {
+            if (!level.isClientSide()) {
                 player.displayClientMessage(Component.translatable(
                         "message.tristorage.core_needs_tool"), true);
             }
             return false;
         }
         boolean prepared = core.preparePortable();
-        if (!prepared && !level.isClientSide) {
+        if (!prepared && !level.isClientSide()) {
             player.displayClientMessage(Component.translatable(core.isRecoveryRequired()
                     ? "message.tristorage.core_recovery_required"
                     : "message.tristorage.core_not_ready"), true);
@@ -224,18 +240,41 @@ public final class TriStorageMod {
 
     private static void registerBlockItem(Registrar<Item> registrar, String path, Block block) {
         Item item = block instanceof StorageCoreBlock
-                ? new StorageCoreBlockItem(block, new Item.Properties())
+                ? new StorageCoreBlockItem(block, blockItemProperties(path))
                 : block == TERMINAL
-                ? new TerminalBlockItem(block, new Item.Properties())
-                : new BlockItem(block, new Item.Properties());
+                ? new TerminalBlockItem(block, blockItemProperties(path))
+                : new BlockItem(block, blockItemProperties(path));
         registrar.register(path, item);
     }
 
-    private static BlockBehaviour.Properties copyOf(Block block) {
+    /** The base block's properties for the block registered under {@code path}. */
+    private static BlockBehaviour.Properties copyOf(String path, Block block) {
         //? if >=1.20.5 {
-        /*return BlockBehaviour.Properties.ofFullCopy(block);
+        /*BlockBehaviour.Properties properties = BlockBehaviour.Properties.ofFullCopy(block);
         *///?} else {
-        return BlockBehaviour.Properties.copy(block);
+        BlockBehaviour.Properties properties = BlockBehaviour.Properties.copy(block);
+        //?}
+        //? if >=1.21.2 {
+        /*// Since 1.21.2 a block must know its id before it is created.
+        properties.setId(ResourceKey.create(Registries.BLOCK, id(path)));
+        *///?}
+        return properties;
+    }
+
+    private static Item.Properties itemProperties(String path) {
+        Item.Properties properties = new Item.Properties();
+        //? if >=1.21.2 {
+        /*properties.setId(ResourceKey.create(Registries.ITEM, id(path)));
+        *///?}
+        return properties;
+    }
+
+    /** Block items keep the block's translation key, as before 1.21.2. */
+    private static Item.Properties blockItemProperties(String path) {
+        //? if >=1.21.2 {
+        /*return itemProperties(path).useBlockDescriptionPrefix();
+        *///?} else {
+        return itemProperties(path);
         //?}
     }
 

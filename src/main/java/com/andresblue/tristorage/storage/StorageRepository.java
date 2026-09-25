@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Nbt;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.version.NbtFiles;
 import com.andresblue.tristorage.version.SavedStacks;
@@ -636,14 +637,14 @@ public final class StorageRepository {
             return;
         }
         CompoundTag root = NbtFiles.readCompressed(manifestPath);
-        ListTag list = root.getList("Storages", Tag.TAG_COMPOUND);
+        ListTag list = Nbt.getCompoundList(root, "Storages");
         for (int index = 0; index < list.size(); index++) {
-            CompoundTag stored = list.getCompound(index);
+            CompoundTag stored = Nbt.getCompound(list, index);
             try {
-                StorageId id = StorageId.parse(stored.getString("StorageId"));
-                ownership.put(id, new Ownership(stored.getString("Token"),
-                        stored.getString("Lifecycle"), stored.getString("Dimension"),
-                        stored.getLong("BlockPos"), stored.getString("Tier")));
+                StorageId id = StorageId.parse(Nbt.getString(stored, "StorageId"));
+                ownership.put(id, new Ownership(Nbt.getString(stored, "Token"),
+                        Nbt.getString(stored, "Lifecycle"), Nbt.getString(stored, "Dimension"),
+                        Nbt.getLong(stored, "BlockPos"), Nbt.getString(stored, "Tier")));
             } catch (IllegalArgumentException ignored) {
                 StorageMetrics.increment("repository.invalid_manifest_entries");
             }
@@ -719,31 +720,31 @@ public final class StorageRepository {
         long revision = 0;
         long snapshotRevision = Long.MIN_VALUE;
         if (snapshotRoot != null) {
-            chests = Math.max(0, snapshotRoot.getInt("InstalledChests"));
-            revision = Math.max(0, snapshotRoot.getLong("Revision"));
+            chests = Math.max(0, Nbt.getInt(snapshotRoot, "InstalledChests"));
+            revision = Math.max(0, Nbt.getLong(snapshotRoot, "Revision"));
             snapshotRevision = revision;
-            int dataVersion = snapshotRoot.getInt(SavedStacks.DATA_VERSION_KEY);
-            ListTag list = snapshotRoot.getList("Entries", Tag.TAG_COMPOUND);
+            int dataVersion = Nbt.getInt(snapshotRoot, SavedStacks.DATA_VERSION_KEY);
+            ListTag list = Nbt.getCompoundList(snapshotRoot, "Entries");
             for (int index = 0; index < list.size(); index++) {
-                CompoundTag entry = list.getCompound(index);
-                entries.put(entry.getLong("EntryId"), withDataVersion(entry, dataVersion));
+                CompoundTag entry = Nbt.getCompound(list, index);
+                entries.put(Nbt.getLong(entry, "EntryId"), withDataVersion(entry, dataVersion));
             }
         }
         int staleFrames = 0;
         for (CompoundTag frame : frames) {
-            long frameRevision = frame.getLong("Revision");
+            long frameRevision = Nbt.getLong(frame, "Revision");
             if (frameRevision <= snapshotRevision) {
                 staleFrames++;
                 continue;
             }
-            chests = Math.max(0, frame.getInt("InstalledChests"));
+            chests = Math.max(0, Nbt.getInt(frame, "InstalledChests"));
             revision = Math.max(revision, frameRevision);
-            int dataVersion = frame.getInt(SavedStacks.DATA_VERSION_KEY);
-            ListTag operations = frame.getList("Operations", Tag.TAG_COMPOUND);
+            int dataVersion = Nbt.getInt(frame, SavedStacks.DATA_VERSION_KEY);
+            ListTag operations = Nbt.getCompoundList(frame, "Operations");
             for (int index = 0; index < operations.size(); index++) {
-                CompoundTag operation = operations.getCompound(index);
-                long entryId = operation.getLong("EntryId");
-                if (operation.getBoolean("Removed")) {
+                CompoundTag operation = Nbt.getCompound(operations, index);
+                long entryId = Nbt.getLong(operation, "EntryId");
+                if (Nbt.getBoolean(operation, "Removed")) {
                     entries.remove(entryId);
                 } else {
                     entries.put(entryId, withDataVersion(operation, dataVersion));
@@ -762,7 +763,7 @@ public final class StorageRepository {
      */
     private static CompoundTag withDataVersion(CompoundTag entry, int fileDataVersion) {
         CompoundTag copy = entry.copy();
-        if (!copy.contains(SavedStacks.DATA_VERSION_KEY, Tag.TAG_INT)) {
+        if (!Nbt.hasInt(copy, SavedStacks.DATA_VERSION_KEY)) {
             copy.putInt(SavedStacks.DATA_VERSION_KEY, fileDataVersion);
         }
         return copy;
@@ -1032,10 +1033,10 @@ public final class StorageRepository {
             int end = Math.min(prepared.entries.size(), index + budget);
             while (index < end) {
                 CompoundTag stored = prepared.entries.get(index++);
-                ItemStack stack = SavedStacks.parse(stored.getCompound("Stack"),
-                        stored.getInt(SavedStacks.DATA_VERSION_KEY), registries);
-                runtime.loadEntry(stored.getLong("EntryId"), stack,
-                        Math.max(0, stored.getLong("Count")));
+                ItemStack stack = SavedStacks.parse(Nbt.getCompound(stored, "Stack"),
+                        Nbt.getInt(stored, SavedStacks.DATA_VERSION_KEY), registries);
+                runtime.loadEntry(Nbt.getLong(stored, "EntryId"), stack,
+                        Math.max(0, Nbt.getLong(stored, "Count")));
             }
             return index - start;
         }

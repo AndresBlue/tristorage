@@ -57,7 +57,7 @@ dependencies {
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
 
     // Recipe viewers are optional; their plugins load only when the viewer is installed.
-    compileOnly("dev.emi:emi-xplat-mojmap:${sc.properties.get<String>("deps.emi")}+$minecraft:api")
+    findProperty("deps.emi")?.let { compileOnly("dev.emi:emi-xplat-mojmap:$it+$minecraft:api") }
     compileOnly("mezz.jei:jei-$minecraft-common-api:${sc.properties.get<String>("deps.jei")}")
 }
 

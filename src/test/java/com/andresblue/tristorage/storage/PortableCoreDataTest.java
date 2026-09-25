@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Nbt;
+
 import com.andresblue.tristorage.TestStacks;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
@@ -39,10 +41,9 @@ class PortableCoreDataTest {
 
         CompoundTag portable = PortableCoreData.sanitizedCopy(raw);
 
-        assertEquals(7, portable.getInt(PortableCoreData.CHESTS_KEY));
-        assertEquals(123L, portable.getList(
-                PortableCoreData.ENTRIES_KEY, CompoundTag.TAG_COMPOUND)
-                .getCompound(0).getLong("Count"));
+        assertEquals(7, Nbt.getInt(portable, PortableCoreData.CHESTS_KEY));
+        assertEquals(123L, Nbt.getLong(Nbt.getCompound(
+                Nbt.getCompoundList(portable, PortableCoreData.ENTRIES_KEY), 0), "Count"));
         assertFalse(portable.contains("id"));
         assertFalse(portable.contains("x"));
         assertNotSame(entries, portable.get(PortableCoreData.ENTRIES_KEY));
@@ -56,7 +57,7 @@ class PortableCoreDataTest {
 
         CompoundTag portable = PortableCoreData.sanitizedCopy(raw);
 
-        assertEquals(0, portable.getInt(PortableCoreData.CHESTS_KEY));
+        assertEquals(0, Nbt.getInt(portable, PortableCoreData.CHESTS_KEY));
         assertFalse(portable.contains("Injected"));
         assertTrue(portable.contains(PortableCoreData.CHESTS_KEY));
     }
@@ -66,8 +67,8 @@ class PortableCoreDataTest {
         CompoundTag raw = new CompoundTag();
         raw.putInt(PortableCoreData.DATA_VERSION_KEY, 3465);
 
-        assertEquals(3465, PortableCoreData.sanitizedCopy(raw)
-                .getInt(PortableCoreData.DATA_VERSION_KEY));
+        assertEquals(3465, Nbt.getInt(PortableCoreData.sanitizedCopy(raw),
+                PortableCoreData.DATA_VERSION_KEY));
     }
 
     private static CompoundTag storage(int chests, long... counts) {

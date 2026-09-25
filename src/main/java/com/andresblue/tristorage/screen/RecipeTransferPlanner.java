@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.screen;
 
+import com.andresblue.tristorage.version.Recipes;
+
 import com.andresblue.tristorage.storage.ItemKey;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,7 +30,7 @@ public final class RecipeTransferPlanner {
 
     public static Plan plan(CraftingRecipe recipe, List<Resource> input,
                             int requestedCrafts) {
-        if (recipe == null || !recipe.canCraftInDimensions(3, 3)) {
+        if (recipe == null || Recipes.gridIngredients(recipe) == null) {
             return null;
         }
         List<Requirement> requirements = requirements(recipe);
@@ -99,7 +101,7 @@ public final class RecipeTransferPlanner {
      */
     public static Availability availability(CraftingRecipe recipe,
                                             List<Resource> input) {
-        if (recipe == null || !recipe.canCraftInDimensions(3, 3)) {
+        if (recipe == null || Recipes.gridIngredients(recipe) == null) {
             return Availability.EMPTY;
         }
         List<Requirement> requirements = requirements(recipe);
@@ -126,28 +128,29 @@ public final class RecipeTransferPlanner {
     }
 
     private static List<Requirement> requirements(CraftingRecipe recipe) {
-        List<Ingredient> ingredients = recipe.getIngredients();
+        List<Ingredient> ingredients = Recipes.gridIngredients(recipe);
         List<Requirement> requirements = new ArrayList<>();
         if (recipe instanceof ShapedRecipe shaped) {
             int width = shaped.getWidth();
             int height = shaped.getHeight();
-            if (width > 3 || height > 3 || ingredients.size() < width * height) {
+            if (ingredients == null || width > 3 || height > 3
+                    || ingredients.size() < width * height) {
                 return List.of();
             }
             for (int row = 0; row < height; row++) {
                 for (int column = 0; column < width; column++) {
                     Ingredient ingredient = ingredients.get(column + row * width);
-                    if (!ingredient.isEmpty()) {
+                    if (Recipes.isPresent(ingredient)) {
                         requirements.add(new Requirement(column + row * width,
                                 column + row * 3, ingredient));
                     }
                 }
             }
-        } else {
+        } else if (ingredients != null) {
             int slot = 0;
             for (int inputIndex = 0; inputIndex < ingredients.size(); inputIndex++) {
                 Ingredient ingredient = ingredients.get(inputIndex);
-                if (!ingredient.isEmpty()) {
+                if (Recipes.isPresent(ingredient)) {
                     if (slot >= GRID_SIZE) {
                         return List.of();
                     }

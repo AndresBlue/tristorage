@@ -24,7 +24,14 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 //? if >=1.20.5 {
 /*import com.mojang.serialization.MapCodec;
-import net.minecraft.world.ItemInteractionResult;
+*///?}
+//? if >=1.21.2 {
+/*import net.minecraft.world.level.redstone.Orientation;
+*///?} elif >=1.20.5 {
+/*import net.minecraft.world.ItemInteractionResult;
+*///?}
+//? if >=1.21.5 {
+/*import net.minecraft.server.level.ServerLevel;
 *///?}
 
 public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
@@ -59,9 +66,20 @@ public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
         StorageNetwork.markTopologyChanged(world);
     }
 
-    //? if >=1.20.5 {
-    /*// A tablet in hand links instead of opening the Linker screen.
-    @Override
+    // A tablet in hand links instead of opening the Linker screen.
+    //? if >=1.21.2 {
+    /*@Override
+    protected InteractionResult useItemOn(ItemStack held, BlockState state, Level world,
+                                          BlockPos pos, Player player, InteractionHand hand,
+                                          BlockHitResult hit) {
+        getOrCreateLinkerEntity(world, pos, state);
+        if (!(held.getItem() instanceof RemoteTabletItem tablet)) {
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
+        }
+        return tablet.linkTo(world, pos, player, held);
+    }
+    *///?} elif >=1.20.5 {
+    /*@Override
     protected ItemInteractionResult useItemOn(ItemStack held, BlockState state, Level world,
                                               BlockPos pos, Player player, InteractionHand hand,
                                               BlockHitResult hit) {
@@ -70,10 +88,12 @@ public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         tablet.linkTo(world, pos, player, held);
-        return world.isClientSide ? ItemInteractionResult.SUCCESS : ItemInteractionResult.CONSUME;
+        return world.isClientSide() ? ItemInteractionResult.SUCCESS : ItemInteractionResult.CONSUME;
     }
+    *///?}
 
-    @Override
+    //? if >=1.20.5 {
+    /*@Override
     protected InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos,
                                                Player player, BlockHitResult hit) {
         getOrCreateLinkerEntity(world, pos, state);
@@ -94,7 +114,7 @@ public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
 
     private static InteractionResult openScreen(BlockState state, Level world, BlockPos pos,
                                                 Player player) {
-        if (!world.isClientSide) {
+        if (!world.isClientSide()) {
             MenuProvider factory = state.getMenuProvider(world, pos);
             if (factory != null) {
                 player.openMenu(factory);
@@ -110,16 +130,34 @@ public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
     }
     *///?}
 
+    //? if >=1.21.2 {
+    /*@Override
+    protected void neighborChanged(BlockState state, Level world, BlockPos pos,
+                                   Block sourceBlock, @Nullable Orientation orientation,
+                                   boolean notify) {
+        super.neighborChanged(state, world, pos, sourceBlock, orientation, notify);
+    *///?} else {
     @Override
     public void neighborChanged(BlockState state, Level world, BlockPos pos,
                                Block sourceBlock, BlockPos sourcePos, boolean notify) {
         super.neighborChanged(state, world, pos, sourceBlock, sourcePos, notify);
+    //?}
         LinkerBlockEntity linker = getOrCreateLinkerEntity(world, pos, state);
-        if (!world.isClientSide && linker != null) {
+        if (!world.isClientSide() && linker != null) {
             linker.refreshAntennaMount();
         }
     }
 
+    // Since 1.21.5 the antenna drops through LinkerBlockEntity.preRemoveSideEffects.
+    //? if >=1.21.5 {
+    /*@Override
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel world, BlockPos pos,
+                                               boolean moved) {
+        super.affectNeighborsAfterRemoval(state, world, pos, moved);
+        world.updateNeighbourForOutputSignal(pos, this);
+        StorageNetwork.markTopologyChanged(world);
+    }
+    *///?} else {
     @Override
     public void onRemove(BlockState state, Level world, BlockPos pos,
                                 BlockState newState, boolean moved) {
@@ -131,6 +169,7 @@ public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
         }
         super.onRemove(state, world, pos, newState, moved);
     }
+    //?}
 
     public static AntennaMount findAntennaMount(LevelAccessor world, BlockPos pos) {
         return AntennaMount.firstAvailable(direction ->
@@ -144,7 +183,7 @@ public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
         if (world.getBlockEntity(pos) instanceof LinkerBlockEntity existing) {
             return existing;
         }
-        if (world.isClientSide || !(state.getBlock() instanceof LinkerBlock)) {
+        if (world.isClientSide() || !(state.getBlock() instanceof LinkerBlock)) {
             return null;
         }
         LinkerBlockEntity created = new LinkerBlockEntity(pos, state);

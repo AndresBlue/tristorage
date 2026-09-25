@@ -34,9 +34,9 @@ public final class LinkerScreen extends AbstractContainerScreen<LinkerScreenHand
 
     @Override
     protected void renderLabels(GuiGraphics context, int mouseX, int mouseY) {
-        context.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
+        context.drawString(font, title, titleLabelX, titleLabelY, 0xFF404040, false);
         context.drawString(font, playerInventoryTitle,
-                inventoryLabelX, inventoryLabelY, 0x404040, false);
+                inventoryLabelX, inventoryLabelY, 0xFF404040, false);
         Component status = !menu.hasAntenna() && !menu.installationSpaceAvailable()
                 ? Component.translatable("screen.tristorage.antenna_needs_air")
                 : !menu.hasAntenna()
@@ -44,7 +44,7 @@ public final class LinkerScreen extends AbstractContainerScreen<LinkerScreenHand
                 : menu.antennaActive()
                 ? Component.translatable("screen.tristorage.antenna_active")
                 : Component.translatable("screen.tristorage.antenna_blocked");
-        int color = menu.antennaActive() ? 0x247A34 : 0x8A3C24;
+        int color = menu.antennaActive() ? 0xFF247A34 : 0xFF8A3C24;
         context.drawString(font, status,
                 (imageWidth - font.width(status)) / 2,
                 48, color, false);

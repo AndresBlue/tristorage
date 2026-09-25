@@ -1,5 +1,9 @@
 package com.andresblue.tristorage.item;
 
+import com.andresblue.tristorage.version.Players;
+
+import com.andresblue.tristorage.version.Nbt;
+
 import com.andresblue.tristorage.storage.RemoteAccessManager;
 import com.andresblue.tristorage.storage.RemoteTerminalMode;
 import com.andresblue.tristorage.storage.StorageNetwork;
@@ -15,7 +19,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+//? if <1.21.2 {
 import net.minecraft.world.InteractionResultHolder;
+//?}
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -41,7 +47,7 @@ public final class RemoteTabletItem extends Item {
     }
 
     public InteractionResult linkTo(Level world, BlockPos linkerPos, Player player, ItemStack tablet) {
-        if (world.isClientSide) {
+        if (world.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
         StorageCoreBlockEntity core = StorageNetwork.findCore(world, linkerPos);
@@ -67,35 +73,47 @@ public final class RemoteTabletItem extends Item {
         return InteractionResult.CONSUME;
     }
 
+    //? if >=1.21.2 {
+    /*@Override
+    public InteractionResult use(Level world, Player player, InteractionHand hand) {
+        return openRemoteTerminal(world, player, hand);
+    }
+    *///?} else {
     @Override
     public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
+        return new InteractionResultHolder<>(openRemoteTerminal(world, player, hand),
+                player.getItemInHand(hand));
+    }
+    //?}
+
+    private InteractionResult openRemoteTerminal(Level world, Player player, InteractionHand hand) {
         ItemStack tablet = player.getItemInHand(hand);
-        if (world.isClientSide) {
-            return InteractionResultHolder.success(tablet);
+        if (world.isClientSide()) {
+            return InteractionResult.SUCCESS;
         }
         CompoundTag nbt = Stacks.customData(tablet);
         if (!nbt.contains(DIMENSION_KEY) || !nbt.contains(POSITION_KEY)) {
             player.displayClientMessage(Component.translatable("message.tristorage.tablet_unlinked"), true);
-            return InteractionResultHolder.fail(tablet);
+            return InteractionResult.FAIL;
         }
 
-        ResourceLocation dimensionId = ResourceLocation.tryParse(nbt.getString(DIMENSION_KEY));
+        ResourceLocation dimensionId = ResourceLocation.tryParse(Nbt.getString(nbt, DIMENSION_KEY));
         if (dimensionId == null || !(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.fail(tablet);
+            return InteractionResult.FAIL;
         }
         ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, dimensionId);
-        ServerLevel targetWorld = serverPlayer.getServer().getLevel(dimension);
-        BlockPos linkerPos = BlockPos.of(nbt.getLong(POSITION_KEY));
+        ServerLevel targetWorld = Players.server(serverPlayer).getLevel(dimension);
+        BlockPos linkerPos = BlockPos.of(Nbt.getLong(nbt, POSITION_KEY));
         if (targetWorld == null) {
             player.displayClientMessage(Component.translatable("message.tristorage.remote_unavailable"), true);
-            return InteractionResultHolder.fail(tablet);
+            return InteractionResult.FAIL;
         }
 
         BlockPos coreHint = nbt.contains(CORE_POSITION_KEY)
-                ? BlockPos.of(nbt.getLong(CORE_POSITION_KEY))
+                ? BlockPos.of(Nbt.getLong(nbt, CORE_POSITION_KEY))
                 : null;
         RemoteAccessManager.request(serverPlayer, hand, targetWorld, linkerPos, coreHint, mode);
-        return InteractionResultHolder.consume(tablet);
+        return InteractionResult.CONSUME;
     }
 
     public static boolean isLinkedTo(ItemStack stack, ResourceKey<Level> dimension,
@@ -114,8 +132,8 @@ public final class RemoteTabletItem extends Item {
         }
         CompoundTag nbt = Stacks.customData(stack);
         return hasValidLink(nbt)
-                && dimension.location().toString().equals(nbt.getString(DIMENSION_KEY))
-                && linkerPos.asLong() == nbt.getLong(POSITION_KEY);
+                && dimension.location().toString().equals(Nbt.getString(nbt, DIMENSION_KEY))
+                && linkerPos.asLong() == Nbt.getLong(nbt, POSITION_KEY);
     }
 
     /** Copies only a structurally valid TriStorage link, never arbitrary item NBT. */
@@ -125,21 +143,21 @@ public final class RemoteTabletItem extends Item {
             return false;
         }
         CompoundTag targetNbt = Stacks.customData(target);
-        targetNbt.putString(DIMENSION_KEY, sourceNbt.getString(DIMENSION_KEY));
-        targetNbt.putLong(POSITION_KEY, sourceNbt.getLong(POSITION_KEY));
-        if (sourceNbt.contains(CORE_POSITION_KEY, Tag.TAG_LONG)) {
-            targetNbt.putLong(CORE_POSITION_KEY, sourceNbt.getLong(CORE_POSITION_KEY));
+        targetNbt.putString(DIMENSION_KEY, Nbt.getString(sourceNbt, DIMENSION_KEY));
+        targetNbt.putLong(POSITION_KEY, Nbt.getLong(sourceNbt, POSITION_KEY));
+        if (Nbt.hasLong(sourceNbt, CORE_POSITION_KEY)) {
+            targetNbt.putLong(CORE_POSITION_KEY, Nbt.getLong(sourceNbt, CORE_POSITION_KEY));
         }
         Stacks.setCustomData(target, targetNbt);
         return true;
     }
 
     static boolean hasValidLink(CompoundTag nbt) {
-        return nbt.contains(DIMENSION_KEY, Tag.TAG_STRING)
-                && ResourceLocation.tryParse(nbt.getString(DIMENSION_KEY)) != null
-                && nbt.contains(POSITION_KEY, Tag.TAG_LONG)
+        return Nbt.hasString(nbt, DIMENSION_KEY)
+                && ResourceLocation.tryParse(Nbt.getString(nbt, DIMENSION_KEY)) != null
+                && Nbt.hasLong(nbt, POSITION_KEY)
                 && (!nbt.contains(CORE_POSITION_KEY)
-                || nbt.contains(CORE_POSITION_KEY, Tag.TAG_LONG));
+                || Nbt.hasLong(nbt, CORE_POSITION_KEY));
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.blockentity;
 
+import com.andresblue.tristorage.version.Nbt;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.block.StorageCoreBlock;
 import com.andresblue.tristorage.item.StorageCoreBlockItem;
@@ -20,7 +21,12 @@ import org.jetbrains.annotations.Nullable;
 /*import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.item.component.CustomData;
+*///?}
+//? if >=1.21.6 {
+/*import com.andresblue.tristorage.version.ValueTags;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 *///?}
 
 import java.util.ArrayList;
@@ -60,6 +66,13 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
     private static final String ORBIT_ENTRIES_KEY = "TriStorageOrbitEntries";
     private static final String ORBIT_REVISION_KEY = "TriStorageOrbitRevision";
     private static final int ORBIT_ENTRY_LIMIT = 24;
+    /** Every key this block entity saves; the orbit keys are what clients receive. */
+    private static final String[] SAVED_KEYS = {
+            STORAGE_ID_KEY, PortableCoreData.OWNERSHIP_TOKEN_KEY,
+            PortableCoreData.FORMAT_VERSION_KEY, PortableCoreData.DATA_VERSION_KEY,
+            REVISION_KEY, PortableCoreData.CHESTS_KEY, PortableCoreData.ENTRIES_KEY,
+            PortableCoreData.TYPES_SUMMARY_KEY, PortableCoreData.ITEMS_SUMMARY_KEY,
+            ORBIT_ENTRIES_KEY, ORBIT_REVISION_KEY};
     //? if >=1.20.5 {
     /*private static final List<DataComponentType<?>> ORBIT_VISUAL_COMPONENTS = List.of(
             DataComponents.ENCHANTMENTS, DataComponents.STORED_ENCHANTMENTS,
@@ -163,15 +176,15 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
                 int start = pendingLegacyIndex;
                 int end = Math.min(pendingLegacyEntries.size(), start + budget);
                 while (pendingLegacyIndex < end) {
-                    CompoundTag stored = pendingLegacyEntries.getCompound(pendingLegacyIndex++);
+                    CompoundTag stored = Nbt.getCompound(pendingLegacyEntries, pendingLegacyIndex++);
                     if (legacyNeedsIdentity) {
                         legacyChecksum = 31 * legacyChecksum + stored.hashCode();
                     }
-                    ItemStack stack = SavedStacks.parse(stored.getCompound("Stack"),
+                    ItemStack stack = SavedStacks.parse(Nbt.getCompound(stored, "Stack"),
                             pendingLegacyDataVersion, serverWorld.registryAccess());
-                    long count = Math.max(0, stored.getLong("Count"));
-                    long entryId = stored.contains(ENTRY_ID_KEY, Tag.TAG_ANY_NUMERIC)
-                            ? Math.max(1, stored.getLong(ENTRY_ID_KEY))
+                    long count = Math.max(0, Nbt.getLong(stored, "Count"));
+                    long entryId = Nbt.hasNumber(stored, ENTRY_ID_KEY)
+                            ? Math.max(1, Nbt.getLong(stored, ENTRY_ID_KEY))
                             : pendingLegacyFallbackId;
                     pendingLegacyFallbackId = Math.max(
                             pendingLegacyFallbackId + 1, entryId + 1);
@@ -425,14 +438,14 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
     }
 
     public List<ItemStack> orbitItemSnapshot() {
-        if (level != null && level.isClientSide && clientOrbitSynced) {
+        if (level != null && level.isClientSide() && clientOrbitSynced) {
             return clientOrbitItems.stream().map(ItemStack::copy).toList();
         }
         return serverOrbitSnapshot().stream().map(ItemStack::copy).toList();
     }
 
     public long orbitSnapshotRevision() {
-        return level != null && level.isClientSide && clientOrbitSynced
+        return level != null && level.isClientSide() && clientOrbitSynced
                 ? clientOrbitRevision : revision();
     }
 
@@ -463,20 +476,34 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
         super.collectImplicitComponents(components);
         CompoundTag portable = PortableCoreData.sanitizedCopy(portableData());
         if (portable != null) {
-            BlockEntity.addEntityType(portable, getType());
-            components.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(portable));
+            Stacks.putBlockEntityData(components, getType(), portable);
         }
     }
+    *///?}
 
-    @Override
+    //? if >=1.21.6 {
+    /*@Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        CompoundTag nbt = new CompoundTag();
+        writeCore(nbt, level != null ? level.registryAccess() : RegistryAccess.EMPTY);
+        ValueTags.write(output, nbt);
+    }
+    *///?} elif >=1.20.5 {
+    /*@Override
     protected void saveAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
         super.saveAdditional(nbt, registries);
+        writeCore(nbt, registries);
+    }
     *///?} else {
     @Override
     protected void saveAdditional(CompoundTag nbt) {
         super.saveAdditional(nbt);
-        HolderLookup.Provider registries = null;
+        writeCore(nbt, null);
+    }
     //?}
+
+    private void writeCore(CompoundTag nbt, HolderLookup.Provider registries) {
         activeRuntime();
         if (!legacyNeedsIdentity) {
             nbt.putString(STORAGE_ID_KEY, storageId().toString());
@@ -562,10 +589,10 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
                 kept.put(key, value.copy());
             }
         }
-        CompoundTag sourceDisplay = source.getCompound("display");
-        if (sourceDisplay.contains("color", Tag.TAG_ANY_NUMERIC)) {
+        CompoundTag sourceDisplay = Nbt.getCompound(source, "display");
+        if (Nbt.hasNumber(sourceDisplay, "color")) {
             CompoundTag keptDisplay = new CompoundTag();
-            keptDisplay.putInt("color", sourceDisplay.getInt("color"));
+            keptDisplay.putInt("color", Nbt.getInt(sourceDisplay, "color"));
             kept.put("display", keptDisplay);
         }
         if (!kept.isEmpty()) {
@@ -605,39 +632,49 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
         //?}
     }
 
-    //? if >=1.20.5 {
+    //? if >=1.21.6 {
+    /*@Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        readCore(ValueTags.read(input, SAVED_KEYS), input.lookup());
+    }
+    *///?} elif >=1.20.5 {
     /*@Override
     protected void loadAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
         super.loadAdditional(nbt, registries);
+        readCore(nbt, registries);
+    }
     *///?} else {
     @Override
     public void load(CompoundTag nbt) {
         super.load(nbt);
-        HolderLookup.Provider registries = null;
+        readCore(nbt, null);
+    }
     //?}
-        if (!nbt.contains(PortableCoreData.ENTRIES_KEY, Tag.TAG_LIST)
-                && nbt.contains(ORBIT_ENTRIES_KEY, Tag.TAG_LIST)) {
+
+    private void readCore(CompoundTag nbt, HolderLookup.Provider registries) {
+        if (!Nbt.hasList(nbt, PortableCoreData.ENTRIES_KEY)
+                && Nbt.hasList(nbt, ORBIT_ENTRIES_KEY)) {
             readOrbitNbt(nbt, registries);
             return;
         }
-        boolean hasStorageId = nbt.contains(STORAGE_ID_KEY, Tag.TAG_STRING);
+        boolean hasStorageId = Nbt.hasString(nbt, STORAGE_ID_KEY);
         StorageId id;
         try {
-            id = hasStorageId ? StorageId.parse(nbt.getString(STORAGE_ID_KEY))
+            id = hasStorageId ? StorageId.parse(Nbt.getString(nbt, STORAGE_ID_KEY))
                     : StorageId.random();
         } catch (IllegalArgumentException invalidId) {
             id = StorageId.random();
             hasStorageId = false;
         }
-        boolean hasOwnershipToken = nbt.contains(PortableCoreData.OWNERSHIP_TOKEN_KEY,
-                Tag.TAG_STRING);
+        boolean hasOwnershipToken = Nbt.hasString(nbt, PortableCoreData.OWNERSHIP_TOKEN_KEY);
         ownershipToken = hasOwnershipToken
-                ? nbt.getString(PortableCoreData.OWNERSHIP_TOKEN_KEY)
+                ? Nbt.getString(nbt, PortableCoreData.OWNERSHIP_TOKEN_KEY)
                 : UUID.randomUUID().toString();
         StorageRuntime loaded = new StorageRuntime(id);
         loaded.loadInstalledChests(Math.min(Math.max(0,
-                nbt.getInt(PortableCoreData.CHESTS_KEY)), maxChests()));
-        ListTag list = nbt.getList(PortableCoreData.ENTRIES_KEY, Tag.TAG_COMPOUND);
+                Nbt.getInt(nbt, PortableCoreData.CHESTS_KEY)), maxChests()));
+        ListTag list = Nbt.getCompoundList(nbt, PortableCoreData.ENTRIES_KEY);
         legacyNeedsIdentity = !hasStorageId && (list.size() > 0
                 || loaded.installedChests() > 0);
         boolean requiresStagedLoad = !hasStorageId || !list.isEmpty();
@@ -646,17 +683,17 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
             pendingLegacyEntries = list;
             pendingLegacyIndex = 0;
             pendingLegacyFallbackId = 1;
-            pendingLegacyRevision = Math.max(0, nbt.getLong(REVISION_KEY));
+            pendingLegacyRevision = Math.max(0, Nbt.getLong(nbt, REVISION_KEY));
             pendingLegacyTypeSummary = Math.max(list.size(),
-                    nbt.getInt(PortableCoreData.TYPES_SUMMARY_KEY));
+                    Nbt.getInt(nbt, PortableCoreData.TYPES_SUMMARY_KEY));
             pendingLegacyItemSummary = Math.max(0,
-                    nbt.getLong(PortableCoreData.ITEMS_SUMMARY_KEY));
-            pendingLegacyDataVersion = nbt.getInt(PortableCoreData.DATA_VERSION_KEY);
+                    Nbt.getLong(nbt, PortableCoreData.ITEMS_SUMMARY_KEY));
+            pendingLegacyDataVersion = Nbt.getInt(nbt, PortableCoreData.DATA_VERSION_KEY);
             legacyChecksum = 31 + loaded.installedChests();
             legacyLoadTask = null;
         } else {
             pendingLegacyEntries = null;
-            loaded.finishLoading(Math.max(0, nbt.getLong(REVISION_KEY)));
+            loaded.finishLoading(Math.max(0, Nbt.getLong(nbt, REVISION_KEY)));
         }
         replaceRuntime(loaded);
         repositoryAttached = false;
@@ -671,16 +708,16 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
 
     private void readOrbitNbt(CompoundTag nbt, HolderLookup.Provider registries) {
         clientOrbitItems.clear();
-        ListTag list = nbt.getList(ORBIT_ENTRIES_KEY, Tag.TAG_COMPOUND);
+        ListTag list = Nbt.getCompoundList(nbt, ORBIT_ENTRIES_KEY);
         for (int index = 0; index < list.size() && index < ORBIT_ENTRY_LIMIT; index++) {
-            ItemStack stack = Stacks.parse(list.getCompound(index).getCompound("Stack"),
+            ItemStack stack = Stacks.parse(Nbt.getCompound(Nbt.getCompound(list, index), "Stack"),
                     registries);
             if (!stack.isEmpty()) {
                 stack.setCount(1);
                 clientOrbitItems.add(stack);
             }
         }
-        clientOrbitRevision = nbt.getLong(ORBIT_REVISION_KEY);
+        clientOrbitRevision = Nbt.getLong(nbt, ORBIT_REVISION_KEY);
         clientOrbitSynced = true;
     }
 

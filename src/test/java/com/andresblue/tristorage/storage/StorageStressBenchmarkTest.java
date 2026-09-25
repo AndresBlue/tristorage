@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Nbt;
+
 import com.andresblue.tristorage.TestStacks;
 import com.andresblue.tristorage.version.Stacks;
 import com.google.gson.GsonBuilder;
@@ -230,8 +232,8 @@ class StorageStressBenchmarkTest {
         assertEquals(types, snapshot.size());
         long expectedTotal = 0;
         for (int index = 0; index < types; index++) {
-            assertEquals(index, TestStacks.data(snapshot.get(index).stack())
-                    .getInt("TriStorageStressVariant"));
+            assertEquals(index, Nbt.getInt(TestStacks.data(snapshot.get(index).stack()),
+                    "TriStorageStressVariant"));
             assertEquals(expected[index], snapshot.get(index).count());
             expectedTotal += expected[index];
         }

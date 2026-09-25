@@ -3,6 +3,7 @@ package com.andresblue.tristorage.version;
 import com.mojang.serialization.Dynamic;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
@@ -30,7 +31,7 @@ public final class SavedStacks {
     }
 
     public static int currentVersion() {
-        return SharedConstants.getCurrentVersion().getDataVersion().getVersion();
+        return SharedConstants.WORLD_VERSION;
     }
 
     /** Reads a stack saved by the given data version; zero means the writer recorded none. */
@@ -51,7 +52,7 @@ public final class SavedStacks {
     }
 
     private static int unrecordedVersion(CompoundTag stack, int current) {
-        boolean legacyLayout = stack.contains("Count", Tag.TAG_BYTE) && !stack.contains("count");
+        boolean legacyLayout = stack.get("Count") instanceof ByteTag && !stack.contains("count");
         return Math.min(legacyLayout ? UNRECORDED_LEGACY_LAYOUT : UNRECORDED_COMPONENT_LAYOUT,
                 current);
     }

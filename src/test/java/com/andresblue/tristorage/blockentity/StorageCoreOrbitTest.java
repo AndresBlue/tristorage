@@ -88,7 +88,11 @@ class StorageCoreOrbitTest {
     void dyeColorIsKeptWithoutNameOrLore() {
         ItemStack armor = new ItemStack(Items.LEATHER_CHESTPLATE);
         //? if >=1.20.5 {
-        /*armor.set(DataComponents.DYED_COLOR, new DyedItemColor(0x3366FF, true));
+        /*//? if >=1.21.5 {
+        /^armor.set(DataComponents.DYED_COLOR, new DyedItemColor(0x3366FF));
+        ^///?} else {
+        armor.set(DataComponents.DYED_COLOR, new DyedItemColor(0x3366FF, true));
+        //?}
         armor.set(DataComponents.CUSTOM_NAME, Component.literal("Base keys"));
 
         ItemStack shown = StorageCoreBlockEntity.orbitDisplayStack(armor);

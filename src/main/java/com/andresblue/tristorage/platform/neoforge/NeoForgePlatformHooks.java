@@ -11,6 +11,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
+import java.util.function.BiFunction;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
@@ -78,6 +84,12 @@ public final class NeoForgePlatformHooks implements PlatformHooks {
     @Override
     public CreativeModeTab.Builder creativeTabBuilder() {
         return CreativeModeTab.builder();
+    }
+
+    @Override
+    public <T extends BlockEntity> BlockEntityType<T> blockEntityType(
+            BiFunction<BlockPos, BlockState, T> factory, Block... blocks) {
+        return BlockEntityType.Builder.of(factory::apply, blocks).build(null);
     }
 
     @Override

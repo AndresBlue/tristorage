@@ -60,7 +60,7 @@ public final class StorageCoreBlock extends BaseEntityBlock implements NetworkBl
 
     // Creative breaks drop nothing, so the player receives the portable Core directly.
     private void giveCreativePortable(Level world, BlockPos pos, Player player) {
-        StorageCoreBlockEntity core = !world.isClientSide
+        StorageCoreBlockEntity core = !world.isClientSide()
                 && world.getBlockEntity(pos) instanceof StorageCoreBlockEntity found
                 ? found : null;
         StorageNetwork.markTopologyChanged(world);
@@ -113,7 +113,7 @@ public final class StorageCoreBlock extends BaseEntityBlock implements NetworkBl
     public InteractionResult use(BlockState state, Level world, BlockPos pos, Player player,
                                  InteractionHand hand, BlockHitResult hit) {
     //?}
-        if (!world.isClientSide) {
+        if (!world.isClientSide()) {
             if (world.getBlockEntity(pos) instanceof StorageCoreBlockEntity core
                     && core.isRecoveryRequired()) {
                 player.displayClientMessage(Component.translatable(

@@ -19,6 +19,9 @@ public final class TriStorageFabric implements ModInitializer {
         TriStorageMod.registerRecipeSerializers(registrar(BuiltInRegistries.RECIPE_SERIALIZER));
         TriStorageMod.registerBlockEntities(registrar(BuiltInRegistries.BLOCK_ENTITY_TYPE));
         TriStorageMod.registerMenus(registrar(BuiltInRegistries.MENU));
+        //? if >=1.21.5 {
+        /*TriStorageMod.registerTicketTypes(registrar(BuiltInRegistries.TICKET_TYPE));
+        *///?}
         TriStorageMod.registerCreativeTabs(registrar(BuiltInRegistries.CREATIVE_MODE_TAB));
         TriStorageMod.initialize();
         PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) ->

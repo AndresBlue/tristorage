@@ -25,6 +25,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
+//? if >=1.21.9 {
+/*import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+*///?}
 
 abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         extends AbstractContainerScreen<H> implements TerminalScreenMarker {
@@ -453,31 +458,33 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     protected void renderLabels(GuiGraphics context, int mouseX, int mouseY) {
         Layout layout = layout();
         Component heading = categoriesVisible() ? categoryTitle(selectedCategory) : title;
-        context.drawString(font, heading, titleLabelX, titleLabelY, 0x404040, false);
+        context.drawString(font, heading, titleLabelX, titleLabelY, 0xFF404040, false);
         if (categoriesVisible()) {
             String categoryPosition = (categoryIds.indexOf(selectedCategory) + 1)
                     + "/" + categoryIds.size();
             context.drawString(font, categoryPosition,
                     89 - font.width(categoryPosition) / 2,
-                    -35, 0xFFFFFF, false);
+                    -35, 0xFFFFFFFF, false);
         }
         context.drawString(font, playerInventoryTitle,
-                inventoryLabelX, inventoryLabelY, 0x404040, false);
+                inventoryLabelX, inventoryLabelY, 0xFF404040, false);
         String pageText = (menu.page() + 1) + " / " + menu.pageCount();
         context.drawString(font, pageText,
                 layout.pageCenterX() - font.width(pageText) / 2,
-                layout.pageY(), 0x404040, false);
+                layout.pageY(), 0xFF404040, false);
         context.drawString(font,
                 Component.translatable("screen.tristorage.types_short", menu.storedTypes()),
-                layout.statsX(), layout.typesY(), 0x404040, false);
+                layout.statsX(), layout.typesY(), 0xFF404040, false);
         context.drawString(font,
                 Component.translatable("screen.tristorage.items_short", menu.totalItems()),
-                layout.statsX(), layout.itemsY(), 0x404040, false);
+                layout.statsX(), layout.itemsY(), 0xFF404040, false);
         drawAdditionalForeground(context, mouseX, mouseY);
         if (!settingsOpen) {
             drawStoredCounts(context);
         }
+        //? if <1.21.6 {
         context.flush();
+        //?}
     }
 
     protected void drawAdditionalForeground(GuiGraphics context, int mouseX, int mouseY) {
@@ -493,6 +500,15 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         if (settingsOpen) {
             drawSettingsOverlay(context, mouseX, mouseY, delta);
         } else {
+            //? if >=1.21.6 {
+            /*// Since 1.21.6 items are recorded as render states and drawn
+            // later, so an item renderer can no longer disturb the matrices.
+            for (CategoryTabButton button : categoryButtons) {
+                if (button.visible) {
+                    button.renderIconOverlay(context);
+                }
+            }
+            *///?} else {
             // Keep themed ButtonWidget frames in the normal screen pass, then
             // isolate every modded item renderer behind its own MatrixStack and
             // flush. Some pack items leave the supplied matrix unbalanced; a
@@ -513,20 +529,28 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
                     isolated.flush();
                 }
             }
+            //?}
             renderTooltip(context, mouseX, mouseY);
         }
     }
 
     private void drawSettingsOverlay(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        //? if >=1.21.6 {
+        /*// A new stratum draws above the slots and their items.
+        context.nextStratum();
+        *///?} else {
         context.pose().pushPose();
         context.pose().translate(0, 0, 500);
+        //?}
         drawVanillaPanel(context, leftPos + 5, topPos + 16, leftPos + 171, topPos + 217);
         context.drawString(font, Component.translatable("screen.tristorage.settings"),
-                leftPos + 11, topPos + 22, 0x404040, false);
+                leftPos + 11, topPos + 22, 0xFF404040, false);
         for (Button button : configButtons) {
             button.render(context, mouseX, mouseY, delta);
         }
+        //? if <1.21.6 {
         context.pose().popPose();
+        //?}
     }
 
     /**
@@ -559,11 +583,19 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             this.selected = selected;
         }
 
+        //? if >=1.21.9 {
+        /*// The tab is the button frame alone; its item is drawn on top later.
+        @Override
+        protected void renderContents(GuiGraphics context, int mouseX, int mouseY, float delta) {
+            renderDefaultSprite(context);
+        }
+        *///?} else {
         @Override
         protected void renderWidget(GuiGraphics context, int mouseX,
                                     int mouseY, float delta) {
             super.renderWidget(context, mouseX, mouseY, delta);
         }
+        //?}
 
         private void renderIconOverlay(GuiGraphics context) {
             if (icon.isEmpty()) {
@@ -577,17 +609,33 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         }
     }
 
+    //? if >=1.21.9 {
+    /*@Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return clickTerminal(event.x(), event.y(),
+                widget -> widget.mouseClicked(event, doubleClick))
+                || super.mouseClicked(event, doubleClick);
+    }
+    *///?} else {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return clickTerminal(mouseX, mouseY,
+                widget -> widget.mouseClicked(mouseX, mouseY, button))
+                || super.mouseClicked(mouseX, mouseY, button);
+    }
+    //?}
+
+    /** Handles a click the terminal takes itself; false passes it to the screen. */
+    private boolean clickTerminal(double mouseX, double mouseY, Predicate<Button> clickButton) {
         if (searchField != null && !searchField.isMouseOver(mouseX, mouseY)) {
             searchField.setFocused(false);
         }
         if (settingsOpen) {
-            if (settingsButton.mouseClicked(mouseX, mouseY, button)) {
+            if (clickButton.test(settingsButton)) {
                 return true;
             }
             for (Button configButton : configButtons) {
-                if (configButton.mouseClicked(mouseX, mouseY, button)) {
+                if (clickButton.test(configButton)) {
                     return true;
                 }
             }
@@ -596,12 +644,9 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
                 return true;
             }
         }
-        if (pendingFilterSequence >= 0
+        return pendingFilterSequence >= 0
                 && mouseX >= leftPos + 7 && mouseX < leftPos + 171
-                && mouseY >= topPos + 17 && mouseY < topPos + 127) {
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
+                && mouseY >= topPos + 17 && mouseY < topPos + 127;
     }
 
     @Override
@@ -617,19 +662,30 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         super.slotClicked(slot, slotId, button, actionType);
     }
 
+    //? if >=1.21.9 {
+    /*@Override
+    public boolean keyPressed(KeyEvent event) {
+        return pressTerminalKey(event.key(),
+                minecraft != null && minecraft.options.keyInventory.matches(event))
+                || super.keyPressed(event);
+    }
+    *///?} else {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        return pressTerminalKey(keyCode,
+                minecraft != null && minecraft.options.keyInventory.matches(keyCode, scanCode))
+                || super.keyPressed(keyCode, scanCode, modifiers);
+    }
+    //?}
+
+    private boolean pressTerminalKey(int keyCode, boolean inventoryKey) {
         if (settingsOpen && keyCode == GLFW.GLFW_KEY_ESCAPE) {
             toggleSettings();
             return true;
         }
-        if (searchField != null && searchField.isFocused()
-                && minecraft != null && minecraft.options.keyInventory.matches(keyCode, scanCode)) {
-            // Keep the inventory key available as text input while the search
-            // field owns focus. Clicking outside the field releases this guard.
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        // Keep the inventory key available as text input while the search
+        // field owns focus. Clicking outside the field releases this guard.
+        return searchField != null && searchField.isFocused() && inventoryKey;
     }
 
     //? if >=1.20.2 {
@@ -692,11 +748,19 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             float rightEdge = slot.x + 17.0f;
             float drawY = slot.y + 17.0f - font.lineHeight * scale;
 
+            //? if >=1.21.6 {
+            /*context.pose().pushMatrix();
+            context.pose().translate(rightEdge, drawY);
+            context.pose().scale(scale, scale);
+            context.drawString(font, label, -labelWidth, 0, 0xFFFFFFFF, true);
+            context.pose().popMatrix();
+            *///?} else {
             context.pose().pushPose();
             context.pose().translate(rightEdge, drawY, STORED_COUNT_Z);
             context.pose().scale(scale, scale, 1.0f);
             context.drawString(font, label, -labelWidth, 0, 0xFFFFFF, true);
             context.pose().popPose();
+            //?}
         }
     }
 

@@ -3,7 +3,6 @@ package com.andresblue.tristorage.screen;
 import com.andresblue.tristorage.TestStacks;
 
 import net.minecraft.SharedConstants;
-import net.minecraft.core.NonNullList;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -216,12 +215,8 @@ class RecipeTransferPlannerTest {
 
     private static ShapedRecipe shaped(int width, int height,
                                        Ingredient... ingredients) {
-        NonNullList<Ingredient> pattern = NonNullList.withSize(
-                width * height, Ingredient.EMPTY);
-        for (int index = 0; index < ingredients.length; index++) {
-            pattern.set(index, ingredients[index]);
-        }
-        return TestStacks.shapedRecipe(width, height, pattern, new ItemStack(Items.STICK));
+        return TestStacks.shapedRecipe(width, height, java.util.Arrays.asList(ingredients),
+                new ItemStack(Items.STICK));
     }
 
     private static RecipeTransferPlanner.Resource resource(

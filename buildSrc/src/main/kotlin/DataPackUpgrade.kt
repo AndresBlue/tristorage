@@ -3,6 +3,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 import org.gradle.api.file.CopySpec
 import java.io.FilterReader
 import java.io.Reader
@@ -60,12 +61,32 @@ class DataPackUpgrade(input: Reader) : FilterReader(input) {
         return GSON.toJson(json) + "\n"
     }
 
-    /** 1.20.5 renamed the result's item field to id. */
+    /**
+     * 1.20.5 renamed the result's item field to id; 1.21.2 writes each
+     * ingredient as an item id, a #tag or a list of item ids.
+     */
     private fun upgradeRecipe(json: JsonObject) {
         val result = json.get("result")
         if (result is JsonObject && result.has("item")) {
             result.add("id", result.remove("item"))
         }
+        if (McVersion.of(minecraft) >= McVersion.of("1.21.2")) {
+            json.getAsJsonObject("key")?.let { key ->
+                key.entrySet().toList().forEach { (symbol, value) -> key.add(symbol, ingredient(value)) }
+            }
+            json.getAsJsonArray("ingredients")?.let { list ->
+                for (index in 0 until list.size()) {
+                    list.set(index, ingredient(list.get(index)))
+                }
+            }
+        }
+    }
+
+    private fun ingredient(value: JsonElement): JsonElement = when {
+        value is JsonObject && value.has("item") -> JsonPrimitive(value.get("item").asString)
+        value is JsonObject && value.has("tag") -> JsonPrimitive("#" + value.get("tag").asString)
+        value is JsonArray -> JsonArray().apply { value.forEach { add(ingredient(it)) } }
+        else -> value
     }
 
     /**

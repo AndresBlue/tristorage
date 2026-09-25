@@ -7,12 +7,21 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 //? if >=1.20.5 {
-/*import net.minecraft.core.component.DataComponentPatch;
+/*import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.component.CustomData;
 *///?}
+//? if >=1.21.9 {
+/*import net.minecraft.world.item.component.TypedEntityData;
+*///?} else {
+import net.minecraft.world.level.block.entity.BlockEntity;
+//?}
 
 /**
  * ItemStack operations whose API changed when item data moved from an NBT tag
@@ -20,6 +29,8 @@ import net.minecraft.world.item.component.CustomData;
  * touching either representation directly.
  */
 public final class Stacks {
+    private static final Logger LOGGER = LoggerFactory.getLogger("TriStorage/Stacks");
+
     private Stacks() {
     }
 
@@ -86,15 +97,23 @@ public final class Stacks {
 
     public static CompoundTag save(ItemStack stack, HolderLookup.Provider registries) {
         //? if >=1.20.5 {
-        /*return (CompoundTag) stack.saveOptional(registries);
+        /*return (CompoundTag) ItemStack.OPTIONAL_CODEC
+                .encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), stack)
+                .getOrThrow();
         *///?} else {
         return stack.save(new CompoundTag());
         //?}
     }
 
+    /** Reads a saved stack; an unreadable one is logged and comes back empty. */
     public static ItemStack parse(CompoundTag tag, HolderLookup.Provider registries) {
         //? if >=1.20.5 {
-        /*return ItemStack.parseOptional(registries, tag);
+        /*if (tag.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        return ItemStack.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), tag)
+                .resultOrPartial(error -> LOGGER.error("Tried to load invalid item: {}", error))
+                .orElse(ItemStack.EMPTY);
         *///?} else {
         return ItemStack.of(tag);
         //?}
@@ -131,10 +150,13 @@ public final class Stacks {
         //?}
     }
 
-    /** Block entity data an item carries into the world, or null. */
+    /** Block entity data an item carries into the world, without its id, or null. */
     @Nullable
     public static CompoundTag blockEntityData(ItemStack stack) {
-        //? if >=1.20.5 {
+        //? if >=1.21.9 {
+        /*TypedEntityData<BlockEntityType<?>> data = stack.get(DataComponents.BLOCK_ENTITY_DATA);
+        return data == null ? null : data.copyTagWithoutId();
+        *///?} elif >=1.20.5 {
         /*CustomData data = stack.get(DataComponents.BLOCK_ENTITY_DATA);
         return data == null ? null : data.copyTag();
         *///?} else {
@@ -148,6 +170,24 @@ public final class Stacks {
 
     public static void setBlockEntityData(ItemStack stack, BlockEntityType<?> type,
                                           CompoundTag tag) {
+        //? if >=1.21.9 {
+        /*stack.set(DataComponents.BLOCK_ENTITY_DATA, TypedEntityData.of(type, tag));
+        *///?} else {
         BlockItem.setBlockEntityData(stack, type, tag);
+        //?}
     }
+
+    //? if >=1.20.5 {
+    /*/^* Adds block entity data to the components a block entity gives its dropped item. ^/
+    public static void putBlockEntityData(DataComponentMap.Builder components,
+                                          BlockEntityType<?> type, CompoundTag tag) {
+        //? if >=1.21.9 {
+        /^components.set(DataComponents.BLOCK_ENTITY_DATA, TypedEntityData.of(type, tag));
+        ^///?} else {
+        CompoundTag withId = tag.copy();
+        BlockEntity.addEntityType(withId, type);
+        components.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(withId));
+        //?}
+    }
+    *///?}
 }

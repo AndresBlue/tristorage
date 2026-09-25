@@ -5,11 +5,12 @@ mod.name = "TriStorage"
 mod.group = "com.andresblue"
 mod.version = "2.0.0-alpha.1"
 
-deps.emi = "1.1.23"
 loomx.loom_version = "1.18.2"
 
 ["1.20.1"]
 deps.jei = "15.20.0.112"
+# EMI is published for Minecraft 1.19.2 to 1.21.1 only.
+deps.emi = "1.1.23"
 
 
 [fabric."1.20.1"]
@@ -25,6 +26,7 @@ mod.mc_compat = "[1.20.1,1.20.2)"
 
 ["1.21.1"]
 deps.jei = "19.57.0.449"
+deps.emi = "1.1.23"
 
 
 [fabric."1.21.1"]
@@ -36,3 +38,13 @@ mod.mc_compat = ">=1.21 <1.21.2"
 [neoforge."1.21.1"]
 deps.neoforge = "21.1.251"
 mod.mc_compat = "[1.21.1,1.21.2)"
+
+
+["1.21.11"]
+deps.jei = "27.44.0.103"
+
+
+[fabric."1.21.11"]
+deps.fabric_loader = "0.18.4"
+deps.fabric_api = "0.141.6+1.21.11"
+mod.mc_compat = "1.21.11"

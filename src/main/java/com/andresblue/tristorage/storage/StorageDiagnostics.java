@@ -7,6 +7,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.andresblue.tristorage.platform.Platform;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -54,7 +55,11 @@ public final class StorageDiagnostics {
         Platform.get().onServerStopping(ignored -> ACTIVE_BENCHMARKS.clear());
         Platform.get().onRegisterCommands(dispatcher -> {
             dispatcher.register(literal("tristorage")
+                    //? if >=1.21.11 {
+                    /*.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                    *///?} else {
                     .requires(source -> source.hasPermission(2))
+                    //?}
                     .then(literal("metrics")
                             .executes(context -> showMetrics(
                                     context.getSource().getServer(), context.getSource()))
@@ -219,7 +224,11 @@ public final class StorageDiagnostics {
             if (TriStorageMod.MOD_ID.equals(id.getNamespace())) {
                 continue;
             }
+            //? if >=1.21.2 {
+            /*Item item = BuiltInRegistries.ITEM.getValue(id);
+            *///?} else {
             Item item = BuiltInRegistries.ITEM.get(id);
+            //?}
             if (item != null && item != Items.AIR
                     && item.getDefaultInstance().getMaxStackSize() > 0) {
                 result.add(item);

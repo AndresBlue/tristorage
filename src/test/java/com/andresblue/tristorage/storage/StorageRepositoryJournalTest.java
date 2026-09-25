@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Nbt;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -31,7 +33,7 @@ class StorageRepositoryJournalTest {
         List<CompoundTag> recovered = invokeRead(journal);
 
         assertEquals(1, recovered.size());
-        assertEquals(42, recovered.get(0).getLong("Revision"));
+        assertEquals(42, Nbt.getLong(recovered.get(0), "Revision"));
         assertEquals(validSize, Files.size(journal));
     }
 
@@ -106,10 +108,10 @@ class StorageRepositoryJournalTest {
 
     private static int dataVersionOf(StorageRepository.Prepared prepared, long entryId) {
         return prepared.entries().stream()
-                .filter(entry -> entry.getLong("EntryId") == entryId)
+                .filter(entry -> Nbt.getLong(entry, "EntryId") == entryId)
                 .findFirst()
-                .orElseThrow()
-                .getInt("DataVersion");
+                .map(entry -> Nbt.getInt(entry, "DataVersion"))
+                .orElseThrow();
     }
 
     private static CompoundTag snapshot(long revision, int chests, CompoundTag... entries) {
@@ -148,10 +150,10 @@ class StorageRepositoryJournalTest {
 
     private static long countOf(StorageRepository.Prepared prepared, long entryId) {
         return prepared.entries().stream()
-                .filter(entry -> entry.getLong("EntryId") == entryId)
+                .filter(entry -> Nbt.getLong(entry, "EntryId") == entryId)
                 .findFirst()
-                .orElseThrow()
-                .getLong("Count");
+                .map(entry -> Nbt.getLong(entry, "Count"))
+                .orElseThrow();
     }
 
     private static void invokeAppend(Path path, CompoundTag frame) throws Exception {

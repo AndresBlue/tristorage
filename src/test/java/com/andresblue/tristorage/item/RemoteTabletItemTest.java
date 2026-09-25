@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.item;
 
+import com.andresblue.tristorage.version.Nbt;
+
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.platform.Registrar;
 import com.andresblue.tristorage.storage.RemoteTerminalMode;
@@ -67,7 +69,7 @@ class RemoteTabletItemTest {
         assertFalse(RemoteTabletItem.isLinkedTo(
                 result, dimension(), LINKER, RemoteTerminalMode.STORAGE));
         assertEquals("minecraft:overworld",
-                TestStacks.data(result).getString("LinkedDimension"));
+                Nbt.getString(TestStacks.data(result), "LinkedDimension"));
         assertFalse(TestStacks.data(result).contains("InjectedData"));
     }
 
