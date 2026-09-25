@@ -1,9 +1,9 @@
 package com.andresblue.tristorage.client;
 
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 
 public final class TerminalScreen extends AbstractTerminalScreen<TerminalScreenHandler> {
     private static final Layout LAYOUT = new Layout(
@@ -15,7 +15,7 @@ public final class TerminalScreen extends AbstractTerminalScreen<TerminalScreenH
             247, 4
     );
 
-    public TerminalScreen(TerminalScreenHandler handler, PlayerInventory inventory, Text title) {
+    public TerminalScreen(TerminalScreenHandler handler, Inventory inventory, Component title) {
         super(handler, inventory, title, 270);
     }
 
@@ -25,8 +25,8 @@ public final class TerminalScreen extends AbstractTerminalScreen<TerminalScreenH
     }
 
     @Override
-    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        context.drawTexture(VANILLA_CHEST_TEXTURE, x, y, 0, 0, 176, 222);
-        drawVanillaPanel(context, x + 176, y, x + 270, y + 128);
+    protected void renderBg(GuiGraphics context, float delta, int mouseX, int mouseY) {
+        context.blit(VANILLA_CHEST_TEXTURE, leftPos, topPos, 0, 0, 176, 222);
+        drawVanillaPanel(context, leftPos + 176, topPos, leftPos + 270, topPos + 128);
     }
 }

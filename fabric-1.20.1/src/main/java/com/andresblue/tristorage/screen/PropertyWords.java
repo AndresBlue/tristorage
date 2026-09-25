@@ -1,6 +1,6 @@
 package com.andresblue.tristorage.screen;
 
-import net.minecraft.screen.PropertyDelegate;
+import net.minecraft.world.inventory.ContainerData;
 
 /**
  * Splits values across vanilla screen properties. The property packet carries
@@ -22,7 +22,7 @@ final class PropertyWords {
         return (int) ((value >>> (index * WORD_BITS)) & WORD_MASK);
     }
 
-    static long read(PropertyDelegate properties, int start, int words) {
+    static long read(ContainerData properties, int start, int words) {
         long value = 0;
         for (int index = 0; index < words; index++) {
             value |= (properties.get(start + index) & WORD_MASK) << (index * WORD_BITS);

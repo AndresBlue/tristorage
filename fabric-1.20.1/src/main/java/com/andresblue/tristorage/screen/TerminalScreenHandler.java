@@ -8,26 +8,25 @@ import com.andresblue.tristorage.storage.StorageMetrics;
 import com.andresblue.tristorage.storage.TerminalFilter;
 import com.andresblue.tristorage.storage.StorageRuntime;
 import com.andresblue.tristorage.network.TerminalPackets;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.ArrayPropertyDelegate;
-import net.minecraft.screen.PropertyDelegate;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.SimpleContainerData;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 
-public class TerminalScreenHandler extends ScreenHandler {
+public class TerminalScreenHandler extends AbstractContainerMenu {
     public static final int PAGE_SIZE = 54;
     private static final int COUNT_WORDS = PropertyWords.LONG_WORDS;
     private static final int META_START = PAGE_SIZE * COUNT_WORDS;
@@ -48,12 +47,12 @@ public class TerminalScreenHandler extends ScreenHandler {
     private static final int FILTER_MIN_INTERVAL_TICKS = 2;
     private static final int FILTER_MAX_INTERVAL_TICKS = 40;
 
-    private final SimpleInventory display = new SimpleInventory(PAGE_SIZE);
+    private final SimpleContainer display = new SimpleContainer(PAGE_SIZE);
     protected final StorageCoreBlockEntity core;
     private final boolean remote;
     private final RemoteAccessHandle remoteAccessHandle;
-    private final ServerPlayerEntity serverPlayer;
-    private final PropertyDelegate syncedProperties;
+    private final ServerPlayer serverPlayer;
+    private final ContainerData syncedProperties;
     private BlockPos accessPos;
     private final List<Long> entryIds = new ArrayList<>(Collections.nCopies(PAGE_SIZE, 0L));
     private final long[] counts = new long[PAGE_SIZE];
@@ -83,36 +82,36 @@ public class TerminalScreenHandler extends ScreenHandler {
     private PendingFilter pendingFilter;
     private long nextFilterTick = Long.MIN_VALUE;
 
-    public TerminalScreenHandler(int syncId, PlayerInventory playerInventory) {
+    public TerminalScreenHandler(int syncId, Inventory playerInventory) {
         this(syncId, playerInventory, null, null);
     }
 
-    public TerminalScreenHandler(int syncId, PlayerInventory playerInventory,
+    public TerminalScreenHandler(int syncId, Inventory playerInventory,
                                  StorageCoreBlockEntity core) {
         this(syncId, playerInventory, core, null);
     }
 
-    public TerminalScreenHandler(int syncId, PlayerInventory playerInventory,
+    public TerminalScreenHandler(int syncId, Inventory playerInventory,
                                  StorageCoreBlockEntity core, RemoteAccessHandle remoteAccessHandle) {
         this(TriStorageMod.TERMINAL_SCREEN_HANDLER, syncId, playerInventory,
                 core, remoteAccessHandle);
     }
 
-    protected TerminalScreenHandler(ScreenHandlerType<?> type, int syncId,
-                                    PlayerInventory playerInventory,
+    protected TerminalScreenHandler(MenuType<?> type, int syncId,
+                                    Inventory playerInventory,
                                     StorageCoreBlockEntity core,
                                     RemoteAccessHandle remoteAccessHandle) {
         super(type, syncId);
         this.core = core;
         this.remoteAccessHandle = remoteAccessHandle;
         this.remote = remoteAccessHandle != null;
-        this.serverPlayer = playerInventory.player instanceof ServerPlayerEntity player
+        this.serverPlayer = playerInventory.player instanceof ServerPlayer player
                 ? player : null;
         if (serverPlayer != null) {
             TerminalFilter.prepareCreativeGroups(serverPlayer);
         }
         this.syncedProperties = core == null
-                ? new ArrayPropertyDelegate(PROPERTY_COUNT)
+                ? new SimpleContainerData(PROPERTY_COUNT)
                 : properties(core);
         for (int row = 0; row < 6; row++) {
             for (int column = 0; column < 9; column++) {
@@ -121,19 +120,19 @@ public class TerminalScreenHandler extends ScreenHandler {
             }
         }
         addPlayerInventory(playerInventory, 8, 140);
-        addProperties(syncedProperties);
+        addDataSlots(syncedProperties);
         refreshPage();
         filterStateReady = true;
     }
 
     @Override
-    public void sendContentUpdates() {
+    public void broadcastChanges() {
         applyPendingFilter();
         if (core != null && (refreshRequested || seenRevision != core.revision())) {
             refreshPage();
             refreshRequested = false;
         }
-        super.sendContentUpdates();
+        super.broadcastChanges();
         if (pageStateDirty && serverPlayer != null) {
             TerminalPackets.sendPageState(serverPlayer, this);
             pageStateDirty = false;
@@ -145,7 +144,7 @@ public class TerminalScreenHandler extends ScreenHandler {
     }
 
     @Override
-    public boolean onButtonClick(PlayerEntity player, int id) {
+    public boolean clickMenuButton(Player player, int id) {
         if (core == null) {
             return false;
         }
@@ -168,24 +167,24 @@ public class TerminalScreenHandler extends ScreenHandler {
         }
         if (pageOnly) {
             refreshPage();
-            sendContentUpdates();
+            broadcastChanges();
         }
         return true;
     }
 
     @Override
-    public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
-        if (core != null && actionType == SlotActionType.QUICK_MOVE
+    public void clicked(int slotIndex, int button, ClickType actionType, Player player) {
+        if (core != null && actionType == ClickType.QUICK_MOVE
                 && slotIndex >= 0 && slotIndex < slots.size()) {
-            quickMove(player, slotIndex);
+            quickMoveStack(player, slotIndex);
             return;
         }
-        if (core != null && actionType == SlotActionType.PICKUP_ALL) {
+        if (core != null && actionType == ClickType.PICKUP_ALL) {
             core.batchMutations(() -> {
                 if (slotIndex >= 0 && slotIndex < PAGE_SIZE) {
                     withdrawAllMatching(entryIds.get(slotIndex), player);
                 } else if (slotIndex >= PLAYER_START && slotIndex < PLAYER_END) {
-                    depositAllMatching(player, slots.get(slotIndex).getStack());
+                    depositAllMatching(player, slots.get(slotIndex).getItem());
                 }
             });
             refreshRequested = true;
@@ -195,11 +194,11 @@ public class TerminalScreenHandler extends ScreenHandler {
             handleVirtualSlotAction(entryIds.get(slotIndex), button, actionType, player);
             return;
         }
-        super.onSlotClick(slotIndex, button, actionType, player);
+        super.clicked(slotIndex, button, actionType, player);
     }
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int slotIndex) {
+    public ItemStack quickMoveStack(Player player, int slotIndex) {
         if (core == null || slotIndex < 0 || slotIndex >= slots.size()) {
             return ItemStack.EMPTY;
         }
@@ -210,33 +209,33 @@ public class TerminalScreenHandler extends ScreenHandler {
         return result;
     }
 
-    private ItemStack quickMoveUnbatched(PlayerEntity player, int slotIndex) {
+    private ItemStack quickMoveUnbatched(Player player, int slotIndex) {
         if (slotIndex < PAGE_SIZE) {
             return quickMoveVirtual(player, entryIds.get(slotIndex));
         }
 
         Slot slot = slots.get(slotIndex);
-        if (!slot.hasStack()) {
+        if (!slot.hasItem()) {
             return ItemStack.EMPTY;
         }
-        ItemStack source = slot.getStack();
+        ItemStack source = slot.getItem();
         ItemStack original = source.copy();
         long inserted = core.insert(source, source.getCount());
         if (inserted <= 0) {
             return ItemStack.EMPTY;
         }
-        source.decrement((int) inserted);
-        slot.markDirty();
+        source.shrink((int) inserted);
+        slot.setChanged();
         return original;
     }
 
-    private ItemStack quickMoveVirtual(PlayerEntity player, long entryId) {
+    private ItemStack quickMoveVirtual(Player player, long entryId) {
             ItemStack extracted = extractEntry(entryId, 64);
             if (extracted.isEmpty()) {
                 return ItemStack.EMPTY;
             }
             ItemStack original = extracted.copy();
-            if (!insertItem(extracted, PLAYER_START, PLAYER_END, true)) {
+            if (!moveItemStackTo(extracted, PLAYER_START, PLAYER_END, true)) {
                 returnToStorage(original, player);
                 return ItemStack.EMPTY;
             }
@@ -250,29 +249,29 @@ public class TerminalScreenHandler extends ScreenHandler {
      * rather than from the Core.
      */
     public TerminalScreenHandler accessedFrom(BlockPos pos) {
-        this.accessPos = pos.toImmutable();
+        this.accessPos = pos.immutable();
         return this;
     }
 
     @Override
-    public boolean canUse(PlayerEntity player) {
+    public boolean stillValid(Player player) {
         if (core == null || core.isRemoved()) {
             return core == null;
         }
         if (remote) {
             return remoteAccessHandle.isValid();
         }
-        BlockPos anchor = accessPos != null ? accessPos : core.getPos();
-        if (accessPos != null && !(player.getWorld().getBlockState(accessPos).getBlock()
+        BlockPos anchor = accessPos != null ? accessPos : core.getBlockPos();
+        if (accessPos != null && !(player.level().getBlockState(accessPos).getBlock()
                 instanceof NetworkBlock)) {
             return false;
         }
-        return player.squaredDistanceTo(Vec3d.ofCenter(anchor)) <= 64.0;
+        return player.distanceToSqr(Vec3.atCenterOf(anchor)) <= 64.0;
     }
 
     @Override
-    public void onClosed(PlayerEntity player) {
-        super.onClosed(player);
+    public void removed(Player player) {
+        super.removed(player);
         if (viewLease != null) {
             viewLease.close();
             viewLease = null;
@@ -319,7 +318,7 @@ public class TerminalScreenHandler extends ScreenHandler {
         // acknowledgement of its latest sequence and ignores older ones.
         pendingFilter = new PendingFilter(sequence, query, mode, category);
         if (applyPendingFilter()) {
-            sendContentUpdates();
+            broadcastChanges();
         }
     }
 
@@ -339,7 +338,7 @@ public class TerminalScreenHandler extends ScreenHandler {
         if (pendingFilter == null || serverPlayer == null) {
             return false;
         }
-        long now = serverPlayer.getServer().getTicks();
+        long now = serverPlayer.getServer().getTickCount();
         if (now < nextFilterTick) {
             return false;
         }
@@ -378,14 +377,14 @@ public class TerminalScreenHandler extends ScreenHandler {
     }
 
     /** Puts items back into storage, or gives them to the player if the Core refuses them. */
-    private void returnToStorage(ItemStack stack, PlayerEntity player) {
+    private void returnToStorage(ItemStack stack, Player player) {
         if (stack.isEmpty()) {
             return;
         }
         long inserted = core.insert(stack, stack.getCount());
-        stack.decrement((int) inserted);
+        stack.shrink((int) inserted);
         if (!stack.isEmpty()) {
-            player.getInventory().offerOrDrop(stack);
+            player.getInventory().placeItemBackInInventory(stack);
         }
     }
 
@@ -397,78 +396,78 @@ public class TerminalScreenHandler extends ScreenHandler {
         return entryId == 0 ? ItemStack.EMPTY : core.extract(entryId, requested);
     }
 
-    private void withdrawAllMatching(long entryId, PlayerEntity player) {
+    private void withdrawAllMatching(long entryId, Player player) {
         ItemStack shown = core.stackTemplate(entryId);
         if (entryId == 0 || shown.isEmpty()) {
             return;
         }
 
-        ItemStack cursor = getCursorStack();
+        ItemStack cursor = getCarried();
         if (!cursor.isEmpty()) {
-            if (!ItemStack.canCombine(cursor, shown)) {
+            if (!ItemStack.isSameItemSameTags(cursor, shown)) {
                 return;
             }
-            player.getInventory().insertStack(cursor);
-            setCursorStack(cursor);
+            player.getInventory().add(cursor);
+            setCarried(cursor);
             if (!cursor.isEmpty()) {
                 return;
             }
         }
 
         while (true) {
-            ItemStack extracted = core.extract(entryId, shown.getMaxCount());
+            ItemStack extracted = core.extract(entryId, shown.getMaxStackSize());
             if (extracted.isEmpty()) {
                 break;
             }
-            player.getInventory().insertStack(extracted);
+            player.getInventory().add(extracted);
             if (!extracted.isEmpty()) {
                 returnToStorage(extracted, player);
                 break;
             }
         }
-        player.getInventory().markDirty();
+        player.getInventory().setChanged();
     }
 
-    private void depositAllMatching(PlayerEntity player, ItemStack clickedStack) {
-        ItemStack cursor = getCursorStack();
+    private void depositAllMatching(Player player, ItemStack clickedStack) {
+        ItemStack cursor = getCarried();
         ItemStack reference = (!cursor.isEmpty() ? cursor : clickedStack).copy();
         if (reference.isEmpty()) {
             return;
         }
         reference.setCount(1);
 
-        if (!cursor.isEmpty() && ItemStack.canCombine(cursor, reference)) {
+        if (!cursor.isEmpty() && ItemStack.isSameItemSameTags(cursor, reference)) {
             long inserted = core.insert(cursor, cursor.getCount());
-            cursor.decrement((int) inserted);
-            setCursorStack(cursor);
+            cursor.shrink((int) inserted);
+            setCarried(cursor);
         }
         for (int inventorySlot = 0; inventorySlot < 36; inventorySlot++) {
-            ItemStack stack = player.getInventory().getStack(inventorySlot);
-            if (stack.isEmpty() || !ItemStack.canCombine(stack, reference)) {
+            ItemStack stack = player.getInventory().getItem(inventorySlot);
+            if (stack.isEmpty() || !ItemStack.isSameItemSameTags(stack, reference)) {
                 continue;
             }
             long inserted = core.insert(stack, stack.getCount());
-            stack.decrement((int) inserted);
+            stack.shrink((int) inserted);
         }
-        player.getInventory().markDirty();
+        player.getInventory().setChanged();
     }
 
-    private void depositPlayerInventory(PlayerEntity player) {
+    private void depositPlayerInventory(Player player) {
         core.batchMutations(() -> {
             boolean inventoryChanged = false;
             for (int inventorySlot = 0; inventorySlot < 36; inventorySlot++) {
-                ItemStack stack = player.getInventory().getStack(inventorySlot);
+                ItemStack stack = player.getInventory().getItem(inventorySlot);
                 if (stack.isEmpty()) {
                     continue;
                 }
                 long inserted = core.insert(stack, stack.getCount());
                 if (inserted > 0) {
-                    stack.decrement((int) inserted);
+                    stack.shrink((int) inserted);
                     inventoryChanged = true;
                 }
             }
             if (inventoryChanged) {
-                player.getInventory().markDirty();
+                player.getInventory().setChanged();
             }
         });
     }
@@ -510,13 +509,13 @@ public class TerminalScreenHandler extends ScreenHandler {
                 if (entryIds.get(index) != view.id()) {
                     ItemStack shown = view.stack();
                     shown.setCount(1);
-                    display.setStack(index, shown);
+                    display.setItem(index, shown);
                 }
                 entryIds.set(index, view.id());
                 counts[index] = view.count();
             } else {
                 if (entryIds.get(index) != 0L) {
-                    display.setStack(index, ItemStack.EMPTY);
+                    display.setItem(index, ItemStack.EMPTY);
                 }
                 entryIds.set(index, 0L);
                 counts[index] = 0;
@@ -537,20 +536,20 @@ public class TerminalScreenHandler extends ScreenHandler {
      * only request a resync; it can never target the entry currently occupying
      * the old slot.
      */
-    public void applyVirtualAction(ServerPlayerEntity player, UUID storageId,
+    public void applyVirtualAction(ServerPlayer player, UUID storageId,
                                    long clientRevision, int slotIndex, long entryId,
-                                   int button, SlotActionType actionType) {
+                                   int button, ClickType actionType) {
         if (core == null || player != serverPlayer || slotIndex < 0 || slotIndex >= PAGE_SIZE
                 || !core.storageId().value().equals(storageId)
-                || clientRevision != seenRevision || !canUse(player)) {
+                || clientRevision != seenRevision || !stillValid(player)) {
             refreshRequested = true;
-            sendContentUpdates();
-            if (!canUse(player)) {
-                player.closeHandledScreen();
+            broadcastChanges();
+            if (!stillValid(player)) {
+                player.closeContainer();
             }
             return;
         }
-        if (actionType == SlotActionType.QUICK_MOVE) {
+        if (actionType == ClickType.QUICK_MOVE) {
             ItemStack moved = core.batchMutations(() -> quickMoveVirtual(player, entryId));
             if (!moved.isEmpty()) {
                 refreshRequested = true;
@@ -561,41 +560,41 @@ public class TerminalScreenHandler extends ScreenHandler {
     }
 
     private void handleVirtualSlotAction(long entryId, int button,
-                                         SlotActionType actionType, PlayerEntity player) {
-        if (actionType == SlotActionType.PICKUP) {
-            ItemStack cursor = getCursorStack();
+                                         ClickType actionType, Player player) {
+        if (actionType == ClickType.PICKUP) {
+            ItemStack cursor = getCarried();
             if (cursor.isEmpty()) {
                 ItemStack extracted = extractEntry(entryId, button == 1 ? 1 : 64);
                 if (!extracted.isEmpty()) {
-                    setCursorStack(extracted);
+                    setCarried(extracted);
                 }
             } else {
                 long requested = button == 1 ? 1 : cursor.getCount();
                 long inserted = core.insert(cursor, requested);
-                cursor.decrement((int) inserted);
-                setCursorStack(cursor);
+                cursor.shrink((int) inserted);
+                setCarried(cursor);
             }
             refreshRequested = true;
             return;
         }
-        if (actionType == SlotActionType.PICKUP_ALL) {
+        if (actionType == ClickType.PICKUP_ALL) {
             core.batchMutations(() -> withdrawAllMatching(entryId, player));
             refreshRequested = true;
             return;
         }
-        if (actionType == SlotActionType.THROW) {
+        if (actionType == ClickType.THROW) {
             ItemStack extracted = extractEntry(entryId, button == 0 ? 1 : 64);
             if (!extracted.isEmpty()) {
-                player.dropItem(extracted, true);
+                player.drop(extracted, true);
             }
             refreshRequested = true;
             return;
         }
-        if (actionType == SlotActionType.CLONE && player.getAbilities().creativeMode) {
+        if (actionType == ClickType.CLONE && player.getAbilities().instabuild) {
             ItemStack shown = core.stackTemplate(entryId);
             if (!shown.isEmpty()) {
-                shown.setCount(shown.getMaxCount());
-                setCursorStack(shown);
+                shown.setCount(shown.getMaxStackSize());
+                setCarried(shown);
             }
         }
         // Display slots are projections. SWAP/QUICK_CRAFT must never mutate
@@ -654,8 +653,8 @@ public class TerminalScreenHandler extends ScreenHandler {
         TerminalPackets.sendFilterState(serverPlayer, this);
     }
 
-    private PropertyDelegate properties(StorageCoreBlockEntity core) {
-        return new PropertyDelegate() {
+    private ContainerData properties(StorageCoreBlockEntity core) {
+        return new ContainerData() {
             @Override
             public int get(int index) {
                 if (index < META_START) {
@@ -687,13 +686,13 @@ public class TerminalScreenHandler extends ScreenHandler {
             }
 
             @Override
-            public int size() {
+            public int getCount() {
                 return PROPERTY_COUNT;
             }
         };
     }
 
-    private void addPlayerInventory(PlayerInventory inventory, int x, int y) {
+    private void addPlayerInventory(Inventory inventory, int x, int y) {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 addSlot(new Slot(inventory, column + row * 9 + 9,
@@ -710,17 +709,17 @@ public class TerminalScreenHandler extends ScreenHandler {
     }
 
     private static final class DisplaySlot extends Slot {
-        private DisplaySlot(SimpleInventory inventory, int index, int x, int y) {
+        private DisplaySlot(SimpleContainer inventory, int index, int x, int y) {
             super(inventory, index, x, y);
         }
 
         @Override
-        public boolean canInsert(ItemStack stack) {
+        public boolean mayPlace(ItemStack stack) {
             return false;
         }
 
         @Override
-        public boolean canTakeItems(PlayerEntity playerEntity) {
+        public boolean mayPickup(Player playerEntity) {
             // The slot is a read-only projection, but it must advertise that it
             // can be taken from so vanilla sends QUICK_MOVE/PICKUP_ALL packets.
             // The server-side handler performs the real extraction atomically.

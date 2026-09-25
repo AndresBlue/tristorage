@@ -1,17 +1,16 @@
 package com.andresblue.tristorage.screen;
 
 import com.andresblue.tristorage.storage.ItemKey;
-import net.minecraft.item.ItemStack;
-import net.minecraft.recipe.CraftingRecipe;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.ShapedRecipe;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.ShapedRecipe;
 
 /**
  * Pure recipe allocation logic shared by JEI and EMI transfers. It solves
@@ -29,7 +28,7 @@ public final class RecipeTransferPlanner {
 
     public static Plan plan(CraftingRecipe recipe, List<Resource> input,
                             int requestedCrafts) {
-        if (recipe == null || !recipe.fits(3, 3)) {
+        if (recipe == null || !recipe.canCraftInDimensions(3, 3)) {
             return null;
         }
         List<Requirement> requirements = requirements(recipe);
@@ -100,7 +99,7 @@ public final class RecipeTransferPlanner {
      */
     public static Availability availability(CraftingRecipe recipe,
                                             List<Resource> input) {
-        if (recipe == null || !recipe.fits(3, 3)) {
+        if (recipe == null || !recipe.canCraftInDimensions(3, 3)) {
             return Availability.EMPTY;
         }
         List<Requirement> requirements = requirements(recipe);
@@ -202,7 +201,7 @@ public final class RecipeTransferPlanner {
             List<Integer> candidates = new ArrayList<>();
             for (int resource = 0; resource < resources.size(); resource++) {
                 ItemStack stack = resources.get(resource).template;
-                if (stack.getMaxCount() >= crafts && requirement.ingredient.test(stack)) {
+                if (stack.getMaxStackSize() >= crafts && requirement.ingredient.test(stack)) {
                     candidates.add(resource);
                 }
             }

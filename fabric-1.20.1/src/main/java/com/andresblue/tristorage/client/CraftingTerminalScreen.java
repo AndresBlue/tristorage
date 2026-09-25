@@ -1,9 +1,9 @@
 package com.andresblue.tristorage.client;
 
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 
 public final class CraftingTerminalScreen
         extends AbstractTerminalScreen<CraftingTerminalScreenHandler> {
@@ -17,7 +17,7 @@ public final class CraftingTerminalScreen
     );
 
     public CraftingTerminalScreen(CraftingTerminalScreenHandler handler,
-                                  PlayerInventory inventory, Text title) {
+                                  Inventory inventory, Component title) {
         super(handler, inventory, title, 320);
     }
 
@@ -27,21 +27,21 @@ public final class CraftingTerminalScreen
     }
 
     @Override
-    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        context.drawTexture(VANILLA_CHEST_TEXTURE, x, y, 0, 0, 176, 222);
-        drawVanillaPanel(context, x + 176, y, x + 320, y + 222);
+    protected void renderBg(GuiGraphics context, float delta, int mouseX, int mouseY) {
+        context.blit(VANILLA_CHEST_TEXTURE, leftPos, topPos, 0, 0, 176, 222);
+        drawVanillaPanel(context, leftPos + 176, topPos, leftPos + 320, topPos + 222);
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 3; column++) {
-                drawSlotFrame(context, x + 183 + column * 18, y + 19 + row * 18);
+                drawSlotFrame(context, leftPos + 183 + column * 18, topPos + 19 + row * 18);
             }
         }
-        drawSlotFrame(context, x + 271, y + 37);
+        drawSlotFrame(context, leftPos + 271, topPos + 37);
     }
 
     @Override
-    protected void drawAdditionalForeground(DrawContext context, int mouseX, int mouseY) {
-        context.drawText(textRenderer, Text.translatable("screen.tristorage.crafting"),
+    protected void drawAdditionalForeground(GuiGraphics context, int mouseX, int mouseY) {
+        context.drawString(font, Component.translatable("screen.tristorage.crafting"),
                 184, 7, 0x404040, false);
-        context.drawText(textRenderer, Text.literal("→"), 253, 42, 0x404040, false);
+        context.drawString(font, Component.literal("→"), 253, 42, 0x404040, false);
     }
 }

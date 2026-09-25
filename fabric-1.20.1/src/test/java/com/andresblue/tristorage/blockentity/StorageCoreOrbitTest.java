@@ -1,12 +1,12 @@
 package com.andresblue.tristorage.blockentity;
 
-import net.minecraft.Bootstrap;
 import net.minecraft.SharedConstants;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -18,41 +18,41 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StorageCoreOrbitTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }
 
     @Test
     void containerContentsNeverReachTheOrbitPacket() {
         ItemStack shulker = new ItemStack(Items.SHULKER_BOX);
-        NbtCompound blockEntity = new NbtCompound();
-        blockEntity.put("Items", new NbtList());
-        shulker.getOrCreateNbt().put("BlockEntityTag", blockEntity);
+        CompoundTag blockEntity = new CompoundTag();
+        blockEntity.put("Items", new ListTag());
+        shulker.getOrCreateTag().put("BlockEntityTag", blockEntity);
 
         ItemStack shown = StorageCoreBlockEntity.orbitDisplayStack(shulker);
 
-        assertTrue(shown.isOf(Items.SHULKER_BOX));
-        assertNull(shown.getNbt());
+        assertTrue(shown.is(Items.SHULKER_BOX));
+        assertNull(shown.getTag());
     }
 
     @Test
     void bookPagesAreStrippedButEnchantmentGlintIsKept() {
         ItemStack book = new ItemStack(Items.WRITTEN_BOOK);
-        NbtList pages = new NbtList();
-        pages.add(NbtString.of("secret"));
-        book.getOrCreateNbt().put("pages", pages);
-        assertNull(StorageCoreBlockEntity.orbitDisplayStack(book).getNbt());
+        ListTag pages = new ListTag();
+        pages.add(StringTag.valueOf("secret"));
+        book.getOrCreateTag().put("pages", pages);
+        assertNull(StorageCoreBlockEntity.orbitDisplayStack(book).getTag());
 
         ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
-        NbtList enchantments = new NbtList();
-        NbtCompound sharpness = new NbtCompound();
+        ListTag enchantments = new ListTag();
+        CompoundTag sharpness = new CompoundTag();
         sharpness.putString("id", "minecraft:sharpness");
         sharpness.putShort("lvl", (short) 5);
         enchantments.add(sharpness);
-        sword.getOrCreateNbt().put("Enchantments", enchantments);
-        sword.getOrCreateNbt().putString("Private", "notes");
+        sword.getOrCreateTag().put("Enchantments", enchantments);
+        sword.getOrCreateTag().putString("Private", "notes");
 
-        NbtCompound shown = StorageCoreBlockEntity.orbitDisplayStack(sword).getNbt();
+        CompoundTag shown = StorageCoreBlockEntity.orbitDisplayStack(sword).getTag();
         assertTrue(shown.contains("Enchantments"));
         assertFalse(shown.contains("Private"));
     }
@@ -60,12 +60,12 @@ class StorageCoreOrbitTest {
     @Test
     void dyeColorIsKeptWithoutNameOrLore() {
         ItemStack armor = new ItemStack(Items.LEATHER_CHESTPLATE);
-        NbtCompound display = armor.getOrCreateSubNbt("display");
+        CompoundTag display = armor.getOrCreateTagElement("display");
         display.putInt("color", 0x3366FF);
         display.putString("Name", "{\"text\":\"Base keys\"}");
 
-        NbtCompound shown = StorageCoreBlockEntity.orbitDisplayStack(armor)
-                .getSubNbt("display");
+        CompoundTag shown = StorageCoreBlockEntity.orbitDisplayStack(armor)
+                .getTagElement("display");
         assertEquals(0x3366FF, shown.getInt("color"));
         assertFalse(shown.contains("Name"));
     }

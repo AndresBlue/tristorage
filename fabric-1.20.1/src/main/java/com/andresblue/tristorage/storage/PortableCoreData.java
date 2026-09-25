@@ -1,10 +1,10 @@
 package com.andresblue.tristorage.storage;
 
 import com.andresblue.tristorage.TriStorageMod;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Defines the small, explicit part of a core block entity that is allowed to
@@ -23,76 +23,76 @@ public final class PortableCoreData {
     private PortableCoreData() {
     }
 
-    public static NbtCompound copyFrom(ItemStack stack) {
-        NbtCompound blockEntityData = BlockItem.getBlockEntityNbt(stack);
+    public static CompoundTag copyFrom(ItemStack stack) {
+        CompoundTag blockEntityData = BlockItem.getBlockEntityData(stack);
         return sanitizedCopy(blockEntityData);
     }
 
-    public static NbtCompound sanitizedCopy(NbtCompound blockEntityData) {
+    public static CompoundTag sanitizedCopy(CompoundTag blockEntityData) {
         if (blockEntityData == null) {
             return null;
         }
-        NbtCompound portable = new NbtCompound();
-        if (blockEntityData.contains(CHESTS_KEY, NbtElement.NUMBER_TYPE)) {
+        CompoundTag portable = new CompoundTag();
+        if (blockEntityData.contains(CHESTS_KEY, Tag.TAG_ANY_NUMERIC)) {
             portable.putInt(CHESTS_KEY, Math.max(0, blockEntityData.getInt(CHESTS_KEY)));
         }
-        if (blockEntityData.contains(ENTRIES_KEY, NbtElement.LIST_TYPE)) {
+        if (blockEntityData.contains(ENTRIES_KEY, Tag.TAG_LIST)) {
             portable.put(ENTRIES_KEY, blockEntityData.getList(
-                    ENTRIES_KEY, NbtElement.COMPOUND_TYPE).copy());
+                    ENTRIES_KEY, Tag.TAG_COMPOUND).copy());
         }
-        if (blockEntityData.contains(STORAGE_ID_KEY, NbtElement.STRING_TYPE)) {
+        if (blockEntityData.contains(STORAGE_ID_KEY, Tag.TAG_STRING)) {
             portable.putString(STORAGE_ID_KEY, blockEntityData.getString(STORAGE_ID_KEY));
         }
-        if (blockEntityData.contains(OWNERSHIP_TOKEN_KEY, NbtElement.STRING_TYPE)) {
+        if (blockEntityData.contains(OWNERSHIP_TOKEN_KEY, Tag.TAG_STRING)) {
             portable.putString(OWNERSHIP_TOKEN_KEY,
                     blockEntityData.getString(OWNERSHIP_TOKEN_KEY));
         }
         portable.putInt(FORMAT_VERSION_KEY,
                 Math.max(1, blockEntityData.getInt(FORMAT_VERSION_KEY)));
-        if (blockEntityData.contains(TYPES_SUMMARY_KEY, NbtElement.NUMBER_TYPE)) {
+        if (blockEntityData.contains(TYPES_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)) {
             portable.putInt(TYPES_SUMMARY_KEY,
                     Math.max(0, blockEntityData.getInt(TYPES_SUMMARY_KEY)));
         }
-        if (blockEntityData.contains(ITEMS_SUMMARY_KEY, NbtElement.NUMBER_TYPE)) {
+        if (blockEntityData.contains(ITEMS_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)) {
             portable.putLong(ITEMS_SUMMARY_KEY,
                     Math.max(0, blockEntityData.getLong(ITEMS_SUMMARY_KEY)));
         }
         return portable.isEmpty() ? null : portable;
     }
 
-    public static void applyTo(ItemStack stack, NbtCompound portable) {
-        NbtCompound sanitized = sanitizedCopy(portable);
+    public static void applyTo(ItemStack stack, CompoundTag portable) {
+        CompoundTag sanitized = sanitizedCopy(portable);
         if (sanitized != null && !sanitized.isEmpty()) {
-            BlockItem.setBlockEntityNbt(
+            BlockItem.setBlockEntityData(
                     stack, TriStorageMod.STORAGE_CORE_BLOCK_ENTITY, sanitized);
         }
     }
 
     public static int installedChests(ItemStack stack) {
-        NbtCompound data = BlockItem.getBlockEntityNbt(stack);
+        CompoundTag data = BlockItem.getBlockEntityData(stack);
         return data == null ? 0 : Math.max(0, data.getInt(CHESTS_KEY));
     }
 
     public static int storedTypes(ItemStack stack) {
-        NbtCompound data = BlockItem.getBlockEntityNbt(stack);
+        CompoundTag data = BlockItem.getBlockEntityData(stack);
         if (data == null) {
             return 0;
         }
-        return data.contains(TYPES_SUMMARY_KEY, NbtElement.NUMBER_TYPE)
+        return data.contains(TYPES_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)
                 ? Math.max(0, data.getInt(TYPES_SUMMARY_KEY))
-                : data.getList(ENTRIES_KEY, NbtElement.COMPOUND_TYPE).size();
+                : data.getList(ENTRIES_KEY, Tag.TAG_COMPOUND).size();
     }
 
     public static long totalItems(ItemStack stack) {
-        NbtCompound data = BlockItem.getBlockEntityNbt(stack);
+        CompoundTag data = BlockItem.getBlockEntityData(stack);
         if (data == null) {
             return 0;
         }
-        if (data.contains(ITEMS_SUMMARY_KEY, NbtElement.NUMBER_TYPE)) {
+        if (data.contains(ITEMS_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)) {
             return Math.max(0, data.getLong(ITEMS_SUMMARY_KEY));
         }
         long total = 0;
-        var entries = data.getList(ENTRIES_KEY, NbtElement.COMPOUND_TYPE);
+        var entries = data.getList(ENTRIES_KEY, Tag.TAG_COMPOUND);
         for (int index = 0; index < entries.size(); index++) {
             long count = Math.max(0, entries.getCompound(index).getLong("Count"));
             total = Long.MAX_VALUE - total < count ? Long.MAX_VALUE : total + count;

@@ -7,11 +7,10 @@ import com.andresblue.tristorage.storage.TerminalFilter;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Util;
-
+import net.minecraft.Util;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.ClickType;
 import java.lang.reflect.Method;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -44,7 +43,7 @@ public final class TerminalClientNetworking {
 
     public static void initialize() {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            long now = Util.getMeasuringTimeMs();
+            long now = Util.getMillis();
             if (pendingRecipeFill != null
                     && now - pendingRecipeFill.sentAt()
                     >= RECIPE_FILL_TIMEOUT_MS) {
@@ -61,11 +60,11 @@ public final class TerminalClientNetworking {
                     int sequence = buffer.readVarInt();
                     TerminalFilter.CategoryMode mode = TerminalFilter.CategoryMode.byNetworkId(
                             buffer.readVarInt());
-                    String selected = buffer.readString(TerminalFilter.MAX_CATEGORY_LENGTH);
+                    String selected = buffer.readUtf(TerminalFilter.MAX_CATEGORY_LENGTH);
                     int count = Math.min(buffer.readVarInt(), 512);
                     List<String> categories = new ArrayList<>(count);
                     for (int index = 0; index < count; index++) {
-                        categories.add(buffer.readString(TerminalFilter.MAX_CATEGORY_LENGTH));
+                        categories.add(buffer.readUtf(TerminalFilter.MAX_CATEGORY_LENGTH));
                     }
                     client.execute(() -> {
                         AbstractTerminalScreen<?> terminal = terminalScreen(
@@ -79,7 +78,7 @@ public final class TerminalClientNetworking {
         ClientPlayNetworking.registerGlobalReceiver(TerminalPackets.PAGE_STATE,
                 (client, networkHandler, buffer, responseSender) -> {
                     int syncId = buffer.readVarInt();
-                    UUID storageId = buffer.readUuid();
+                    UUID storageId = buffer.readUUID();
                     long revision = buffer.readLong();
                     long[] entryIds = new long[TerminalScreenHandler.PAGE_SIZE];
                     for (int slot = 0; slot < entryIds.length; slot++) {
@@ -87,9 +86,9 @@ public final class TerminalClientNetworking {
                     }
                     client.execute(() -> {
                         if (client.player != null
-                                && client.player.currentScreenHandler
+                                && client.player.containerMenu
                                 instanceof TerminalScreenHandler terminal
-                                && terminal.syncId == syncId) {
+                                && terminal.containerId == syncId) {
                             long previousRevision = terminal.clientPageRevision();
                             terminal.acceptClientPageState(storageId, revision, entryIds);
                             if (previousRevision != revision) {
@@ -106,14 +105,14 @@ public final class TerminalClientNetworking {
                     int syncId = buffer.readVarInt();
                     long revision = buffer.readLong();
                     long localFingerprint = buffer.readLong();
-                    Identifier recipeId = buffer.readIdentifier();
+                    ResourceLocation recipeId = buffer.readResourceLocation();
                     int requiredMask = buffer.readVarInt() & 0x1FF;
                     int availableMask = buffer.readVarInt() & requiredMask;
                     client.execute(() -> {
                         if (client.player == null
-                                || !(client.player.currentScreenHandler
+                                || !(client.player.containerMenu
                                 instanceof CraftingTerminalScreenHandler terminal)
-                                || terminal.syncId != syncId
+                                || terminal.containerId != syncId
                                 || terminal.clientPageRevision() != revision
                                 || terminal.recipeTransferClientFingerprint()
                                 != localFingerprint) {
@@ -133,7 +132,7 @@ public final class TerminalClientNetworking {
                 (client, networkHandler, buffer, responseSender) -> {
                     int syncId = buffer.readVarInt();
                     int requestId = buffer.readVarInt();
-                    Identifier recipeId = buffer.readIdentifier();
+                    ResourceLocation recipeId = buffer.readResourceLocation();
                     buffer.readBoolean();
                     client.execute(() -> {
                         if (pendingRecipeFill != null
@@ -149,7 +148,7 @@ public final class TerminalClientNetworking {
     static void registerTerminalScreen(AbstractTerminalScreen<?> terminal) {
         AbstractTerminalScreen<?> previous = terminalScreenReference.get();
         if (previous == null
-                || previous.getScreenHandler() != terminal.getScreenHandler()) {
+                || previous.getMenu() != terminal.getMenu()) {
             // syncId values are reused after reopening containers. Never let a
             // result from an older terminal/world satisfy the new screen.
             AVAILABILITY_CACHE.clear();
@@ -160,16 +159,16 @@ public final class TerminalClientNetworking {
     }
 
     private static AbstractTerminalScreen<?> terminalScreen(
-            net.minecraft.client.MinecraftClient client, int syncId) {
-        if (client.currentScreen instanceof AbstractTerminalScreen<?> current
-                && current.getScreenHandler().syncId == syncId) {
+            net.minecraft.client.Minecraft client, int syncId) {
+        if (client.screen instanceof AbstractTerminalScreen<?> current
+                && current.getMenu().containerId == syncId) {
             return current;
         }
         AbstractTerminalScreen<?> terminal = terminalScreenReference.get();
         if (terminal == null || client.player == null
-                || terminal.getScreenHandler().syncId != syncId
-                || client.player.currentScreenHandler
-                != terminal.getScreenHandler()) {
+                || terminal.getMenu().containerId != syncId
+                || client.player.containerMenu
+                != terminal.getMenu()) {
             return null;
         }
         return terminal;
@@ -177,24 +176,24 @@ public final class TerminalClientNetworking {
 
     static void sendFilter(int syncId, int sequence, String query,
                            TerminalFilter.CategoryMode mode, String category) {
-        PacketByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = PacketByteBufs.create();
         buffer.writeVarInt(syncId);
         buffer.writeVarInt(sequence);
-        buffer.writeString(query, TerminalFilter.MAX_QUERY_LENGTH);
+        buffer.writeUtf(query, TerminalFilter.MAX_QUERY_LENGTH);
         buffer.writeVarInt(mode.ordinal());
-        buffer.writeString(category, TerminalFilter.MAX_CATEGORY_LENGTH);
+        buffer.writeUtf(category, TerminalFilter.MAX_CATEGORY_LENGTH);
         ClientPlayNetworking.send(TerminalPackets.FILTER_UPDATE, buffer);
     }
 
     static void sendVirtualAction(TerminalScreenHandler handler, int slot,
-                                  int button, SlotActionType actionType) {
+                                  int button, ClickType actionType) {
         UUID storageId = handler.clientStorageUuid();
         if (storageId == null || !handler.hasAuthoritativePageState()) {
             return;
         }
-        PacketByteBuf buffer = PacketByteBufs.create();
-        buffer.writeVarInt(handler.syncId);
-        buffer.writeUuid(storageId);
+        FriendlyByteBuf buffer = PacketByteBufs.create();
+        buffer.writeVarInt(handler.containerId);
+        buffer.writeUUID(storageId);
         buffer.writeLong(handler.clientPageRevision());
         buffer.writeVarInt(slot);
         buffer.writeVarLong(handler.clientEntryId(slot));
@@ -203,12 +202,12 @@ public final class TerminalClientNetworking {
         ClientPlayNetworking.send(TerminalPackets.VIRTUAL_ACTION, buffer);
     }
 
-    public static void sendRecipeFill(int syncId, Identifier recipeId,
+    public static void sendRecipeFill(int syncId, ResourceLocation recipeId,
                                       int requestedCrafts) {
         if (recipeId == null) {
             return;
         }
-        long now = Util.getMeasuringTimeMs();
+        long now = Util.getMillis();
         if (pendingRecipeFill != null) {
             if (pendingRecipeFill.syncId() == syncId
                     && now - pendingRecipeFill.sentAt()
@@ -220,10 +219,10 @@ public final class TerminalClientNetworking {
         int requestId = ++nextRecipeFillRequestId;
         pendingRecipeFill = new PendingRecipeFill(
                 syncId, requestId, recipeId, now);
-        PacketByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = PacketByteBufs.create();
         buffer.writeVarInt(syncId);
         buffer.writeVarInt(requestId);
-        buffer.writeIdentifier(recipeId);
+        buffer.writeResourceLocation(recipeId);
         buffer.writeInt(requestedCrafts);
         ClientPlayNetworking.send(TerminalPackets.RECIPE_FILL, buffer);
     }
@@ -233,7 +232,7 @@ public final class TerminalClientNetworking {
      * while the compact nine-bit response is in flight.
      */
     public static RecipeAvailability recipeAvailability(
-            CraftingTerminalScreenHandler handler, Identifier recipeId) {
+            CraftingTerminalScreenHandler handler, ResourceLocation recipeId) {
         if (handler == null || recipeId == null) {
             return null;
         }
@@ -243,21 +242,21 @@ public final class TerminalClientNetworking {
         }
         long localFingerprint = handler.recipeTransferClientFingerprint();
         AvailabilityKey key = new AvailabilityKey(
-                handler.syncId, handler.clientStorageUuid(), revision,
+                handler.containerId, handler.clientStorageUuid(), revision,
                 localFingerprint, recipeId);
         RecipeAvailability cached = AVAILABILITY_CACHE.get(key);
         if (cached != null) {
             return cached;
         }
-        long now = Util.getMeasuringTimeMs();
+        long now = Util.getMillis();
         long lastRequest = AVAILABILITY_PENDING.getOrDefault(key, Long.MIN_VALUE);
         if (lastRequest == Long.MIN_VALUE || now - lastRequest >= AVAILABILITY_RETRY_MS) {
             AVAILABILITY_PENDING.put(key, now);
-            PacketByteBuf buffer = PacketByteBufs.create();
-            buffer.writeVarInt(handler.syncId);
+            FriendlyByteBuf buffer = PacketByteBufs.create();
+            buffer.writeVarInt(handler.containerId);
             buffer.writeLong(revision);
             buffer.writeLong(localFingerprint);
-            buffer.writeIdentifier(recipeId);
+            buffer.writeResourceLocation(recipeId);
             ClientPlayNetworking.send(TerminalPackets.RECIPE_AVAILABILITY, buffer);
         }
         return null;
@@ -280,14 +279,14 @@ public final class TerminalClientNetworking {
     }
 
     private static void scheduleRecipeViewerRefresh(
-            net.minecraft.client.MinecraftClient client) {
-        if (client.currentScreen == null
-                || !client.currentScreen.getClass().getName()
+            net.minecraft.client.Minecraft client) {
+        if (client.screen == null
+                || !client.screen.getClass().getName()
                 .equals("dev.emi.emi.screen.RecipeScreen")) {
             return;
         }
         recipeViewerRefreshPending = true;
-        recipeViewerRefreshAt = Util.getMeasuringTimeMs()
+        recipeViewerRefreshAt = Util.getMillis()
                 + RECIPE_VIEWER_REFRESH_DEBOUNCE_MS;
     }
 
@@ -297,10 +296,10 @@ public final class TerminalClientNetworking {
      * every storage revision caused unbounded render work in large modpacks.
      */
     private static void refreshRecipeViewerButtons(
-            net.minecraft.client.MinecraftClient client,
-            Identifier recipeId) {
-        if (client.currentScreen == null
-                || !client.currentScreen.getClass().getName()
+            net.minecraft.client.Minecraft client,
+            ResourceLocation recipeId) {
+        if (client.screen == null
+                || !client.screen.getClass().getName()
                 .equals("dev.emi.emi.screen.RecipeScreen")
                 || emiRefreshLookupFailed) {
             return;
@@ -310,7 +309,7 @@ public final class TerminalClientNetworking {
                 Class<?> plugin = Class.forName(
                         "com.andresblue.tristorage.compat.emi.TriStorageEmiPlugin");
                 emiRefreshMethod = plugin.getMethod(
-                        "refreshRecipeFillButtons", Identifier.class);
+                        "refreshRecipeFillButtons", ResourceLocation.class);
             }
             emiRefreshMethod.invoke(null, recipeId);
         } catch (ReflectiveOperationException | LinkageError exception) {
@@ -333,10 +332,10 @@ public final class TerminalClientNetworking {
     }
 
     private record AvailabilityKey(int syncId, UUID storageId, long revision,
-                                   long localFingerprint, Identifier recipeId) {
+                                   long localFingerprint, ResourceLocation recipeId) {
     }
 
     private record PendingRecipeFill(int syncId, int requestId,
-                                     Identifier recipeId, long sentAt) {
+                                     ResourceLocation recipeId, long sentAt) {
     }
 }

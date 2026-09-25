@@ -1,12 +1,12 @@
 package com.andresblue.tristorage.storage;
 
 import com.google.gson.GsonBuilder;
-import net.minecraft.Bootstrap;
 import net.minecraft.SharedConstants;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -36,8 +36,8 @@ class StorageStressBenchmarkTest {
 
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }
 
     @Test
@@ -227,7 +227,7 @@ class StorageStressBenchmarkTest {
         assertEquals(types, snapshot.size());
         long expectedTotal = 0;
         for (int index = 0; index < types; index++) {
-            assertEquals(index, snapshot.get(index).stack().getNbt()
+            assertEquals(index, snapshot.get(index).stack().getTag()
                     .getInt("TriStorageStressVariant"));
             assertEquals(expected[index], snapshot.get(index).count());
             expectedTotal += expected[index];
@@ -248,18 +248,18 @@ class StorageStressBenchmarkTest {
         Path directory = Files.createTempDirectory("tristorage-journal-stress-");
         Path journal = directory.resolve("stress.journal");
         Method append = StorageRepository.class.getDeclaredMethod(
-                "appendFrame", Path.class, NbtCompound.class, boolean.class);
+                "appendFrame", Path.class, CompoundTag.class, boolean.class);
         Method read = StorageRepository.class.getDeclaredMethod("readFrames", Path.class);
         append.setAccessible(true);
         read.setAccessible(true);
         long writeStarted = System.nanoTime();
         for (int index = 0; index < frames; index++) {
-            NbtCompound frame = new NbtCompound();
+            CompoundTag frame = new CompoundTag();
             frame.putLong("Revision", index + 1L);
-            NbtList operations = new NbtList();
-            NbtCompound operation = new NbtCompound();
+            ListTag operations = new ListTag();
+            CompoundTag operation = new CompoundTag();
             operation.putLong("EntryId", index + 1L);
-            operation.put("Stack", variant(index).writeNbt(new NbtCompound()));
+            operation.put("Stack", variant(index).save(new CompoundTag()));
             operation.putLong("Count", 64);
             operations.add(operation);
             frame.put("Operations", operations);
@@ -268,7 +268,7 @@ class StorageStressBenchmarkTest {
         long writeNanos = System.nanoTime() - writeStarted;
         long readStarted = System.nanoTime();
         @SuppressWarnings("unchecked")
-        List<NbtCompound> recovered = (List<NbtCompound>) read.invoke(null, journal);
+        List<CompoundTag> recovered = (List<CompoundTag>) read.invoke(null, journal);
         long readNanos = System.nanoTime() - readStarted;
         assertEquals(frames, recovered.size());
         return result("journal", frames, writeNanos,
@@ -278,18 +278,18 @@ class StorageStressBenchmarkTest {
 
     private static ItemStack variant(int index) {
         ItemStack stack = new ItemStack(Items.PAPER);
-        stack.getOrCreateNbt().putInt("TriStorageStressVariant", index);
+        stack.getOrCreateTag().putInt("TriStorageStressVariant", index);
         return stack;
     }
 
     private static ItemStack heavyVariant(int index) {
         ItemStack stack = new ItemStack(Items.SHULKER_BOX);
-        NbtCompound root = stack.getOrCreateNbt();
+        CompoundTag root = stack.getOrCreateTag();
         root.putInt("TriStorageStressVariant", index);
-        NbtCompound blockEntity = new NbtCompound();
-        NbtList items = new NbtList();
+        CompoundTag blockEntity = new CompoundTag();
+        ListTag items = new ListTag();
         for (int slot = 0; slot < 27; slot++) {
-            NbtCompound item = new NbtCompound();
+            CompoundTag item = new CompoundTag();
             item.putByte("Slot", (byte) slot);
             item.putString("id", slot % 2 == 0
                     ? "minecraft:stone" : "minecraft:iron_ingot");

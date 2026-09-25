@@ -4,71 +4,71 @@ import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
 import com.andresblue.tristorage.storage.StorageNetwork;
 import com.andresblue.tristorage.storage.TerminalFilter;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 public final class CraftingTerminalBlock extends Block implements NetworkBlock {
-    public CraftingTerminalBlock(Settings settings) {
+    public CraftingTerminalBlock(Properties settings) {
         super(settings);
     }
 
     @Override
-    public void onPlaced(World world, BlockPos pos, BlockState state,
+    public void setPlacedBy(Level world, BlockPos pos, BlockState state,
                          @Nullable LivingEntity placer, ItemStack itemStack) {
-        super.onPlaced(world, pos, state, placer, itemStack);
+        super.setPlacedBy(world, pos, state, placer, itemStack);
         StorageNetwork.markTopologyChanged(world);
     }
 
     @Override
-    public void onStateReplaced(BlockState state, World world, BlockPos pos,
+    public void onRemove(BlockState state, Level world, BlockPos pos,
                                 BlockState newState, boolean moved) {
-        if (!state.isOf(newState.getBlock())) {
+        if (!state.is(newState.getBlock())) {
             StorageNetwork.markTopologyChanged(world);
         }
-        super.onStateReplaced(state, world, pos, newState, moved);
+        super.onRemove(state, world, pos, newState, moved);
     }
 
     @Override
-    public ActionResult onUse(BlockState state, World world, BlockPos pos,
-                              PlayerEntity player, Hand hand, BlockHitResult hit) {
-        if (world.isClient) {
-            return ActionResult.SUCCESS;
+    public InteractionResult use(BlockState state, Level world, BlockPos pos,
+                              Player player, InteractionHand hand, BlockHitResult hit) {
+        if (world.isClientSide) {
+            return InteractionResult.SUCCESS;
         }
-        if (player instanceof net.minecraft.server.network.ServerPlayerEntity serverPlayer) {
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
             TerminalFilter.prepareCreativeGroups(serverPlayer);
         }
         StorageCoreBlockEntity core = StorageNetwork.findCore(world, pos);
         if (core == null) {
-            player.sendMessage(Text.translatable("message.tristorage.no_core"), true);
-            return ActionResult.CONSUME;
+            player.displayClientMessage(Component.translatable("message.tristorage.no_core"), true);
+            return InteractionResult.CONSUME;
         }
         if (core.isRecoveryRequired()) {
-            player.sendMessage(Text.translatable(
+            player.displayClientMessage(Component.translatable(
                     "message.tristorage.core_recovery_required"), true);
-            return ActionResult.CONSUME;
+            return InteractionResult.CONSUME;
         }
         if (!core.runtime().isReady()) {
-            player.sendMessage(Text.translatable(
+            player.displayClientMessage(Component.translatable(
                     "message.tristorage.core_not_ready"), true);
-            return ActionResult.CONSUME;
+            return InteractionResult.CONSUME;
         }
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+        player.openMenu(new SimpleMenuProvider(
                 (syncId, inventory, ignored) ->
                         new CraftingTerminalScreenHandler(syncId, inventory, core)
                                 .accessedFrom(pos),
-                Text.translatable("screen.tristorage.crafting_terminal")
+                Component.translatable("screen.tristorage.crafting_terminal")
         ));
-        return ActionResult.CONSUME;
+        return InteractionResult.CONSUME;
     }
 }

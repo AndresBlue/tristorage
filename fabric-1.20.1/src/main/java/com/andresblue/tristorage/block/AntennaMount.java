@@ -1,13 +1,12 @@
 package com.andresblue.tristorage.block;
 
-import net.minecraft.util.StringIdentifiable;
-import net.minecraft.util.math.Direction;
-
 import java.util.List;
 import java.util.function.Predicate;
+import net.minecraft.core.Direction;
+import net.minecraft.util.StringRepresentable;
 
 /** Direction occupied by the Linker's external dimensional antenna. */
-public enum AntennaMount implements StringIdentifiable {
+public enum AntennaMount implements StringRepresentable {
     NONE("none", null),
     UP("up", Direction.UP),
     NORTH("north", Direction.NORTH),
@@ -42,7 +41,7 @@ public enum AntennaMount implements StringIdentifiable {
     }
 
     @Override
-    public String asString() {
+    public String getSerializedName() {
         return name;
     }
 }

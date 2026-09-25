@@ -1,6 +1,6 @@
 package com.andresblue.tristorage.client;
 
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 /**
  * Prevents inventory helper mods from turning the same wheel event used for
@@ -14,7 +14,7 @@ public final class TerminalScrollGuard {
     }
 
     public static void begin() {
-        if (MinecraftClient.getInstance().currentScreen instanceof TerminalScreenMarker) {
+        if (Minecraft.getInstance().screen instanceof TerminalScreenMarker) {
             depth++;
         }
     }
@@ -27,6 +27,6 @@ public final class TerminalScrollGuard {
 
     public static boolean blocksInventoryClicks() {
         return depth > 0
-                && MinecraftClient.getInstance().currentScreen instanceof TerminalScreenMarker;
+                && Minecraft.getInstance().screen instanceof TerminalScreenMarker;
     }
 }

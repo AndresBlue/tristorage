@@ -1,10 +1,5 @@
 package com.andresblue.tristorage.storage;
 
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.registry.Registries;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -18,6 +13,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.TreeSet;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -204,7 +203,7 @@ public final class StorageRuntime {
         if (entry == null || requested <= 0) {
             return ItemStack.EMPTY;
         }
-        int extracted = (int) Math.min(Math.min(entry.count, requested), entry.template.getMaxCount());
+        int extracted = (int) Math.min(Math.min(entry.count, requested), entry.template.getMaxStackSize());
         ItemStack result = entry.template.copy();
         StorageMetrics.increment("item_stack_copies");
         result.setCount(extracted);
@@ -376,7 +375,7 @@ public final class StorageRuntime {
         }
         int safeLimit = Math.max(1, limit);
         Set<Item> candidates = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
-        for (ItemStack matching : ingredient.getMatchingStacks()) {
+        for (ItemStack matching : ingredient.getItems()) {
             if (!matching.isEmpty()) {
                 candidates.add(matching.getItem());
             }
@@ -890,7 +889,7 @@ public final class StorageRuntime {
             this.id = id;
             this.key = key;
             this.template = template;
-            this.registryId = Registries.ITEM.getId(template.getItem()).toString();
+            this.registryId = BuiltInRegistries.ITEM.getKey(template.getItem()).toString();
             this.modCategory = TerminalFilter.modCategory(template);
             long metadataStarted = StorageMetrics.startTimer();
             this.searchText = TerminalFilter.searchText(template);

@@ -1,12 +1,11 @@
 package com.andresblue.tristorage.storage;
 
-import net.minecraft.server.world.ChunkTicketType;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.chunk.ChunkStatus;
-
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -19,20 +18,20 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class RemoteChunkLease {
     private static final int TICKET_LEVEL = 33;
-    private static final ChunkTicketType<UUID> TICKET_TYPE =
-            ChunkTicketType.create("tristorage_remote", UUID::compareTo);
+    private static final TicketType<UUID> TICKET_TYPE =
+            TicketType.create("tristorage_remote", UUID::compareTo);
 
-    private final ServerWorld world;
+    private final ServerLevel world;
     private final UUID ticketId;
     private final Map<ChunkPos, CompletableFuture<Boolean>> chunkLoads = new HashMap<>();
     private boolean released;
 
-    private RemoteChunkLease(ServerWorld world, UUID ticketId) {
+    private RemoteChunkLease(ServerLevel world, UUID ticketId) {
         this.world = world;
         this.ticketId = ticketId;
     }
 
-    public static RemoteChunkLease create(ServerWorld world) {
+    public static RemoteChunkLease create(ServerLevel world) {
         return new RemoteChunkLease(world, UUID.randomUUID());
     }
 
@@ -55,15 +54,15 @@ public final class RemoteChunkLease {
             return existing;
         }
         long loadStarted = StorageMetrics.startTimer();
-        world.getChunkManager().addTicket(TICKET_TYPE, chunkPos, TICKET_LEVEL, ticketId);
+        world.getChunkSource().addRegionTicket(TICKET_TYPE, chunkPos, TICKET_LEVEL, ticketId);
         try {
             CompletableFuture<Boolean> load;
-            if (world.getChunkManager().isChunkLoaded(chunkPos.x, chunkPos.z)) {
+            if (world.getChunkSource().hasChunk(chunkPos.x, chunkPos.z)) {
                 load = CompletableFuture.completedFuture(true);
                 StorageMetrics.increment("remote.chunks_already_loaded");
             } else {
-                load = world.getChunkManager()
-                        .getChunkFutureSyncOnMainThread(
+                load = world.getChunkSource()
+                        .getChunkFuture(
                                 chunkPos.x, chunkPos.z, ChunkStatus.FULL, true)
                         .thenApply(result -> result.left().isPresent());
             }
@@ -75,7 +74,7 @@ public final class RemoteChunkLease {
             chunkLoads.put(chunkPos, load);
             return load;
         } catch (RuntimeException exception) {
-            world.getChunkManager().removeTicket(
+            world.getChunkSource().removeRegionTicket(
                     TICKET_TYPE, chunkPos, TICKET_LEVEL, ticketId);
             throw exception;
         }
@@ -104,7 +103,7 @@ public final class RemoteChunkLease {
         released = true;
         StorageMetrics.add("remote.chunk_tickets_released", chunkLoads.size());
         for (ChunkPos chunkPos : chunkLoads.keySet()) {
-            world.getChunkManager().removeTicket(
+            world.getChunkSource().removeRegionTicket(
                     TICKET_TYPE, chunkPos, TICKET_LEVEL, ticketId);
         }
         chunkLoads.clear();

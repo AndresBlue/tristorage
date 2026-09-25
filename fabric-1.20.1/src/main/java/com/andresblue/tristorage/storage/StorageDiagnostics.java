@@ -7,21 +7,20 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.text.Text;
-import net.minecraft.util.WorldSavePath;
-import net.minecraft.command.argument.BlockPosArgumentType;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.storage.LevelResource;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.Registries;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,8 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import static net.minecraft.server.command.CommandManager.literal;
-import static net.minecraft.server.command.CommandManager.argument;
+import static net.minecraft.commands.Commands.literal;
+import static net.minecraft.commands.Commands.argument;
 
 /** Small admin surface for baselines and production profiling. */
 public final class StorageDiagnostics {
@@ -55,45 +54,45 @@ public final class StorageDiagnostics {
         ServerLifecycleEvents.SERVER_STOPPING.register(ignored -> ACTIVE_BENCHMARKS.clear());
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             dispatcher.register(literal("tristorage")
-                    .requires(source -> source.hasPermissionLevel(2))
+                    .requires(source -> source.hasPermission(2))
                     .then(literal("metrics")
                             .executes(context -> showMetrics(
                                     context.getSource().getServer(), context.getSource()))
                             .then(literal("reset").executes(context -> {
                                 StorageMetrics.reset();
-                                context.getSource().sendFeedback(
-                                        () -> Text.literal("TriStorage metrics reset."), false);
+                                context.getSource().sendSuccess(
+                                        () -> Component.literal("TriStorage metrics reset."), false);
                                 return 1;
                             }))
                             .then(literal("enable").executes(context -> {
                                 StorageMetrics.setEnabled(true);
-                                context.getSource().sendFeedback(
-                                        () -> Text.literal("TriStorage metrics enabled."), false);
+                                context.getSource().sendSuccess(
+                                        () -> Component.literal("TriStorage metrics enabled."), false);
                                 return 1;
                             }))
                             .then(literal("disable").executes(context -> {
                                 StorageMetrics.setEnabled(false);
-                                context.getSource().sendFeedback(
-                                        () -> Text.literal("TriStorage metrics disabled."), false);
+                                context.getSource().sendSuccess(
+                                        () -> Component.literal("TriStorage metrics disabled."), false);
                                 return 1;
                             }))
                             .then(literal("export").executes(context -> exportMetrics(
                                     context.getSource().getServer(), context.getSource()))))
                     .then(literal("inspect")
-                            .then(argument("pos", BlockPosArgumentType.blockPos())
+                            .then(argument("pos", BlockPosArgument.blockPos())
                                     .executes(context -> inspect(context.getSource(),
-                                            BlockPosArgumentType.getLoadedBlockPos(
+                                            BlockPosArgument.getLoadedBlockPos(
                                                     context, "pos")))))
                     .then(literal("selftest").executes(context ->
                             runSelfTest(context.getSource())))
                     .then(literal("benchmark")
                             .then(literal("generate")
-                                    .then(argument("pos", BlockPosArgumentType.blockPos())
+                                    .then(argument("pos", BlockPosArgument.blockPos())
                                             .then(argument("types", IntegerArgumentType.integer(
                                                     1, BENCHMARK_MAX_TYPES))
                                                     .executes(context -> startBenchmark(
                                                             context.getSource(),
-                                                            BlockPosArgumentType.getLoadedBlockPos(
+                                                            BlockPosArgument.getLoadedBlockPos(
                                                                     context, "pos"),
                                                             IntegerArgumentType.getInteger(
                                                                     context, "types"),
@@ -102,7 +101,7 @@ public final class StorageDiagnostics {
                                                             StringArgumentType.word())
                                                             .executes(context -> startBenchmark(
                                                                     context.getSource(),
-                                                                    BlockPosArgumentType
+                                                                    BlockPosArgument
                                                                             .getLoadedBlockPos(
                                                                                     context, "pos"),
                                                                     IntegerArgumentType.getInteger(
@@ -115,7 +114,7 @@ public final class StorageDiagnostics {
                                                                     .executes(context ->
                                                                             startBenchmark(
                                                                                     context.getSource(),
-                                                                                    BlockPosArgumentType
+                                                                                    BlockPosArgument
                                                                                             .getLoadedBlockPos(
                                                                                                     context,
                                                                                                     "pos"),
@@ -156,35 +155,35 @@ public final class StorageDiagnostics {
         });
     }
 
-    private static int startBenchmark(net.minecraft.server.command.ServerCommandSource source,
+    private static int startBenchmark(net.minecraft.commands.CommandSourceStack source,
                                       BlockPos pos, int requestedTypes,
                                       String rawProfile, long seed) {
         BenchmarkProfile profile = BenchmarkProfile.parse(rawProfile);
         if (profile == null) {
-            source.sendError(Text.literal("Unknown benchmark profile '" + rawProfile
+            source.sendFailure(Component.literal("Unknown benchmark profile '" + rawProfile
                     + "'. Use mixed, nbt, heavy or bulk."));
             return 0;
         }
-        if (!(source.getWorld().getBlockEntity(pos) instanceof StorageCoreBlockEntity core)) {
-            source.sendError(Text.literal("No Storage Core at " + pos.toShortString()));
+        if (!(source.getLevel().getBlockEntity(pos) instanceof StorageCoreBlockEntity core)) {
+            source.sendFailure(Component.literal("No Storage Core at " + pos.toShortString()));
             return 0;
         }
         StorageRuntime runtime = core.runtime();
         if (!runtime.isReady() || core.isRecoveryRequired()) {
-            source.sendError(Text.literal("The Storage Core is still loading or requires recovery."));
+            source.sendFailure(Component.literal("The Storage Core is still loading or requires recovery."));
             return 0;
         }
         if (core.installedChests() <= 0) {
-            source.sendError(Text.literal("The Storage Core needs at least one installed chest."));
+            source.sendFailure(Component.literal("The Storage Core needs at least one installed chest."));
             return 0;
         }
         int availableTypes = Math.max(0, core.typeCapacity() - core.storedTypes());
         if (availableTypes <= 0 || core.itemCapacity() <= core.totalItems()) {
-            source.sendError(Text.literal("The Storage Core has no free capacity for benchmark data."));
+            source.sendFailure(Component.literal("The Storage Core has no free capacity for benchmark data."));
             return 0;
         }
         if (ACTIVE_BENCHMARKS.containsKey(runtime.id())) {
-            source.sendError(Text.literal("A benchmark is already running for this storage."));
+            source.sendFailure(Component.literal("A benchmark is already running for this storage."));
             return 0;
         }
         List<Item> candidates = benchmarkCandidates(seed);
@@ -195,7 +194,7 @@ public final class StorageDiagnostics {
         StorageMetrics.add("benchmark.items_requested", task.requestedItems());
         StorageMetrics.increment("benchmark.started");
         StorageTickCoordinator.schedule(task);
-        source.sendFeedback(() -> Text.literal("Benchmark generation started: "
+        source.sendSuccess(() -> Component.literal("Benchmark generation started: "
                 + requestedTypes + " types, profile=" + profile.id
                 + ", seed=" + seed + ". It runs in bounded batches; use "
                 + "/tristorage benchmark status to monitor it. Available Core capacity: "
@@ -204,28 +203,28 @@ public final class StorageDiagnostics {
         return 1;
     }
 
-    private static int benchmarkStatus(net.minecraft.server.command.ServerCommandSource source) {
+    private static int benchmarkStatus(net.minecraft.commands.CommandSourceStack source) {
         if (ACTIVE_BENCHMARKS.isEmpty()) {
-            source.sendFeedback(() -> Text.literal("No TriStorage benchmark is running."), false);
+            source.sendSuccess(() -> Component.literal("No TriStorage benchmark is running."), false);
             return 0;
         }
-        ACTIVE_BENCHMARKS.values().forEach(task -> source.sendFeedback(
-                () -> Text.literal(task.status()), false));
+        ACTIVE_BENCHMARKS.values().forEach(task -> source.sendSuccess(
+                () -> Component.literal(task.status()), false));
         return ACTIVE_BENCHMARKS.size();
     }
 
     private static List<Item> benchmarkCandidates(long seed) {
         List<Item> result = new ArrayList<>();
-        for (Identifier id : Registries.ITEM.getIds()) {
+        for (ResourceLocation id : BuiltInRegistries.ITEM.keySet()) {
             if (TriStorageMod.MOD_ID.equals(id.getNamespace())) {
                 continue;
             }
-            Item item = Registries.ITEM.get(id);
-            if (item != null && item != Items.AIR && item.getMaxCount() > 0) {
+            Item item = BuiltInRegistries.ITEM.get(id);
+            if (item != null && item != Items.AIR && item.getMaxStackSize() > 0) {
                 result.add(item);
             }
         }
-        result.sort(Comparator.comparing(item -> Registries.ITEM.getId(item).toString()));
+        result.sort(Comparator.comparing(item -> BuiltInRegistries.ITEM.getKey(item).toString()));
         Collections.shuffle(result, new Random(seed));
         return List.copyOf(result);
     }
@@ -253,7 +252,7 @@ public final class StorageDiagnostics {
     }
 
     private static final class BenchmarkTask implements StorageTickCoordinator.BoundedTask {
-        private final net.minecraft.server.command.ServerCommandSource source;
+        private final net.minecraft.commands.CommandSourceStack source;
         private final StorageCoreBlockEntity core;
         private final StorageId storageId;
         private final int requestedTypes;
@@ -266,7 +265,7 @@ public final class StorageDiagnostics {
         private boolean complete;
         private boolean capacityReached;
 
-        private BenchmarkTask(net.minecraft.server.command.ServerCommandSource source,
+        private BenchmarkTask(net.minecraft.commands.CommandSourceStack source,
                               StorageCoreBlockEntity core, int requestedTypes,
                               BenchmarkProfile profile, long seed, List<Item> candidates) {
             this.source = source;
@@ -290,7 +289,7 @@ public final class StorageDiagnostics {
 
         @Override
         public int step(int budget) {
-            if (complete || core.isRemoved() || !(core.getWorld() instanceof net.minecraft.server.world.ServerWorld)
+            if (complete || core.isRemoved() || !(core.getLevel() instanceof net.minecraft.server.level.ServerLevel)
                     || !core.storageId().equals(storageId)) {
                 finish(false);
                 return 0;
@@ -347,7 +346,7 @@ public final class StorageDiagnostics {
                 StorageMetrics.increment("benchmark.aborted");
             }
             String suffix = capacityReached ? " Capacity reached." : "";
-            source.sendFeedback(() -> Text.literal("Benchmark generation "
+            source.sendSuccess(() -> Component.literal("Benchmark generation "
                     + (generated ? "finished" : "stopped") + ": " + processedTypes
                     + "/" + requestedTypes + " types, " + insertedItems
                     + " items inserted." + suffix), false);
@@ -370,7 +369,7 @@ public final class StorageDiagnostics {
         private static ItemStack variantStack(Item item, BenchmarkProfile profile,
                                               int index, long seed) {
             ItemStack stack = new ItemStack(item);
-            NbtCompound tag = stack.getOrCreateNbt();
+            CompoundTag tag = stack.getOrCreateTag();
             tag.putString("TriStorageBenchmarkProfile", profile.id);
             tag.putInt("TriStorageBenchmarkVariant", index);
             tag.putLong("TriStorageBenchmarkSeed", seed);
@@ -380,10 +379,10 @@ public final class StorageDiagnostics {
         private static ItemStack heavyStack(int index, long seed) {
             ItemStack stack = variantStack(Items.SHULKER_BOX, BenchmarkProfile.HEAVY,
                     index, seed);
-            NbtCompound blockEntityTag = new NbtCompound();
-            NbtList contents = new NbtList();
+            CompoundTag blockEntityTag = new CompoundTag();
+            ListTag contents = new ListTag();
             for (int slot = 0; slot < 27; slot++) {
-                NbtCompound entry = new NbtCompound();
+                CompoundTag entry = new CompoundTag();
                 entry.putByte("Slot", (byte) slot);
                 entry.putString("id", slot % 3 == 0
                         ? "minecraft:iron_ingot" : "minecraft:stone");
@@ -392,7 +391,7 @@ public final class StorageDiagnostics {
             }
             blockEntityTag.put("Items", contents);
             blockEntityTag.putInt("TriStorageBenchmarkPayload", index);
-            stack.getOrCreateNbt().put("BlockEntityTag", blockEntityTag);
+            stack.getOrCreateTag().put("BlockEntityTag", blockEntityTag);
             return stack;
         }
 
@@ -411,17 +410,17 @@ public final class StorageDiagnostics {
         }
     }
 
-    private static int runSelfTest(net.minecraft.server.command.ServerCommandSource source) {
+    private static int runSelfTest(net.minecraft.commands.CommandSourceStack source) {
         try {
             ItemStack tagged = new ItemStack(Items.DIAMOND_SWORD);
-            tagged.getOrCreateNbt().putString("TriStorageTest", "same");
+            tagged.getOrCreateTag().putString("TriStorageTest", "same");
             ItemStack same = tagged.copy();
             ItemStack different = tagged.copy();
-            different.getOrCreateNbt().putString("TriStorageTest", "different");
+            different.getOrCreateTag().putString("TriStorageTest", "different");
             if (ItemKey.frozen(tagged).equals(ItemKey.probe(same))
-                    != ItemStack.canCombine(tagged, same)
+                    != ItemStack.isSameItemSameTags(tagged, same)
                     || ItemKey.frozen(tagged).equals(ItemKey.probe(different))
-                    != ItemStack.canCombine(tagged, different)) {
+                    != ItemStack.isSameItemSameTags(tagged, different)) {
                 throw new IllegalStateException("ItemKey/canCombine mismatch");
             }
 
@@ -453,32 +452,32 @@ public final class StorageDiagnostics {
             if (!runtime.extract(removedId, 64).isEmpty()) {
                 throw new IllegalStateException("stale EntryId targeted a replacement");
             }
-            source.sendFeedback(() -> Text.literal(
+            source.sendSuccess(() -> Component.literal(
                     "TriStorage storage self-test passed."), false);
             return 1;
         } catch (RuntimeException failure) {
-            source.sendError(Text.literal(
+            source.sendFailure(Component.literal(
                     "TriStorage storage self-test failed: " + failure.getMessage()));
             return 0;
         }
     }
 
-    private static int listStorages(net.minecraft.server.command.ServerCommandSource source) {
+    private static int listStorages(net.minecraft.commands.CommandSourceStack source) {
         var storages = StorageRepositories.get(source.getServer()).listStorages();
-        source.sendFeedback(() -> Text.literal(
+        source.sendSuccess(() -> Component.literal(
                 "TriStorage repository: " + storages.size() + " storages"), false);
-        storages.stream().limit(50).forEach(storage -> source.sendFeedback(
-                () -> Text.literal(storage.id() + " " + storage.lifecycle()
+        storages.stream().limit(50).forEach(storage -> source.sendSuccess(
+                () -> Component.literal(storage.id() + " " + storage.lifecycle()
                         + (storage.ready() ? " " + storage.storedTypes() + " types / "
                         + storage.storedItems() + " items" : " (not loaded)")), false));
         if (storages.size() > 50) {
-            source.sendFeedback(() -> Text.literal(
+            source.sendSuccess(() -> Component.literal(
                     "Showing the first 50 storages."), false);
         }
         return storages.size();
     }
 
-    private static int inspectStorage(net.minecraft.server.command.ServerCommandSource source,
+    private static int inspectStorage(net.minecraft.commands.CommandSourceStack source,
                                       String rawId) {
         StorageId id = parseId(source, rawId);
         if (id == null) {
@@ -486,30 +485,30 @@ public final class StorageDiagnostics {
         }
         StorageRepository.StorageSummary storage = StorageRepositories
                 .get(source.getServer()).inspect(id);
-        source.sendFeedback(() -> Text.literal(storage.id() + ": "
+        source.sendSuccess(() -> Component.literal(storage.id() + ": "
                 + storage.lifecycle() + ", ready=" + storage.ready()
                 + ", anchors=" + storage.anchors()
                 + ", chests=" + storage.installedChests()
                 + ", types=" + storage.storedTypes()
                 + ", items=" + storage.storedItems()), false);
         if (!storage.ready() && !"MISSING".equals(storage.lifecycle())) {
-            source.sendFeedback(() -> Text.literal(
+            source.sendSuccess(() -> Component.literal(
                     "The storage is loading; run the command again shortly."), false);
         }
         return "MISSING".equals(storage.lifecycle()) ? 0 : 1;
     }
 
-    private static int recoverStorage(net.minecraft.server.command.ServerCommandSource source,
+    private static int recoverStorage(net.minecraft.commands.CommandSourceStack source,
                                       String rawId) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         StorageId id = parseId(source, rawId);
         if (id == null) {
             return 0;
         }
-        ServerPlayerEntity player = source.getPlayer();
+        ServerPlayer player = source.getPlayer();
         StorageRepository.PortableRecovery recovery = StorageRepositories
                 .get(source.getServer()).recoverPortable(id);
         if (!"RECOVERED".equals(recovery.result())) {
-            source.sendError(Text.literal("Storage could not be recovered: "
+            source.sendFailure(Component.literal("Storage could not be recovered: "
                     + recovery.result() + ". Inspect it and retry after loading."));
             return 0;
         }
@@ -521,24 +520,24 @@ public final class StorageDiagnostics {
             case BLAZE -> TriStorageMod.BLAZE_CORE;
             case COSMIC -> TriStorageMod.COSMIC_CORE;
         });
-        NbtCompound data = new NbtCompound();
+        CompoundTag data = new CompoundTag();
         data.putString(PortableCoreData.STORAGE_ID_KEY, id.toString());
         data.putString(PortableCoreData.OWNERSHIP_TOKEN_KEY, recovery.token());
         data.putInt(PortableCoreData.FORMAT_VERSION_KEY, 1);
         data.putInt(PortableCoreData.CHESTS_KEY, summary.installedChests());
         data.putInt(PortableCoreData.TYPES_SUMMARY_KEY, summary.storedTypes());
         data.putLong(PortableCoreData.ITEMS_SUMMARY_KEY, summary.storedItems());
-        data.put(PortableCoreData.ENTRIES_KEY, new NbtList());
+        data.put(PortableCoreData.ENTRIES_KEY, new ListTag());
         PortableCoreData.applyTo(portable, data);
-        if (!player.getInventory().insertStack(portable)) {
-            player.dropItem(portable, false);
+        if (!player.getInventory().add(portable)) {
+            player.drop(portable, false);
         }
-        source.sendFeedback(() -> Text.literal(
+        source.sendSuccess(() -> Component.literal(
                 "Recovered " + id + " as one portable Core."), true);
         return 1;
     }
 
-    private static int purgeStorage(net.minecraft.server.command.ServerCommandSource source,
+    private static int purgeStorage(net.minecraft.commands.CommandSourceStack source,
                                     String rawId) {
         StorageId id = parseId(source, rawId);
         if (id == null) {
@@ -546,69 +545,69 @@ public final class StorageDiagnostics {
         }
         String result = StorageRepositories.get(source.getServer()).purgeEmpty(id);
         if (!"PURGED".equals(result)) {
-            source.sendError(Text.literal("Storage was not purged: " + result
+            source.sendFailure(Component.literal("Storage was not purged: " + result
                     + ". Only fully loaded, unused storages with zero chests and items qualify."));
             return 0;
         }
-        source.sendFeedback(() -> Text.literal("Purged empty storage " + id + "."), true);
+        source.sendSuccess(() -> Component.literal("Purged empty storage " + id + "."), true);
         return 1;
     }
 
-    private static StorageId parseId(net.minecraft.server.command.ServerCommandSource source,
+    private static StorageId parseId(net.minecraft.commands.CommandSourceStack source,
                                      String rawId) {
         try {
             return StorageId.parse(rawId);
         } catch (IllegalArgumentException invalid) {
-            source.sendError(Text.literal("Invalid storage UUID: " + rawId));
+            source.sendFailure(Component.literal("Invalid storage UUID: " + rawId));
             return null;
         }
     }
 
     private static int showMetrics(MinecraftServer server,
-                                   net.minecraft.server.command.ServerCommandSource source) {
+                                   net.minecraft.commands.CommandSourceStack source) {
         StorageRepository.Diagnostics repository =
                 StorageRepositories.get(server).diagnostics();
-        source.sendFeedback(() -> Text.literal("TriStorage: "
+        source.sendSuccess(() -> Component.literal("TriStorage: "
                 + (StorageMetrics.enabled() ? "metrics ON, " : "metrics OFF, ")
                 + repository.loadedRuntimes() + " runtimes, "
                 + repository.loadingRuntimes() + " loading, "
                 + repository.storedTypes() + " types, "
                 + repository.estimatedBytes() / (1024 * 1024) + " MiB estimated"), false);
         StorageMetrics.snapshot().forEach((key, value) ->
-                source.sendFeedback(() -> Text.literal(key + " = " + value), false));
+                source.sendSuccess(() -> Component.literal(key + " = " + value), false));
         return 1;
     }
 
     private static int exportMetrics(MinecraftServer server,
-                                     net.minecraft.server.command.ServerCommandSource source) {
+                                     net.minecraft.commands.CommandSourceStack source) {
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("timestamp", Instant.now().toString());
         report.put("repository", StorageRepositories.get(server).diagnostics());
         report.put("counters", StorageMetrics.snapshot());
-        Path output = server.getSavePath(WorldSavePath.ROOT).resolve("data")
+        Path output = server.getWorldPath(LevelResource.ROOT).resolve("data")
                 .resolve("tristorage").resolve("metrics.json");
         try {
             Files.createDirectories(output.getParent());
             Files.writeString(output, new GsonBuilder().setPrettyPrinting().create()
                     .toJson(report));
-            source.sendFeedback(() -> Text.literal(
+            source.sendSuccess(() -> Component.literal(
                     "TriStorage metrics exported to " + output), false);
             return 1;
         } catch (Exception exception) {
-            source.sendError(Text.literal("Could not export TriStorage metrics: "
+            source.sendFailure(Component.literal("Could not export TriStorage metrics: "
                     + exception.getMessage()));
             return 0;
         }
     }
 
-    private static int inspect(net.minecraft.server.command.ServerCommandSource source,
-                               net.minecraft.util.math.BlockPos pos) {
-        if (!(source.getWorld().getBlockEntity(pos) instanceof StorageCoreBlockEntity core)) {
-            source.sendError(Text.literal("No Storage Core at " + pos.toShortString()));
+    private static int inspect(net.minecraft.commands.CommandSourceStack source,
+                               net.minecraft.core.BlockPos pos) {
+        if (!(source.getLevel().getBlockEntity(pos) instanceof StorageCoreBlockEntity core)) {
+            source.sendFailure(Component.literal("No Storage Core at " + pos.toShortString()));
             return 0;
         }
         StorageRuntime runtime = core.runtime();
-        source.sendFeedback(() -> Text.literal("Storage " + runtime.id()
+        source.sendSuccess(() -> Component.literal("Storage " + runtime.id()
                 + ": ready=" + runtime.isReady()
                 + ", chests=" + runtime.installedChests()
                 + ", types=" + runtime.storedTypes()

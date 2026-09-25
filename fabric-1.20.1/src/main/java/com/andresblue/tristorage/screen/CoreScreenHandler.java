@@ -2,18 +2,18 @@ package com.andresblue.tristorage.screen;
 
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.ArrayPropertyDelegate;
-import net.minecraft.screen.PropertyDelegate;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.slot.Slot;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
-public final class CoreScreenHandler extends ScreenHandler {
+public final class CoreScreenHandler extends AbstractContainerMenu {
     private static final int INSTALLED_CHESTS = 0;
     private static final int MAX_CHESTS = INSTALLED_CHESTS + PropertyWords.INT_WORDS;
     private static final int STORED_TYPES = MAX_CHESTS + PropertyWords.INT_WORDS;
@@ -21,90 +21,90 @@ public final class CoreScreenHandler extends ScreenHandler {
     private static final int TOTAL_ITEMS = TYPE_CAPACITY + PropertyWords.INT_WORDS;
     private static final int ITEM_CAPACITY = TOTAL_ITEMS + PropertyWords.LONG_WORDS;
     private static final int PROPERTY_COUNT = ITEM_CAPACITY + PropertyWords.LONG_WORDS;
-    private final Inventory input = new SimpleInventory(1);
+    private final Container input = new SimpleContainer(1);
     private final StorageCoreBlockEntity core;
-    private final PropertyDelegate syncedProperties;
+    private final ContainerData syncedProperties;
 
-    public CoreScreenHandler(int syncId, PlayerInventory playerInventory) {
+    public CoreScreenHandler(int syncId, Inventory playerInventory) {
         this(syncId, playerInventory, null);
     }
 
-    public CoreScreenHandler(int syncId, PlayerInventory playerInventory, StorageCoreBlockEntity core) {
+    public CoreScreenHandler(int syncId, Inventory playerInventory, StorageCoreBlockEntity core) {
         super(TriStorageMod.CORE_SCREEN_HANDLER, syncId);
         this.core = core;
         this.syncedProperties = core == null
-                ? new ArrayPropertyDelegate(PROPERTY_COUNT)
+                ? new SimpleContainerData(PROPERTY_COUNT)
                 : properties(core);
         addSlot(new Slot(input, 0, 80, 35) {
             @Override
-            public boolean canInsert(ItemStack stack) {
-                return stack.isOf(Items.CHEST);
+            public boolean mayPlace(ItemStack stack) {
+                return stack.is(Items.CHEST);
             }
         });
         addPlayerInventory(playerInventory, 8, 122);
-        addProperties(syncedProperties);
+        addDataSlots(syncedProperties);
     }
 
     @Override
-    public void sendContentUpdates() {
+    public void broadcastChanges() {
         absorbInput();
-        super.sendContentUpdates();
+        super.broadcastChanges();
     }
 
     @Override
-    public boolean onButtonClick(PlayerEntity player, int id) {
+    public boolean clickMenuButton(Player player, int id) {
         if (id != 0 || core == null) {
             return false;
         }
         int removed = core.removeChests(64);
         if (removed > 0) {
-            player.getInventory().offerOrDrop(new ItemStack(Items.CHEST, removed));
+            player.getInventory().placeItemBackInInventory(new ItemStack(Items.CHEST, removed));
             return true;
         }
         return false;
     }
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int slotIndex) {
+    public ItemStack quickMoveStack(Player player, int slotIndex) {
         Slot slot = slots.get(slotIndex);
-        if (!slot.hasStack()) {
+        if (!slot.hasItem()) {
             return ItemStack.EMPTY;
         }
-        ItemStack source = slot.getStack();
+        ItemStack source = slot.getItem();
         ItemStack original = source.copy();
         if (slotIndex == 0) {
-            if (!insertItem(source, 1, slots.size(), true)) {
+            if (!moveItemStackTo(source, 1, slots.size(), true)) {
                 return ItemStack.EMPTY;
             }
-        } else if (source.isOf(Items.CHEST)) {
-            if (!insertItem(source, 0, 1, false)) {
+        } else if (source.is(Items.CHEST)) {
+            if (!moveItemStackTo(source, 0, 1, false)) {
                 return ItemStack.EMPTY;
             }
         } else {
             return ItemStack.EMPTY;
         }
         if (source.isEmpty()) {
-            slot.setStack(ItemStack.EMPTY);
+            slot.setByPlayer(ItemStack.EMPTY);
         } else {
-            slot.markDirty();
+            slot.setChanged();
         }
         return original;
     }
 
     @Override
-    public void onClosed(PlayerEntity player) {
+    public void removed(Player player) {
         absorbInput();
-        super.onClosed(player);
-        dropInventory(player, input);
+        super.removed(player);
+        clearContainer(player, input);
     }
 
     @Override
-    public boolean canUse(PlayerEntity player) {
+    public boolean stillValid(Player player) {
         return core == null || (!core.isRemoved()
-                && player.squaredDistanceTo(
-                core.getPos().getX() + 0.5,
-                core.getPos().getY() + 0.5,
-                core.getPos().getZ() + 0.5) <= 64.0);
+                && player.distanceToSqr(
+                core.getBlockPos().getX() + 0.5,
+                core.getBlockPos().getY() + 0.5,
+                core.getBlockPos().getZ() + 0.5) <= 64.0);
     }
 
     public int installedChests() {
@@ -137,19 +137,19 @@ public final class CoreScreenHandler extends ScreenHandler {
         if (core == null) {
             return;
         }
-        ItemStack stack = input.getStack(0);
-        if (!stack.isOf(Items.CHEST)) {
+        ItemStack stack = input.getItem(0);
+        if (!stack.is(Items.CHEST)) {
             return;
         }
         int accepted = core.addChests(stack.getCount());
         if (accepted > 0) {
-            stack.decrement(accepted);
-            input.markDirty();
+            stack.shrink(accepted);
+            input.setChanged();
         }
     }
 
-    private static PropertyDelegate properties(StorageCoreBlockEntity core) {
-        return new PropertyDelegate() {
+    private static ContainerData properties(StorageCoreBlockEntity core) {
+        return new ContainerData() {
             @Override
             public int get(int index) {
                 if (index < MAX_CHESTS) {
@@ -178,13 +178,13 @@ public final class CoreScreenHandler extends ScreenHandler {
             }
 
             @Override
-            public int size() {
+            public int getCount() {
                 return PROPERTY_COUNT;
             }
         };
     }
 
-    private void addPlayerInventory(PlayerInventory inventory, int x, int y) {
+    private void addPlayerInventory(Inventory inventory, int x, int y) {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 addSlot(new Slot(inventory, column + row * 9 + 9,

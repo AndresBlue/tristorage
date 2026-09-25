@@ -1,63 +1,63 @@
 package com.andresblue.tristorage.client;
 
 import com.andresblue.tristorage.screen.LinkerScreenHandler;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 
-public final class LinkerScreen extends HandledScreen<LinkerScreenHandler> {
-    public LinkerScreen(LinkerScreenHandler handler, PlayerInventory inventory, Text title) {
+public final class LinkerScreen extends AbstractContainerScreen<LinkerScreenHandler> {
+    public LinkerScreen(LinkerScreenHandler handler, Inventory inventory, Component title) {
         super(handler, inventory, title);
-        backgroundWidth = 176;
-        backgroundHeight = 166;
-        titleX = 8;
-        titleY = 6;
-        playerInventoryTitleX = 8;
-        playerInventoryTitleY = 73;
+        imageWidth = 176;
+        imageHeight = 166;
+        titleLabelX = 8;
+        titleLabelY = 6;
+        inventoryLabelX = 8;
+        inventoryLabelY = 73;
     }
 
     @Override
-    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        drawVanillaPanel(context, x, y, x + backgroundWidth, y + backgroundHeight);
-        context.fill(x + 5, y + 17, x + 171, y + 69, 0xFFBDBDBD);
-        drawSlot(context, x + 79, y + 22);
+    protected void renderBg(GuiGraphics context, float delta, int mouseX, int mouseY) {
+        drawVanillaPanel(context, leftPos, topPos, leftPos + imageWidth, topPos + imageHeight);
+        context.fill(leftPos + 5, topPos + 17, leftPos + 171, topPos + 69, 0xFFBDBDBD);
+        drawSlot(context, leftPos + 79, topPos + 22);
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
-                drawSlot(context, x + 7 + column * 18, y + 83 + row * 18);
+                drawSlot(context, leftPos + 7 + column * 18, topPos + 83 + row * 18);
             }
         }
         for (int column = 0; column < 9; column++) {
-            drawSlot(context, x + 7 + column * 18, y + 141);
+            drawSlot(context, leftPos + 7 + column * 18, topPos + 141);
         }
     }
 
     @Override
-    protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-        context.drawText(textRenderer, title, titleX, titleY, 0x404040, false);
-        context.drawText(textRenderer, playerInventoryTitle,
-                playerInventoryTitleX, playerInventoryTitleY, 0x404040, false);
-        Text status = !handler.hasAntenna() && !handler.installationSpaceAvailable()
-                ? Text.translatable("screen.tristorage.antenna_needs_air")
-                : !handler.hasAntenna()
-                ? Text.translatable("screen.tristorage.antenna_overworld_only")
-                : handler.antennaActive()
-                ? Text.translatable("screen.tristorage.antenna_active")
-                : Text.translatable("screen.tristorage.antenna_blocked");
-        int color = handler.antennaActive() ? 0x247A34 : 0x8A3C24;
-        context.drawText(textRenderer, status,
-                (backgroundWidth - textRenderer.getWidth(status)) / 2,
+    protected void renderLabels(GuiGraphics context, int mouseX, int mouseY) {
+        context.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
+        context.drawString(font, playerInventoryTitle,
+                inventoryLabelX, inventoryLabelY, 0x404040, false);
+        Component status = !menu.hasAntenna() && !menu.installationSpaceAvailable()
+                ? Component.translatable("screen.tristorage.antenna_needs_air")
+                : !menu.hasAntenna()
+                ? Component.translatable("screen.tristorage.antenna_overworld_only")
+                : menu.antennaActive()
+                ? Component.translatable("screen.tristorage.antenna_active")
+                : Component.translatable("screen.tristorage.antenna_blocked");
+        int color = menu.antennaActive() ? 0x247A34 : 0x8A3C24;
+        context.drawString(font, status,
+                (imageWidth - font.width(status)) / 2,
                 48, color, false);
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
-        drawMouseoverTooltip(context, mouseX, mouseY);
+        renderTooltip(context, mouseX, mouseY);
     }
 
-    private static void drawVanillaPanel(DrawContext context,
+    private static void drawVanillaPanel(GuiGraphics context,
                                          int left, int top, int right, int bottom) {
         context.fill(left, top, right, bottom, 0xFF373737);
         context.fill(left + 1, top + 1, right - 1, bottom - 1, 0xFFC6C6C6);
@@ -67,7 +67,7 @@ public final class LinkerScreen extends HandledScreen<LinkerScreenHandler> {
         context.fill(right - 2, top + 1, right - 1, bottom - 1, 0xFF555555);
     }
 
-    private static void drawSlot(DrawContext context, int left, int top) {
+    private static void drawSlot(GuiGraphics context, int left, int top) {
         context.fill(left, top, left + 18, top + 18, 0xFF8B8B8B);
         context.fill(left, top, left + 18, top + 1, 0xFF373737);
         context.fill(left, top, left + 1, top + 18, 0xFF373737);

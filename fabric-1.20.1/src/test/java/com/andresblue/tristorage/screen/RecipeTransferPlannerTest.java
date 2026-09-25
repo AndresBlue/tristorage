@@ -1,15 +1,15 @@
 package com.andresblue.tristorage.screen;
 
-import net.minecraft.Bootstrap;
 import net.minecraft.SharedConstants;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.book.CraftingRecipeCategory;
-import net.minecraft.recipe.ShapedRecipe;
-import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.core.NonNullList;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.ShapedRecipe;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -24,14 +24,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RecipeTransferPlannerTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }
 
     @Test
     void resolvesIngredientsFromTheCompleteResourceSet() {
         ShapedRecipe recipe = shaped(1, 1,
-                Ingredient.ofItems(Items.DRAGON_HEAD));
+                Ingredient.of(Items.DRAGON_HEAD));
         RecipeTransferPlanner.Plan plan = RecipeTransferPlanner.plan(recipe,
                 List.of(
                         new RecipeTransferPlanner.Resource(
@@ -41,14 +41,14 @@ class RecipeTransferPlannerTest {
                 1);
 
         assertNotNull(plan);
-        assertTrue(plan.grid().get(0).isOf(Items.DRAGON_HEAD));
+        assertTrue(plan.grid().get(0).is(Items.DRAGON_HEAD));
     }
 
     @Test
     void backtracksAcrossOverlappingIngredientAlternatives() {
         ShapedRecipe recipe = shaped(2, 1,
-                Ingredient.ofItems(Items.STONE, Items.DIRT),
-                Ingredient.ofItems(Items.DIRT));
+                Ingredient.of(Items.STONE, Items.DIRT),
+                Ingredient.of(Items.DIRT));
         RecipeTransferPlanner.Plan plan = RecipeTransferPlanner.plan(recipe,
                 List.of(
                         new RecipeTransferPlanner.Resource(new ItemStack(Items.STONE), 1),
@@ -56,16 +56,16 @@ class RecipeTransferPlannerTest {
                 1);
 
         assertNotNull(plan);
-        assertTrue(plan.grid().get(0).isOf(Items.STONE));
-        assertTrue(plan.grid().get(1).isOf(Items.DIRT));
+        assertTrue(plan.grid().get(0).is(Items.STONE));
+        assertTrue(plan.grid().get(1).is(Items.DIRT));
     }
 
     @Test
     void maxTransferRespectsRepeatedIngredientsAndSlotLimits() {
         ShapedRecipe recipe = shaped(3, 1,
-                Ingredient.ofItems(Items.STONE),
-                Ingredient.ofItems(Items.STONE),
-                Ingredient.ofItems(Items.STONE));
+                Ingredient.of(Items.STONE),
+                Ingredient.of(Items.STONE),
+                Ingredient.of(Items.STONE));
         RecipeTransferPlanner.Plan plan = RecipeTransferPlanner.plan(recipe,
                 List.of(new RecipeTransferPlanner.Resource(
                         new ItemStack(Items.STONE), 100)),
@@ -80,9 +80,9 @@ class RecipeTransferPlannerTest {
     @Test
     void availabilityIdentifiesTheExactMissingIngredient() {
         ShapedRecipe recipe = shaped(3, 1,
-                Ingredient.ofItems(Items.DIAMOND_BLOCK),
-                Ingredient.ofItems(Items.ENDER_PEARL),
-                Ingredient.ofItems(Items.DIAMOND_BLOCK));
+                Ingredient.of(Items.DIAMOND_BLOCK),
+                Ingredient.of(Items.ENDER_PEARL),
+                Ingredient.of(Items.DIAMOND_BLOCK));
         RecipeTransferPlanner.Availability availability =
                 RecipeTransferPlanner.availability(recipe,
                         List.of(resource(Items.DIAMOND_BLOCK, 2)));
@@ -96,8 +96,8 @@ class RecipeTransferPlannerTest {
     @Test
     void availabilityBacktracksBeforeMarkingAlternativeIngredientsMissing() {
         ShapedRecipe recipe = shaped(2, 1,
-                Ingredient.ofItems(Items.STONE, Items.DIRT),
-                Ingredient.ofItems(Items.DIRT));
+                Ingredient.of(Items.STONE, Items.DIRT),
+                Ingredient.of(Items.DIRT));
         RecipeTransferPlanner.Availability availability =
                 RecipeTransferPlanner.availability(recipe,
                         List.of(resource(Items.STONE, 1), resource(Items.DIRT, 1)));
@@ -110,9 +110,9 @@ class RecipeTransferPlannerTest {
     @Test
     void capacitatedMatchingPreservesTheOnlyNarrowIngredient() {
         ShapedRecipe recipe = shaped(3, 1,
-                Ingredient.ofItems(Items.STONE, Items.DIRT),
-                Ingredient.ofItems(Items.STONE, Items.DIRT),
-                Ingredient.ofItems(Items.DIRT));
+                Ingredient.of(Items.STONE, Items.DIRT),
+                Ingredient.of(Items.STONE, Items.DIRT),
+                Ingredient.of(Items.DIRT));
         List<RecipeTransferPlanner.Resource> resources = List.of(
                 resource(Items.STONE, 2), resource(Items.DIRT, 1));
 
@@ -122,14 +122,14 @@ class RecipeTransferPlannerTest {
 
         assertNotNull(plan);
         assertTrue(availability.canCraft());
-        assertTrue(plan.grid().get(2).isOf(Items.DIRT));
+        assertTrue(plan.grid().get(2).is(Items.DIRT));
     }
 
     @Test
     void availabilityAccountsForRepeatedIngredientCounts() {
         ShapedRecipe recipe = shaped(2, 1,
-                Ingredient.ofItems(Items.STONE),
-                Ingredient.ofItems(Items.STONE));
+                Ingredient.of(Items.STONE),
+                Ingredient.of(Items.STONE));
         RecipeTransferPlanner.Availability availability =
                 RecipeTransferPlanner.availability(recipe,
                         List.of(resource(Items.STONE, 1)));
@@ -140,8 +140,8 @@ class RecipeTransferPlannerTest {
 
     @Test
     void parsesAndFillsTheRealStorageTerminalRecipe() {
-        ShapedRecipe recipe = RecipeSerializer.SHAPED.read(
-                new Identifier("tristorage", "storage_terminal"),
+        ShapedRecipe recipe = RecipeSerializer.SHAPED_RECIPE.fromJson(
+                new ResourceLocation("tristorage", "storage_terminal"),
                 JsonParser.parseString("""
                         {"type":"minecraft:crafting_shaped",
                          "pattern":["GIG","RHR","ICI"],
@@ -168,8 +168,8 @@ class RecipeTransferPlannerTest {
 
     @Test
     void realStorageTerminalAvailabilityAcceptsExactMinimumCounts() {
-        ShapedRecipe recipe = RecipeSerializer.SHAPED.read(
-                new Identifier("tristorage", "storage_terminal_minimum"),
+        ShapedRecipe recipe = RecipeSerializer.SHAPED_RECIPE.fromJson(
+                new ResourceLocation("tristorage", "storage_terminal_minimum"),
                 JsonParser.parseString("""
                         {"type":"minecraft:crafting_shaped",
                          "pattern":["GIG","RHR","ICI"],
@@ -198,8 +198,8 @@ class RecipeTransferPlannerTest {
 
     @Test
     void realStorageTerminalAvailabilityMarksOnlyTheMissingSlot() {
-        ShapedRecipe recipe = RecipeSerializer.SHAPED.read(
-                new Identifier("tristorage", "storage_terminal_missing"),
+        ShapedRecipe recipe = RecipeSerializer.SHAPED_RECIPE.fromJson(
+                new ResourceLocation("tristorage", "storage_terminal_missing"),
                 JsonParser.parseString("""
                         {"type":"minecraft:crafting_shaped",
                          "pattern":["GIG","RHR","ICI"],
@@ -224,18 +224,18 @@ class RecipeTransferPlannerTest {
 
     private static ShapedRecipe shaped(int width, int height,
                                        Ingredient... ingredients) {
-        DefaultedList<Ingredient> pattern = DefaultedList.ofSize(
+        NonNullList<Ingredient> pattern = NonNullList.withSize(
                 width * height, Ingredient.EMPTY);
         for (int index = 0; index < ingredients.length; index++) {
             pattern.set(index, ingredients[index]);
         }
-        return new ShapedRecipe(new Identifier("tristorage", "planner_test"), "",
-                CraftingRecipeCategory.MISC, width, height, pattern,
+        return new ShapedRecipe(new ResourceLocation("tristorage", "planner_test"), "",
+                CraftingBookCategory.MISC, width, height, pattern,
                 new ItemStack(Items.STICK), true);
     }
 
     private static RecipeTransferPlanner.Resource resource(
-            net.minecraft.item.Item item, long count) {
+            net.minecraft.world.item.Item item, long count) {
         return new RecipeTransferPlanner.Resource(new ItemStack(item), count);
     }
 }

@@ -4,60 +4,60 @@ import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.block.AntennaMount;
 import com.andresblue.tristorage.block.LinkerBlock;
 import com.andresblue.tristorage.screen.LinkerScreenHandler;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.Inventories;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.text.Text;
-import net.minecraft.util.collection.DefaultedList;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.Container;
+import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
 public final class LinkerBlockEntity extends BlockEntity
-        implements Inventory, NamedScreenHandlerFactory {
-    private final DefaultedList<ItemStack> stacks = DefaultedList.ofSize(1, ItemStack.EMPTY);
+        implements Container, MenuProvider {
+    private final NonNullList<ItemStack> stacks = NonNullList.withSize(1, ItemStack.EMPTY);
 
     public LinkerBlockEntity(BlockPos pos, BlockState state) {
         super(TriStorageMod.LINKER_BLOCK_ENTITY, pos, state);
     }
 
     public boolean hasAntenna() {
-        return stacks.get(0).isOf(TriStorageMod.DIMENSIONAL_ANTENNA);
+        return stacks.get(0).is(TriStorageMod.DIMENSIONAL_ANTENNA);
     }
 
     public boolean isAntennaActive() {
-        return hasAntenna() && getCachedState().get(LinkerBlock.ANTENNA) != AntennaMount.NONE;
+        return hasAntenna() && getBlockState().getValue(LinkerBlock.ANTENNA) != AntennaMount.NONE;
     }
 
     public AntennaMount antennaMount() {
-        return getCachedState().get(LinkerBlock.ANTENNA);
+        return getBlockState().getValue(LinkerBlock.ANTENNA);
     }
 
     public boolean canInstallAntenna() {
-        return world != null && LinkerBlock.findAntennaMount(world, pos) != AntennaMount.NONE;
+        return level != null && LinkerBlock.findAntennaMount(level, worldPosition) != AntennaMount.NONE;
     }
 
     public void refreshAntennaMount() {
-        if (world == null || world.isClient || !(getCachedState().getBlock() instanceof LinkerBlock)) {
+        if (level == null || level.isClientSide || !(getBlockState().getBlock() instanceof LinkerBlock)) {
             return;
         }
         AntennaMount wanted = hasAntenna()
-                ? LinkerBlock.findAntennaMount(world, pos)
+                ? LinkerBlock.findAntennaMount(level, worldPosition)
                 : AntennaMount.NONE;
         if (antennaMount() != wanted) {
-            world.setBlockState(pos, getCachedState().with(LinkerBlock.ANTENNA, wanted),
-                    LinkerBlock.NOTIFY_LISTENERS);
+            level.setBlock(worldPosition, getBlockState().setValue(LinkerBlock.ANTENNA, wanted),
+                    LinkerBlock.UPDATE_CLIENTS);
         }
     }
 
     @Override
-    public int size() {
+    public int getContainerSize() {
         return 1;
     }
 
@@ -67,13 +67,13 @@ public final class LinkerBlockEntity extends BlockEntity
     }
 
     @Override
-    public ItemStack getStack(int slot) {
+    public ItemStack getItem(int slot) {
         return slot == 0 ? stacks.get(0) : ItemStack.EMPTY;
     }
 
     @Override
-    public ItemStack removeStack(int slot, int amount) {
-        ItemStack removed = Inventories.splitStack(stacks, slot, amount);
+    public ItemStack removeItem(int slot, int amount) {
+        ItemStack removed = ContainerHelper.removeItem(stacks, slot, amount);
         if (!removed.isEmpty()) {
             inventoryChanged();
         }
@@ -81,8 +81,8 @@ public final class LinkerBlockEntity extends BlockEntity
     }
 
     @Override
-    public ItemStack removeStack(int slot) {
-        ItemStack removed = Inventories.removeStack(stacks, slot);
+    public ItemStack removeItemNoUpdate(int slot) {
+        ItemStack removed = ContainerHelper.takeItem(stacks, slot);
         if (!removed.isEmpty()) {
             inventoryChanged();
         }
@@ -90,11 +90,11 @@ public final class LinkerBlockEntity extends BlockEntity
     }
 
     @Override
-    public void setStack(int slot, ItemStack stack) {
+    public void setItem(int slot, ItemStack stack) {
         if (slot != 0) {
             return;
         }
-        ItemStack safe = stack.isOf(TriStorageMod.DIMENSIONAL_ANTENNA)
+        ItemStack safe = stack.is(TriStorageMod.DIMENSIONAL_ANTENNA)
                 ? stack.copy() : ItemStack.EMPTY;
         safe.setCount(Math.min(1, safe.getCount()));
         stacks.set(0, safe);
@@ -102,51 +102,51 @@ public final class LinkerBlockEntity extends BlockEntity
     }
 
     @Override
-    public boolean canPlayerUse(PlayerEntity player) {
-        return world != null && world.getBlockEntity(pos) == this
-                && player.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5,
-                pos.getZ() + 0.5) <= 64.0;
+    public boolean stillValid(Player player) {
+        return level != null && level.getBlockEntity(worldPosition) == this
+                && player.distanceToSqr(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
+                worldPosition.getZ() + 0.5) <= 64.0;
     }
 
     @Override
-    public boolean isValid(int slot, ItemStack stack) {
-        return slot == 0 && stack.isOf(TriStorageMod.DIMENSIONAL_ANTENNA)
+    public boolean canPlaceItem(int slot, ItemStack stack) {
+        return slot == 0 && stack.is(TriStorageMod.DIMENSIONAL_ANTENNA)
                 && !hasAntenna() && canInstallAntenna();
     }
 
     @Override
-    public void clear() {
+    public void clearContent() {
         stacks.clear();
         inventoryChanged();
     }
 
     private void inventoryChanged() {
-        markDirty();
+        setChanged();
         refreshAntennaMount();
     }
 
     @Override
-    protected void writeNbt(NbtCompound nbt) {
-        super.writeNbt(nbt);
-        Inventories.writeNbt(nbt, stacks);
+    protected void saveAdditional(CompoundTag nbt) {
+        super.saveAdditional(nbt);
+        ContainerHelper.saveAllItems(nbt, stacks);
     }
 
     @Override
-    public void readNbt(NbtCompound nbt) {
-        super.readNbt(nbt);
+    public void load(CompoundTag nbt) {
+        super.load(nbt);
         stacks.clear();
-        Inventories.readNbt(nbt, stacks);
+        ContainerHelper.loadAllItems(nbt, stacks);
     }
 
     @Override
-    public Text getDisplayName() {
-        return Text.translatable("screen.tristorage.linker");
+    public Component getDisplayName() {
+        return Component.translatable("screen.tristorage.linker");
     }
 
     @Nullable
     @Override
-    public ScreenHandler createMenu(int syncId, PlayerInventory playerInventory,
-                                    PlayerEntity player) {
+    public AbstractContainerMenu createMenu(int syncId, Inventory playerInventory,
+                                    Player player) {
         return new LinkerScreenHandler(syncId, playerInventory, this);
     }
 }

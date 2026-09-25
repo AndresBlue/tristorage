@@ -6,8 +6,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-
+import net.minecraft.server.level.ServerPlayer;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,13 +37,13 @@ public final class StorageRepositories {
             // the first tablet click. In large packs updateDisplayContext can
             // take hundreds of milliseconds, but its result is stable until a
             // data-pack reload.
-            TerminalFilter.prepareCreativeGroups(server.getOverworld());
+            TerminalFilter.prepareCreativeGroups(server.overworld());
         });
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(
                 (server, resourceManager, success) -> {
                     if (success) {
                         TerminalFilter.invalidateCreativeGroups();
-                        TerminalFilter.prepareCreativeGroups(server.getOverworld());
+                        TerminalFilter.prepareCreativeGroups(server.overworld());
                     }
                 });
         ServerTickEvents.END_SERVER_TICK.register(server -> get(server).tick());
@@ -65,13 +64,13 @@ public final class StorageRepositories {
      * mutated an already closed repository and the change was never saved.
      */
     private static void closeOpenStorageScreens(MinecraftServer server) {
-        if (server.getPlayerManager() == null) {
+        if (server.getPlayerList() == null) {
             return;
         }
-        for (ServerPlayerEntity player : List.copyOf(server.getPlayerManager().getPlayerList())) {
-            if (player.currentScreenHandler instanceof TerminalScreenHandler
-                    || player.currentScreenHandler instanceof CoreScreenHandler) {
-                player.closeHandledScreen();
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            if (player.containerMenu instanceof TerminalScreenHandler
+                    || player.containerMenu instanceof CoreScreenHandler) {
+                player.closeContainer();
             }
         }
     }

@@ -1,14 +1,13 @@
 package com.andresblue.tristorage.storage;
 
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemGroups;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
 import net.fabricmc.loader.api.FabricLoader;
-
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -44,7 +43,7 @@ public final class TerminalFilter {
     }
 
     public static String searchText(ItemStack stack) {
-        Identifier id = Registries.ITEM.getId(stack.getItem());
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         String modName = FabricLoader.getInstance().getModContainer(id.getNamespace())
                 .map(container -> container.getMetadata().getName())
                 .orElse(id.getNamespace());
@@ -53,17 +52,17 @@ public final class TerminalFilter {
                 id.getNamespace(),
                 modName,
                 id.getPath().replace('_', ' '),
-                stack.getTranslationKey(),
-                stack.getName().getString()
+                stack.getDescriptionId(),
+                stack.getHoverName().getString()
         ));
     }
 
     public static String modCategory(ItemStack stack) {
-        return Registries.ITEM.getId(stack.getItem()).getNamespace();
+        return BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
     }
 
-    public static void prepareCreativeGroups(ServerPlayerEntity player) {
-        prepareCreativeGroups(player.getServerWorld());
+    public static void prepareCreativeGroups(ServerPlayer player) {
+        prepareCreativeGroups(player.serverLevel());
     }
 
     /**
@@ -72,9 +71,9 @@ public final class TerminalFilter {
      * context for a normal play session, so repeating it for the remote request,
      * screen handler and every reopen only creates visible stalls.
      */
-    public static void prepareCreativeGroups(net.minecraft.server.world.ServerWorld world) {
-        Object registryManager = world.getRegistryManager();
-        Object enabledFeatures = world.getEnabledFeatures();
+    public static void prepareCreativeGroups(net.minecraft.server.level.ServerLevel world) {
+        Object registryManager = world.registryAccess();
+        Object enabledFeatures = world.enabledFeatures();
         if (creativeContextPrepared
                 && preparedRegistryManager == registryManager
                 && Objects.equals(preparedEnabledFeatures, enabledFeatures)) {
@@ -82,8 +81,8 @@ public final class TerminalFilter {
             return;
         }
         long started = StorageMetrics.startTimer();
-        boolean contextChanged = ItemGroups.updateDisplayContext(
-                world.getEnabledFeatures(), true, world.getRegistryManager());
+        boolean contextChanged = CreativeModeTabs.tryRebuildTabContents(
+                world.enabledFeatures(), true, world.registryAccess());
         if (contextChanged || creativeCategoriesByItem.isEmpty()) {
             rebuildCreativeCategoryIndex();
         }
@@ -111,17 +110,17 @@ public final class TerminalFilter {
     private static void rebuildCreativeCategoryIndex() {
         Map<Item, LinkedHashSet<String>> mutableIndex = new IdentityHashMap<>();
         List<String> ordered = new ArrayList<>();
-        for (ItemGroup group : ItemGroups.getGroupsToDisplay()) {
-            if (group.getType() != ItemGroup.Type.CATEGORY || !group.hasStacks()) {
+        for (CreativeModeTab group : CreativeModeTabs.tabs()) {
+            if (group.getType() != CreativeModeTab.Type.CATEGORY || !group.hasAnyItems()) {
                 continue;
             }
-            Identifier id = Registries.ITEM_GROUP.getId(group);
+            ResourceLocation id = BuiltInRegistries.CREATIVE_MODE_TAB.getKey(group);
             if (id == null) {
                 continue;
             }
             String category = id.toString();
             ordered.add(category);
-            for (ItemStack displayed : group.getDisplayStacks()) {
+            for (ItemStack displayed : group.getDisplayItems()) {
                 mutableIndex.computeIfAbsent(displayed.getItem(), ignored -> new LinkedHashSet<>())
                         .add(category);
             }

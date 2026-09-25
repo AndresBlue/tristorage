@@ -1,10 +1,10 @@
 package mezz.jei.api;
 
 import mezz.jei.api.registration.IRecipeTransferRegistration;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public interface IModPlugin {
-    Identifier getPluginUid();
+    ResourceLocation getPluginUid();
 
     default void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
     }

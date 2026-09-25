@@ -15,12 +15,11 @@ import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.recipe.CraftingRecipe;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.util.Identifier;
-import net.minecraft.text.Text;
-
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -28,10 +27,10 @@ import java.util.Optional;
 /** Optional JEI bridge; JEI remains neither bundled nor required. */
 @JeiPlugin
 public final class TriStorageJeiPlugin implements IModPlugin {
-    private static final Identifier UID = TriStorageMod.id("jei_plugin");
+    private static final ResourceLocation UID = TriStorageMod.id("jei_plugin");
 
     @Override
-    public Identifier getPluginUid() {
+    public ResourceLocation getPluginUid() {
         return UID;
     }
 
@@ -55,7 +54,7 @@ public final class TriStorageJeiPlugin implements IModPlugin {
         }
 
         @Override
-        public Optional<ScreenHandlerType<CraftingTerminalScreenHandler>> getMenuType() {
+        public Optional<MenuType<CraftingTerminalScreenHandler>> getMenuType() {
             return Optional.of(TriStorageMod.CRAFTING_TERMINAL_SCREEN_HANDLER);
         }
 
@@ -67,16 +66,16 @@ public final class TriStorageJeiPlugin implements IModPlugin {
         @Override
         public IRecipeTransferError transferRecipe(
                 CraftingTerminalScreenHandler container, CraftingRecipe recipe,
-                IRecipeSlotsView recipeSlots, PlayerEntity player,
+                IRecipeSlotsView recipeSlots, Player player,
                 boolean maxTransfer, boolean doTransfer) {
-            if (!recipe.fits(3, 3) || recipe.getIngredients().stream()
+            if (!recipe.canCraftInDimensions(3, 3) || recipe.getIngredients().stream()
                     .allMatch(ingredient -> ingredient.isEmpty())) {
                 return null;
             }
             TerminalClientNetworking.RecipeAvailability availability =
                     TerminalClientNetworking.recipeAvailability(container, recipe.getId());
             if (availability == null) {
-                return transferHelper.createUserErrorWithTooltip(Text.translatable(
+                return transferHelper.createUserErrorWithTooltip(Component.translatable(
                         "message.tristorage.recipe_availability_checking"));
             }
             if (!availability.canCraft()) {
@@ -95,14 +94,14 @@ public final class TriStorageJeiPlugin implements IModPlugin {
                     }
                     visibleIndex++;
                 }
-                Text message = Text.translatable(
+                Component message = Component.translatable(
                         "message.tristorage.recipe_transfer_missing");
                 return missing.isEmpty()
                         ? transferHelper.createUserErrorWithTooltip(message)
                         : transferHelper.createUserErrorForMissingSlots(message, missing);
             }
             if (doTransfer) {
-                TerminalClientNetworking.sendRecipeFill(container.syncId,
+                TerminalClientNetworking.sendRecipeFill(container.containerId,
                         recipe.getId(), maxTransfer
                                 ? RecipeTransferPlanner.MAX_TRANSFER : 1);
             }

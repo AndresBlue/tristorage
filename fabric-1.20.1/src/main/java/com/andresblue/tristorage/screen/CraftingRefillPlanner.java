@@ -1,6 +1,6 @@
 package com.andresblue.tristorage.screen;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Small, side-effect-free rules used by the crafting terminal's automatic
@@ -17,6 +17,6 @@ final class CraftingRefillPlanner {
     }
 
     static int quickMoveOutputLimit(ItemStack result) {
-        return result == null || result.isEmpty() ? 0 : result.getMaxCount();
+        return result == null || result.isEmpty() ? 0 : result.getMaxStackSize();
     }
 }

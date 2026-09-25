@@ -3,21 +3,21 @@ package com.andresblue.tristorage.client;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import com.andresblue.tristorage.storage.TerminalFilter;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -26,9 +26,9 @@ import java.util.List;
 import java.util.Map;
 
 abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
-        extends HandledScreen<H> implements TerminalScreenMarker {
-    protected static final Identifier VANILLA_CHEST_TEXTURE =
-            new Identifier("minecraft", "textures/gui/container/generic_54.png");
+        extends AbstractContainerScreen<H> implements TerminalScreenMarker {
+    protected static final ResourceLocation VANILLA_CHEST_TEXTURE =
+            new ResourceLocation("minecraft", "textures/gui/container/generic_54.png");
     private static final float STORED_COUNT_Z = 325.0f;
     private static final float MAX_COUNT_WIDTH = 16.0f;
     private static final int CATEGORY_TAB_COUNT = 7;
@@ -36,17 +36,17 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
 
     private final TerminalClientConfig config = TerminalClientConfig.get();
     private final List<CategoryTabButton> categoryButtons = new ArrayList<>();
-    private final List<ButtonWidget> configButtons = new ArrayList<>();
+    private final List<Button> configButtons = new ArrayList<>();
     private final Map<String, ItemStack> categoryIconCache = new HashMap<>();
     private final Map<String, ItemStack> modIconCache = new HashMap<>();
-    private ButtonWidget previousCategoryButton;
-    private ButtonWidget nextCategoryButton;
-    private ButtonWidget previousButton;
-    private ButtonWidget nextButton;
-    private ButtonWidget depositButton;
-    private ButtonWidget sortButton;
-    private ButtonWidget settingsButton;
-    private TextFieldWidget searchField;
+    private Button previousCategoryButton;
+    private Button nextCategoryButton;
+    private Button previousButton;
+    private Button nextButton;
+    private Button depositButton;
+    private Button sortButton;
+    private Button settingsButton;
+    private EditBox searchField;
     private String searchQuery = "";
     private String selectedCategory = TerminalFilter.ALL;
     private String lastSentFilter = "";
@@ -59,15 +59,15 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     private TerminalFilter.CategoryMode categoryIconMode = TerminalFilter.CategoryMode.NONE;
     private boolean settingsOpen;
 
-    protected AbstractTerminalScreen(H handler, PlayerInventory inventory, Text title,
+    protected AbstractTerminalScreen(H handler, Inventory inventory, Component title,
                                      int backgroundWidth) {
         super(handler, inventory, title);
-        this.backgroundWidth = backgroundWidth;
-        backgroundHeight = 222;
-        titleX = 8;
-        titleY = 6;
-        playerInventoryTitleX = 8;
-        playerInventoryTitleY = 129;
+        this.imageWidth = backgroundWidth;
+        imageHeight = 222;
+        titleLabelX = 8;
+        titleLabelY = 6;
+        inventoryLabelX = 8;
+        inventoryLabelY = 129;
     }
 
     protected abstract Layout layout();
@@ -77,61 +77,61 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         super.init();
         TerminalClientNetworking.registerTerminalScreen(this);
         Layout layout = layout();
-        previousButton = addDrawableChild(ButtonWidget.builder(Text.literal("<"),
+        previousButton = addRenderableWidget(Button.builder(Component.literal("<"),
                         button -> clickPageButton(0))
-                .dimensions(x + layout.previousX(), y + layout.navigationY(), 18, 16)
+                .bounds(leftPos + layout.previousX(), topPos + layout.navigationY(), 18, 16)
                 .build());
-        nextButton = addDrawableChild(ButtonWidget.builder(Text.literal(">"),
+        nextButton = addRenderableWidget(Button.builder(Component.literal(">"),
                         button -> clickPageButton(1))
-                .dimensions(x + layout.nextX(), y + layout.navigationY(), 18, 16)
+                .bounds(leftPos + layout.nextX(), topPos + layout.navigationY(), 18, 16)
                 .build());
-        depositButton = addDrawableChild(ButtonWidget.builder(
-                        Text.translatable("button.tristorage.deposit_inventory"),
+        depositButton = addRenderableWidget(Button.builder(
+                        Component.translatable("button.tristorage.deposit_inventory"),
                         button -> clickPageButton(2))
-                .dimensions(x + layout.actionX(), y + layout.depositY(),
+                .bounds(leftPos + layout.actionX(), topPos + layout.depositY(),
                         layout.actionWidth(), 16)
                 .build());
-        sortButton = addDrawableChild(ButtonWidget.builder(sortButtonText(),
+        sortButton = addRenderableWidget(Button.builder(sortButtonText(),
                         button -> clickPageButton(3))
-                .dimensions(x + layout.actionX(), y + layout.sortY(),
+                .bounds(leftPos + layout.actionX(), topPos + layout.sortY(),
                         layout.actionWidth(), 16)
                 .build());
-        settingsButton = addDrawableChild(ButtonWidget.builder(Text.literal("⚙"),
+        settingsButton = addRenderableWidget(Button.builder(Component.literal("⚙"),
                         button -> toggleSettings())
-                .dimensions(x + layout.settingsX(), y + layout.settingsY(), 16, 16)
+                .bounds(leftPos + layout.settingsX(), topPos + layout.settingsY(), 16, 16)
                 .build());
-        previousCategoryButton = addDrawableChild(ButtonWidget.builder(Text.literal("<"),
+        previousCategoryButton = addRenderableWidget(Button.builder(Component.literal("<"),
                         button -> cycleCategory(-1))
-                .dimensions(x - 18, y - 19, 16, 16)
-                .tooltip(Tooltip.of(Text.translatable(
+                .bounds(leftPos - 18, topPos - 19, 16, 16)
+                .tooltip(Tooltip.create(Component.translatable(
                         "button.tristorage.previous_category")))
                 .build());
-        nextCategoryButton = addDrawableChild(ButtonWidget.builder(Text.literal(">"),
+        nextCategoryButton = addRenderableWidget(Button.builder(Component.literal(">"),
                         button -> cycleCategory(1))
-                .dimensions(x + 177, y - 19, 16, 16)
-                .tooltip(Tooltip.of(Text.translatable(
+                .bounds(leftPos + 177, topPos - 19, 16, 16)
+                .tooltip(Tooltip.create(Component.translatable(
                         "button.tristorage.next_category")))
                 .build());
 
-        searchField = new TextFieldWidget(textRenderer,
-                x + layout.searchX(), y + layout.searchY(),
-                layout.searchWidth(), 14, Text.translatable("screen.tristorage.search"));
+        searchField = new EditBox(font,
+                leftPos + layout.searchX(), topPos + layout.searchY(),
+                layout.searchWidth(), 14, Component.translatable("screen.tristorage.search"));
         searchField.setMaxLength(TerminalFilter.MAX_QUERY_LENGTH);
-        searchField.setText(searchQuery);
-        searchField.setSuggestion(Text.translatable("screen.tristorage.search_hint").getString());
-        searchField.setChangedListener(value -> {
+        searchField.setValue(searchQuery);
+        searchField.setSuggestion(Component.translatable("screen.tristorage.search_hint").getString());
+        searchField.setResponder(value -> {
             searchQuery = value;
             searchField.setSuggestion(value.isEmpty()
-                    ? Text.translatable("screen.tristorage.search_hint").getString()
+                    ? Component.translatable("screen.tristorage.search_hint").getString()
                     : "");
             searchDebounce = SEARCH_DEBOUNCE_TICKS;
         });
-        addDrawableChild(searchField);
+        addRenderableWidget(searchField);
 
         for (int tab = 0; tab < CATEGORY_TAB_COUNT; tab++) {
             final int buttonIndex = tab;
-            CategoryTabButton button = addDrawableChild(new CategoryTabButton(
-                    x + 5 + tab * 24, y - 22,
+            CategoryTabButton button = addRenderableWidget(new CategoryTabButton(
+                    leftPos + 5 + tab * 24, topPos - 22,
                     ignored -> selectVisibleCategory(buttonIndex)));
             categoryButtons.add(button);
         }
@@ -142,40 +142,40 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     }
 
     private void createConfigButtons() {
-        int left = x + 11;
-        int top = y + 34;
-        configButtons.add(ButtonWidget.builder(Text.empty(), button -> {
+        int left = leftPos + 11;
+        int top = topPos + 34;
+        configButtons.add(Button.builder(Component.empty(), button -> {
             config.toggleSearch();
             applyConfigChange();
-        }).dimensions(left, top, 154, 16).build());
-        configButtons.add(ButtonWidget.builder(Text.empty(), button -> {
+        }).bounds(left, top, 154, 16).build());
+        configButtons.add(Button.builder(Component.empty(), button -> {
             config.toggleCategories();
             applyConfigChange();
-        }).dimensions(left, top + 20, 154, 16).build());
-        configButtons.add(ButtonWidget.builder(Text.empty(), button -> {
+        }).bounds(left, top + 20, 154, 16).build());
+        configButtons.add(Button.builder(Component.empty(), button -> {
             config.cycleCategoryMode();
             selectedCategory = TerminalFilter.ALL;
             applyConfigChange();
-        }).dimensions(left, top + 40, 154, 16).build());
-        configButtons.add(ButtonWidget.builder(Text.empty(), button -> {
+        }).bounds(left, top + 40, 154, 16).build());
+        configButtons.add(Button.builder(Component.empty(), button -> {
             config.toggleWheelPaging();
             applyConfigChange();
-        }).dimensions(left, top + 60, 154, 16).build());
-        configButtons.add(ButtonWidget.builder(Text.empty(), button -> {
+        }).bounds(left, top + 60, 154, 16).build());
+        configButtons.add(Button.builder(Component.empty(), button -> {
             config.cycleThreshold();
             selectedCategory = TerminalFilter.ALL;
             applyConfigChange();
-        }).dimensions(left, top + 80, 154, 16).build());
+        }).bounds(left, top + 80, 154, 16).build());
         updateConfigButtonText();
     }
 
     @Override
-    public void handledScreenTick() {
-        super.handledScreenTick();
+    public void containerTick() {
+        super.containerTick();
         searchField.tick();
-        previousButton.active = pendingFilterSequence < 0 && handler.page() > 0;
+        previousButton.active = pendingFilterSequence < 0 && menu.page() > 0;
         nextButton.active = pendingFilterSequence < 0
-                && handler.page() + 1 < handler.pageCount();
+                && menu.page() + 1 < menu.pageCount();
         sortButton.setMessage(sortButtonText());
         if (searchDebounce > 0) {
             searchDebounce--;
@@ -220,20 +220,20 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         int sequence = ++nextFilterSequence;
         pendingFilterSequence = sequence;
         TerminalClientNetworking.sendFilter(
-                handler.syncId, sequence, query, mode, category);
+                menu.containerId, sequence, query, mode, category);
     }
 
     private TerminalFilter.CategoryMode effectiveCategoryMode() {
         return config.categoriesEnabled()
-                && handler.totalStoredTypes() >= config.categoryThreshold()
+                && menu.totalStoredTypes() >= config.categoryThreshold()
                 ? config.categoryMode()
                 : TerminalFilter.CategoryMode.NONE;
     }
 
     private void clickPageButton(int id) {
         if (pendingFilterSequence < 0
-                && client != null && client.interactionManager != null) {
-            client.interactionManager.clickButton(handler.syncId, id);
+                && minecraft != null && minecraft.gameMode != null) {
+            minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id);
         }
     }
 
@@ -298,9 +298,9 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
                 continue;
             }
             String category = categoryIds.get(categoryIndex);
-            Text title = categoryTitle(category);
-            button.setMessage(Text.empty());
-            button.setTooltip(Tooltip.of(title));
+            Component title = categoryTitle(category);
+            button.setMessage(Component.empty());
+            button.setTooltip(Tooltip.create(title));
             button.active = pendingFilterSequence < 0;
             if (iconModeChanged || !category.equals(button.categoryId())) {
                 button.setCategory(category, stableCategoryIcon(category),
@@ -326,50 +326,50 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         return snapshot;
     }
 
-    private Text categoryTitle(String category) {
+    private Component categoryTitle(String category) {
         if (TerminalFilter.ALL.equals(category)) {
-            return Text.translatable("category.tristorage.all");
+            return Component.translatable("category.tristorage.all");
         }
         if (TerminalFilter.UNCATEGORIZED.equals(category)) {
-            return Text.translatable("category.tristorage.uncategorized");
+            return Component.translatable("category.tristorage.uncategorized");
         }
         if (serverCategoryMode == TerminalFilter.CategoryMode.TYPE) {
-            ItemGroup group = creativeGroup(category);
-            return group == null ? Text.literal(category) : group.getDisplayName();
+            CreativeModeTab group = creativeGroup(category);
+            return group == null ? Component.literal(category) : group.getDisplayName();
         }
-        return Text.literal(FabricLoader.getInstance().getModContainer(category)
+        return Component.literal(FabricLoader.getInstance().getModContainer(category)
                 .map(container -> container.getMetadata().getName())
                 .orElse(category));
     }
 
     private ItemStack categoryIcon(String category) {
         if (TerminalFilter.ALL.equals(category)) {
-            return Items.CHEST.getDefaultStack();
+            return Items.CHEST.getDefaultInstance();
         }
         if (TerminalFilter.UNCATEGORIZED.equals(category)) {
-            return Items.BARRIER.getDefaultStack();
+            return Items.BARRIER.getDefaultInstance();
         }
         if (serverCategoryMode == TerminalFilter.CategoryMode.TYPE) {
-            ItemGroup group = creativeGroup(category);
+            CreativeModeTab group = creativeGroup(category);
             if (group != null) {
-                return group.getIcon();
+                return group.getIconItem();
             }
         }
         if (serverCategoryMode == TerminalFilter.CategoryMode.MOD) {
             buildModIconCache();
-            return modIconCache.getOrDefault(category, Items.BARRIER.getDefaultStack());
+            return modIconCache.getOrDefault(category, Items.BARRIER.getDefaultInstance());
         }
-        return Items.BARRIER.getDefaultStack();
+        return Items.BARRIER.getDefaultInstance();
     }
 
     private void buildModIconCache() {
         if (!modIconCache.isEmpty()) {
             return;
         }
-        for (ItemGroup group : Registries.ITEM_GROUP) {
-            Identifier id = Registries.ITEM_GROUP.getId(group);
-            if (id != null && group.getType() == ItemGroup.Type.CATEGORY) {
-                ItemStack icon = group.getIcon();
+        for (CreativeModeTab group : BuiltInRegistries.CREATIVE_MODE_TAB) {
+            ResourceLocation id = BuiltInRegistries.CREATIVE_MODE_TAB.getKey(group);
+            if (id != null && group.getType() == CreativeModeTab.Type.CATEGORY) {
+                ItemStack icon = group.getIconItem();
                 if (!icon.isEmpty()) {
                     modIconCache.putIfAbsent(id.getNamespace(), icon.copy());
                 }
@@ -377,18 +377,18 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         }
         // One registry pass for every visible mod tab, instead of one complete
         // pass per icon whenever the category window moves.
-        for (Item item : Registries.ITEM) {
+        for (Item item : BuiltInRegistries.ITEM) {
             if (item == Items.AIR) {
                 continue;
             }
-            Identifier id = Registries.ITEM.getId(item);
-            modIconCache.putIfAbsent(id.getNamespace(), item.getDefaultStack());
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+            modIconCache.putIfAbsent(id.getNamespace(), item.getDefaultInstance());
         }
     }
 
-    private ItemGroup creativeGroup(String category) {
-        Identifier id = Identifier.tryParse(category);
-        return id == null ? null : Registries.ITEM_GROUP.getOrEmpty(id).orElse(null);
+    private CreativeModeTab creativeGroup(String category) {
+        ResourceLocation id = ResourceLocation.tryParse(category);
+        return id == null ? null : BuiltInRegistries.CREATIVE_MODE_TAB.getOptional(id).orElse(null);
     }
 
     private boolean categoriesVisible() {
@@ -430,60 +430,60 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
                 "config.tristorage.search", config.searchEnabled()));
         configButtons.get(1).setMessage(toggleText(
                 "config.tristorage.categories", config.categoriesEnabled()));
-        configButtons.get(2).setMessage(Text.translatable(
+        configButtons.get(2).setMessage(Component.translatable(
                 "config.tristorage.category_mode",
-                Text.translatable(config.categoryMode() == TerminalFilter.CategoryMode.TYPE
+                Component.translatable(config.categoryMode() == TerminalFilter.CategoryMode.TYPE
                         ? "config.tristorage.mode_type" : "config.tristorage.mode_mod")));
         configButtons.get(3).setMessage(toggleText(
                 "config.tristorage.wheel", config.wheelPagingEnabled()));
-        Text threshold = config.categoryThreshold() == 0
-                ? Text.translatable("config.tristorage.always")
-                : Text.literal(Integer.toString(config.categoryThreshold()));
-        configButtons.get(4).setMessage(Text.translatable(
+        Component threshold = config.categoryThreshold() == 0
+                ? Component.translatable("config.tristorage.always")
+                : Component.literal(Integer.toString(config.categoryThreshold()));
+        configButtons.get(4).setMessage(Component.translatable(
                 "config.tristorage.threshold", threshold));
     }
 
-    private Text toggleText(String key, boolean enabled) {
-        return Text.translatable(key, Text.translatable(enabled
+    private Component toggleText(String key, boolean enabled) {
+        return Component.translatable(key, Component.translatable(enabled
                 ? "config.tristorage.on" : "config.tristorage.off"));
     }
 
     @Override
-    protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
+    protected void renderLabels(GuiGraphics context, int mouseX, int mouseY) {
         Layout layout = layout();
-        Text heading = categoriesVisible() ? categoryTitle(selectedCategory) : title;
-        context.drawText(textRenderer, heading, titleX, titleY, 0x404040, false);
+        Component heading = categoriesVisible() ? categoryTitle(selectedCategory) : title;
+        context.drawString(font, heading, titleLabelX, titleLabelY, 0x404040, false);
         if (categoriesVisible()) {
             String categoryPosition = (categoryIds.indexOf(selectedCategory) + 1)
                     + "/" + categoryIds.size();
-            context.drawText(textRenderer, categoryPosition,
-                    89 - textRenderer.getWidth(categoryPosition) / 2,
+            context.drawString(font, categoryPosition,
+                    89 - font.width(categoryPosition) / 2,
                     -35, 0xFFFFFF, false);
         }
-        context.drawText(textRenderer, playerInventoryTitle,
-                playerInventoryTitleX, playerInventoryTitleY, 0x404040, false);
-        String pageText = (handler.page() + 1) + " / " + handler.pageCount();
-        context.drawText(textRenderer, pageText,
-                layout.pageCenterX() - textRenderer.getWidth(pageText) / 2,
+        context.drawString(font, playerInventoryTitle,
+                inventoryLabelX, inventoryLabelY, 0x404040, false);
+        String pageText = (menu.page() + 1) + " / " + menu.pageCount();
+        context.drawString(font, pageText,
+                layout.pageCenterX() - font.width(pageText) / 2,
                 layout.pageY(), 0x404040, false);
-        context.drawText(textRenderer,
-                Text.translatable("screen.tristorage.types_short", handler.storedTypes()),
+        context.drawString(font,
+                Component.translatable("screen.tristorage.types_short", menu.storedTypes()),
                 layout.statsX(), layout.typesY(), 0x404040, false);
-        context.drawText(textRenderer,
-                Text.translatable("screen.tristorage.items_short", handler.totalItems()),
+        context.drawString(font,
+                Component.translatable("screen.tristorage.items_short", menu.totalItems()),
                 layout.statsX(), layout.itemsY(), 0x404040, false);
         drawAdditionalForeground(context, mouseX, mouseY);
         if (!settingsOpen) {
             drawStoredCounts(context);
         }
-        context.draw();
+        context.flush();
     }
 
-    protected void drawAdditionalForeground(DrawContext context, int mouseX, int mouseY) {
+    protected void drawAdditionalForeground(GuiGraphics context, int mouseX, int mouseY) {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
         if (settingsOpen) {
@@ -494,35 +494,35 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             // flush. Some pack items leave the supplied matrix unbalanced; a
             // shared DrawContext allowed one such icon to deform every tab that
             // followed it and produced an endless push/pop error stream.
-            context.draw();
+            context.flush();
             for (CategoryTabButton button : categoryButtons) {
                 if (button.visible) {
-                    DrawContext isolated = new DrawContext(
-                            client, context.getVertexConsumers());
+                    GuiGraphics isolated = new GuiGraphics(
+                            minecraft, context.bufferSource());
                     // Disposable guard frames absorb a small number of rogue
                     // pop() calls from third-party item renderers. They are not
                     // balanced intentionally: the isolated context is thrown
                     // away immediately after this icon.
-                    isolated.getMatrices().push();
-                    isolated.getMatrices().push();
+                    isolated.pose().pushPose();
+                    isolated.pose().pushPose();
                     button.renderIconOverlay(isolated);
-                    isolated.draw();
+                    isolated.flush();
                 }
             }
-            drawMouseoverTooltip(context, mouseX, mouseY);
+            renderTooltip(context, mouseX, mouseY);
         }
     }
 
-    private void drawSettingsOverlay(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.getMatrices().push();
-        context.getMatrices().translate(0, 0, 500);
-        drawVanillaPanel(context, x + 5, y + 16, x + 171, y + 217);
-        context.drawText(textRenderer, Text.translatable("screen.tristorage.settings"),
-                x + 11, y + 22, 0x404040, false);
-        for (ButtonWidget button : configButtons) {
+    private void drawSettingsOverlay(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        context.pose().pushPose();
+        context.pose().translate(0, 0, 500);
+        drawVanillaPanel(context, leftPos + 5, topPos + 16, leftPos + 171, topPos + 217);
+        context.drawString(font, Component.translatable("screen.tristorage.settings"),
+                leftPos + 11, topPos + 22, 0x404040, false);
+        for (Button button : configButtons) {
             button.render(context, mouseX, mouseY, delta);
         }
-        context.getMatrices().pop();
+        context.pose().popPose();
     }
 
     /**
@@ -530,14 +530,14 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
      * Calling {@code super} is intentional: resource packs and GUI theming
      * mods can skin the normal button before TriStorage adds the icon.
      */
-    private static final class CategoryTabButton extends ButtonWidget {
+    private static final class CategoryTabButton extends Button {
         private ItemStack icon = ItemStack.EMPTY;
         private String categoryId = "";
         private boolean selected;
 
-        private CategoryTabButton(int x, int y, PressAction action) {
-            super(x, y, 22, 23, Text.empty(), action,
-                    DEFAULT_NARRATION_SUPPLIER);
+        private CategoryTabButton(int x, int y, OnPress action) {
+            super(x, y, 22, 23, Component.empty(), action,
+                    DEFAULT_NARRATION);
         }
 
         private String categoryId() {
@@ -556,12 +556,12 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         }
 
         @Override
-        protected void renderButton(DrawContext context, int mouseX,
+        protected void renderWidget(GuiGraphics context, int mouseX,
                                     int mouseY, float delta) {
-            super.renderButton(context, mouseX, mouseY, delta);
+            super.renderWidget(context, mouseX, mouseY, delta);
         }
 
-        private void renderIconOverlay(DrawContext context) {
+        private void renderIconOverlay(GuiGraphics context) {
             if (icon.isEmpty()) {
                 return;
             }
@@ -569,7 +569,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
                 context.fill(getX() + 2, getY() + 20,
                         getX() + 20, getY() + 22, 0xFFFFFFFF);
             }
-            context.drawItem(icon, getX() + 3, getY() + 3);
+            context.renderItem(icon, getX() + 3, getY() + 3);
         }
     }
 
@@ -582,35 +582,35 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             if (settingsButton.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
-            for (ButtonWidget configButton : configButtons) {
+            for (Button configButton : configButtons) {
                 if (configButton.mouseClicked(mouseX, mouseY, button)) {
                     return true;
                 }
             }
-            if (mouseX >= x + 5 && mouseX < x + 171
-                    && mouseY >= y + 16 && mouseY < y + 217) {
+            if (mouseX >= leftPos + 5 && mouseX < leftPos + 171
+                    && mouseY >= topPos + 16 && mouseY < topPos + 217) {
                 return true;
             }
         }
         if (pendingFilterSequence >= 0
-                && mouseX >= x + 7 && mouseX < x + 171
-                && mouseY >= y + 17 && mouseY < y + 127) {
+                && mouseX >= leftPos + 7 && mouseX < leftPos + 171
+                && mouseY >= topPos + 17 && mouseY < topPos + 127) {
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
-    protected void onMouseClick(Slot slot, int slotId, int button,
-                                SlotActionType actionType) {
+    protected void slotClicked(Slot slot, int slotId, int button,
+                                ClickType actionType) {
         if (slotId >= 0 && slotId < TerminalScreenHandler.PAGE_SIZE) {
-            if (pendingFilterSequence < 0 && handler.hasAuthoritativePageState()) {
+            if (pendingFilterSequence < 0 && menu.hasAuthoritativePageState()) {
                 TerminalClientNetworking.sendVirtualAction(
-                        handler, slotId, button, actionType);
+                        menu, slotId, button, actionType);
             }
             return;
         }
-        super.onMouseClick(slot, slotId, button, actionType);
+        super.slotClicked(slot, slotId, button, actionType);
     }
 
     @Override
@@ -620,7 +620,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             return true;
         }
         if (searchField != null && searchField.isFocused()
-                && client != null && client.options.inventoryKey.matchesKey(keyCode, scanCode)) {
+                && minecraft != null && minecraft.options.keyInventory.matches(keyCode, scanCode)) {
             // Keep the inventory key available as text input while the search
             // field owns focus. Clicking outside the field releases this guard.
             return true;
@@ -636,53 +636,53 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         if (amount == 0) {
             return super.mouseScrolled(mouseX, mouseY, amount);
         }
-        if (categoriesVisible() && mouseY >= y - 23 && mouseY < y + 2
-                && mouseX >= x && mouseX < x + 176) {
+        if (categoriesVisible() && mouseY >= topPos - 23 && mouseY < topPos + 2
+                && mouseX >= leftPos && mouseX < leftPos + 176) {
             cycleCategory(amount > 0 ? -1 : 1);
             return true;
         }
         if (pendingFilterSequence < 0 && config.wheelPagingEnabled()
                 && !(searchField.visible && searchField.isMouseOver(mouseX, mouseY))
-                && mouseX >= x && mouseX < x + backgroundWidth
-                && mouseY >= y && mouseY < y + backgroundHeight) {
+                && mouseX >= leftPos && mouseX < leftPos + imageWidth
+                && mouseY >= topPos && mouseY < topPos + imageHeight) {
             clickPageButton(amount > 0 ? 0 : 1);
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, amount);
     }
 
-    private Text sortButtonText() {
-        return Text.translatable(switch (handler.sortMode()) {
+    private Component sortButtonText() {
+        return Component.translatable(switch (menu.sortMode()) {
             case 1 -> "button.tristorage.sort_count";
             case 2 -> "button.tristorage.sort_recent";
             default -> "button.tristorage.sort_registry";
         });
     }
 
-    private void drawStoredCounts(DrawContext context) {
+    private void drawStoredCounts(GuiGraphics context) {
         for (int index = 0; index < TerminalScreenHandler.PAGE_SIZE; index++) {
-            long count = handler.displayCount(index);
+            long count = menu.displayCount(index);
             if (count <= 1) {
                 continue;
             }
             String label = compact(count);
-            Slot slot = handler.slots.get(index);
-            int labelWidth = textRenderer.getWidth(label);
+            Slot slot = menu.slots.get(index);
+            int labelWidth = font.width(label);
             float baseScale = count > 99 ? 0.75f : 1.0f;
             float widthScale = MAX_COUNT_WIDTH / (labelWidth + 1.0f);
             float scale = Math.min(baseScale, widthScale);
             float rightEdge = slot.x + 17.0f;
-            float drawY = slot.y + 17.0f - textRenderer.fontHeight * scale;
+            float drawY = slot.y + 17.0f - font.lineHeight * scale;
 
-            context.getMatrices().push();
-            context.getMatrices().translate(rightEdge, drawY, STORED_COUNT_Z);
-            context.getMatrices().scale(scale, scale, 1.0f);
-            context.drawText(textRenderer, label, -labelWidth, 0, 0xFFFFFF, true);
-            context.getMatrices().pop();
+            context.pose().pushPose();
+            context.pose().translate(rightEdge, drawY, STORED_COUNT_Z);
+            context.pose().scale(scale, scale, 1.0f);
+            context.drawString(font, label, -labelWidth, 0, 0xFFFFFF, true);
+            context.pose().popPose();
         }
     }
 
-    protected static void drawVanillaPanel(DrawContext context,
+    protected static void drawVanillaPanel(GuiGraphics context,
                                            int left, int top, int right, int bottom) {
         context.fill(left, top, right, bottom, 0xFF373737);
         context.fill(left + 1, top + 1, right - 1, bottom - 1, 0xFFC6C6C6);
@@ -692,7 +692,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         context.fill(right - 2, top + 1, right - 1, bottom - 1, 0xFF555555);
     }
 
-    protected static void drawSlotFrame(DrawContext context, int left, int top) {
+    protected static void drawSlotFrame(GuiGraphics context, int left, int top) {
         context.fill(left, top, left + 18, top + 18, 0xFF8B8B8B);
         context.fill(left, top, left + 18, top + 1, 0xFF373737);
         context.fill(left, top, left + 1, top + 18, 0xFF373737);

@@ -2,42 +2,41 @@ package com.andresblue.tristorage.storage;
 
 import com.andresblue.tristorage.block.NetworkBlock;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
-
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Queue;
 import java.util.Set;
 import java.util.WeakHashMap;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import java.util.Map;
 
 public final class StorageNetwork {
     private static final int MAX_VISITED_BLOCKS = 64;
-    private static final Map<World, Long> TOPOLOGY_VERSIONS = new WeakHashMap<>();
+    private static final Map<Level, Long> TOPOLOGY_VERSIONS = new WeakHashMap<>();
 
     private StorageNetwork() {
     }
 
-    public static void markTopologyChanged(World world) {
-        if (!world.isClient) {
+    public static void markTopologyChanged(Level world) {
+        if (!world.isClientSide) {
             TOPOLOGY_VERSIONS.merge(world, 1L, Long::sum);
         }
     }
 
-    public static long topologyVersion(World world) {
+    public static long topologyVersion(Level world) {
         return TOPOLOGY_VERSIONS.getOrDefault(world, 0L);
     }
 
-    public static StorageCoreBlockEntity findCore(World world, BlockPos origin) {
+    public static StorageCoreBlockEntity findCore(Level world, BlockPos origin) {
         Queue<BlockPos> open = new ArrayDeque<>();
         Set<BlockPos> visited = new HashSet<>();
-        open.add(origin.toImmutable());
+        open.add(origin.immutable());
 
         while (!open.isEmpty() && visited.size() < MAX_VISITED_BLOCKS) {
             BlockPos current = open.remove();
@@ -52,10 +51,10 @@ public final class StorageNetwork {
                 continue;
             }
             for (Direction direction : Direction.values()) {
-                BlockPos neighbor = current.offset(direction);
+                BlockPos neighbor = current.relative(direction);
                 if (!visited.contains(neighbor)
                         && world.getBlockState(neighbor).getBlock() instanceof NetworkBlock) {
-                    open.add(neighbor.toImmutable());
+                    open.add(neighbor.immutable());
                 }
             }
         }
@@ -68,11 +67,11 @@ public final class StorageNetwork {
      * of {@link #findCore}; it cannot trigger a synchronous chunk load through
      * getBlockState/getBlockEntity while walking across a chunk boundary.
      */
-    public static LoadedSearch findCoreLoaded(ServerWorld world, BlockPos origin) {
+    public static LoadedSearch findCoreLoaded(ServerLevel world, BlockPos origin) {
         Queue<BlockPos> open = new ArrayDeque<>();
         Set<BlockPos> visited = new HashSet<>();
         Set<ChunkPos> missingChunks = new LinkedHashSet<>();
-        open.add(origin.toImmutable());
+        open.add(origin.immutable());
 
         while (!open.isEmpty() && visited.size() < MAX_VISITED_BLOCKS) {
             BlockPos current = open.remove();
@@ -80,7 +79,7 @@ public final class StorageNetwork {
                 continue;
             }
             ChunkPos currentChunk = new ChunkPos(current);
-            if (!world.getChunkManager().isChunkLoaded(currentChunk.x, currentChunk.z)) {
+            if (!world.getChunkSource().hasChunk(currentChunk.x, currentChunk.z)) {
                 missingChunks.add(currentChunk);
                 continue;
             }
@@ -93,15 +92,15 @@ public final class StorageNetwork {
                 continue;
             }
             for (Direction direction : Direction.values()) {
-                BlockPos neighbor = current.offset(direction);
+                BlockPos neighbor = current.relative(direction);
                 if (visited.contains(neighbor)) {
                     continue;
                 }
                 ChunkPos neighborChunk = new ChunkPos(neighbor);
-                if (!world.getChunkManager().isChunkLoaded(neighborChunk.x, neighborChunk.z)) {
+                if (!world.getChunkSource().hasChunk(neighborChunk.x, neighborChunk.z)) {
                     missingChunks.add(neighborChunk);
                 } else if (world.getBlockState(neighbor).getBlock() instanceof NetworkBlock) {
-                    open.add(neighbor.toImmutable());
+                    open.add(neighbor.immutable());
                 }
             }
         }

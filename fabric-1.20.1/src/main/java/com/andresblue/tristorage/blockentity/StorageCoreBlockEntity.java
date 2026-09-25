@@ -13,30 +13,30 @@ import com.andresblue.tristorage.storage.StorageRepository;
 import com.andresblue.tristorage.storage.StorageTickCoordinator;
 import com.andresblue.tristorage.storage.StorageTier;
 import com.andresblue.tristorage.storage.TerminalFilter;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.network.listener.ClientPlayPacketListener;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
-import net.minecraft.registry.Registries;
-import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.UUID;
 
 /**
@@ -44,7 +44,7 @@ import java.util.UUID;
  * StorageRuntime, so normal operations never rebuild sorted snapshots or SNBT
  * keys.
  */
-public final class StorageCoreBlockEntity extends BlockEntity implements NamedScreenHandlerFactory {
+public final class StorageCoreBlockEntity extends BlockEntity implements MenuProvider {
     public static final String STORAGE_ID_KEY = "TriStorageId";
     private static final String ENTRY_ID_KEY = "EntryId";
     private static final String REVISION_KEY = "StorageRevision";
@@ -72,7 +72,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
         // chunk for every item movement only causes vanilla to serialize a
         // redundant BlockEntity summary during its next save pass.
         if (!repositoryDurable) {
-            markDirty();
+            setChanged();
         }
         if (changes.structural()) {
             serverOrbitDirty = true;
@@ -82,7 +82,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
     private String ownershipToken = UUID.randomUUID().toString();
     private boolean legacyNeedsIdentity;
     private int legacyChecksum;
-    private NbtList pendingLegacyEntries;
+    private ListTag pendingLegacyEntries;
     private int pendingLegacyIndex;
     private long pendingLegacyFallbackId = 1;
     private long pendingLegacyRevision;
@@ -108,13 +108,13 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
             scheduleLegacyLoad();
             return runtime;
         }
-        if (!repositoryAttached && world instanceof ServerWorld serverWorld) {
+        if (!repositoryAttached && level instanceof ServerLevel serverWorld) {
             repositoryAttached = true;
             StorageRepository.Attachment attachment = StorageRepositories
                     .get(serverWorld.getServer()).attach(runtime, ownershipToken,
-                    serverWorld, pos, tier(), () -> {
+                    serverWorld, worldPosition, tier(), () -> {
                         repositoryDurable = true;
-                        markDirty();
+                        setChanged();
                     });
             StorageRuntime shared = attachment.runtime();
             ownershipToken = attachment.ownershipToken();
@@ -130,7 +130,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
     }
 
     private void scheduleLegacyLoad() {
-        if (legacyLoadTask != null || !(world instanceof ServerWorld)) {
+        if (legacyLoadTask != null || !(level instanceof ServerLevel)) {
             return;
         }
         legacyLoadTask = new StorageTickCoordinator.BoundedTask() {
@@ -138,20 +138,20 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
 
             @Override
             public int step(int budget) {
-                if (isRemoved() || !(world instanceof ServerWorld serverWorld)) {
+                if (isRemoved() || !(level instanceof ServerLevel serverWorld)) {
                     complete = true;
                     return 0;
                 }
                 int start = pendingLegacyIndex;
                 int end = Math.min(pendingLegacyEntries.size(), start + budget);
                 while (pendingLegacyIndex < end) {
-                    NbtCompound stored = pendingLegacyEntries.getCompound(pendingLegacyIndex++);
+                    CompoundTag stored = pendingLegacyEntries.getCompound(pendingLegacyIndex++);
                     if (legacyNeedsIdentity) {
                         legacyChecksum = 31 * legacyChecksum + stored.hashCode();
                     }
-                    ItemStack stack = ItemStack.fromNbt(stored.getCompound("Stack"));
+                    ItemStack stack = ItemStack.of(stored.getCompound("Stack"));
                     long count = Math.max(0, stored.getLong("Count"));
-                    long entryId = stored.contains(ENTRY_ID_KEY, NbtElement.NUMBER_TYPE)
+                    long entryId = stored.contains(ENTRY_ID_KEY, Tag.TAG_ANY_NUMERIC)
                             ? Math.max(1, stored.getLong(ENTRY_ID_KEY))
                             : pendingLegacyFallbackId;
                     pendingLegacyFallbackId = Math.max(
@@ -161,7 +161,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
                 if (pendingLegacyIndex >= pendingLegacyEntries.size()) {
                     if (legacyNeedsIdentity) {
                         StorageId deterministic = StorageId.deterministic(
-                                serverWorld.getRegistryKey().getValue() + ":" + pos.asLong()
+                                serverWorld.dimension().location() + ":" + worldPosition.asLong()
                                         + ":" + legacyChecksum + ":" + tier().level());
                         runtime.assignIdBeforeReady(deterministic);
                         ownershipToken = StorageId.deterministic(
@@ -205,13 +205,13 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
         }
         activeRuntime();
         if (recoveryRequired || !runtime.isReady()
-                || !(world instanceof ServerWorld serverWorld)) {
+                || !(level instanceof ServerLevel serverWorld)) {
             return false;
         }
         StorageTickCoordinator.flush();
         StorageRepository.PortablePreparation preparation = StorageRepositories
                 .get(serverWorld.getServer())
-                .preparePortable(storageId(), ownershipToken, serverWorld, pos);
+                .preparePortable(storageId(), ownershipToken, serverWorld, worldPosition);
         PortableDecision decision = interpretPortablePreparation(preparation);
         if (!decision.prepared()) {
             // This is the ordinary path immediately after mutations: keep the
@@ -223,7 +223,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
         }
         ownershipToken = decision.token();
         portablePrepared = true;
-        markDirty();
+        setChanged();
         return true;
     }
 
@@ -237,20 +237,20 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
     }
 
     public void cancelPortablePreparation() {
-        if (!portablePrepared || !(world instanceof ServerWorld serverWorld)) {
+        if (!portablePrepared || !(level instanceof ServerLevel serverWorld)) {
             return;
         }
         String rotated = StorageRepositories.get(serverWorld.getServer())
-                .cancelPortable(storageId(), ownershipToken, serverWorld, pos);
+                .cancelPortable(storageId(), ownershipToken, serverWorld, worldPosition);
         if (rotated != null) {
             ownershipToken = rotated;
             portablePrepared = false;
-            markDirty();
+            setChanged();
         }
     }
 
     public StorageTier tier() {
-        return getCachedState().getBlock() instanceof StorageCoreBlock core
+        return getBlockState().getBlock() instanceof StorageCoreBlock core
                 ? core.tier() : StorageTier.IRON;
     }
 
@@ -406,31 +406,31 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
     }
 
     public List<ItemStack> orbitItemSnapshot() {
-        if (world != null && world.isClient && clientOrbitSynced) {
+        if (level != null && level.isClientSide && clientOrbitSynced) {
             return clientOrbitItems.stream().map(ItemStack::copy).toList();
         }
         return serverOrbitSnapshot().stream().map(ItemStack::copy).toList();
     }
 
     public long orbitSnapshotRevision() {
-        return world != null && world.isClient && clientOrbitSynced
+        return level != null && level.isClientSide && clientOrbitSynced
                 ? clientOrbitRevision : revision();
     }
 
     @Override
-    public Text getDisplayName() {
-        return Text.translatable("screen.tristorage.core", tier().level());
+    public Component getDisplayName() {
+        return Component.translatable("screen.tristorage.core", tier().level());
     }
 
     @Nullable
     @Override
-    public ScreenHandler createMenu(int syncId, PlayerInventory inventory, PlayerEntity player) {
+    public AbstractContainerMenu createMenu(int syncId, Inventory inventory, Player player) {
         return new CoreScreenHandler(syncId, inventory, this);
     }
 
     @Override
-    protected void writeNbt(NbtCompound nbt) {
-        super.writeNbt(nbt);
+    protected void saveAdditional(CompoundTag nbt) {
+        super.saveAdditional(nbt);
         activeRuntime();
         if (!legacyNeedsIdentity) {
             nbt.putString(STORAGE_ID_KEY, storageId().toString());
@@ -440,14 +440,14 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
         nbt.putLong(REVISION_KEY, pendingLegacyEntries == null
                 ? revision() : pendingLegacyRevision);
         nbt.putInt(PortableCoreData.CHESTS_KEY, installedChests());
-        NbtList list = new NbtList();
+        ListTag list = new ListTag();
         if (pendingLegacyEntries != null) {
             list = pendingLegacyEntries;
         } else if (!repositoryDurable) {
             for (StorageRuntime.SnapshotEntry entry : runtime.snapshotEntries()) {
-                NbtCompound stored = new NbtCompound();
+                CompoundTag stored = new CompoundTag();
                 stored.putLong(ENTRY_ID_KEY, entry.id());
-                stored.put("Stack", entry.stack().writeNbt(new NbtCompound()));
+                stored.put("Stack", entry.stack().save(new CompoundTag()));
                 stored.putLong("Count", entry.count());
                 list.add(stored);
             }
@@ -463,13 +463,13 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
         nbt.putLong(PortableCoreData.ITEMS_SUMMARY_KEY, itemSummary);
     }
 
-    private NbtCompound writeOrbitNbt() {
-        NbtCompound nbt = new NbtCompound();
+    private CompoundTag writeOrbitNbt() {
+        CompoundTag nbt = new CompoundTag();
         nbt.putLong(ORBIT_REVISION_KEY, revision());
-        NbtList list = new NbtList();
+        ListTag list = new ListTag();
         for (ItemStack template : serverOrbitSnapshot()) {
-            NbtCompound stored = new NbtCompound();
-            stored.put("Stack", orbitDisplayStack(template).writeNbt(new NbtCompound()));
+            CompoundTag stored = new CompoundTag();
+            stored.put("Stack", orbitDisplayStack(template).save(new CompoundTag()));
             list.add(stored);
         }
         nbt.put(ORBIT_ENTRIES_KEY, list);
@@ -484,57 +484,57 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
      */
     static ItemStack orbitDisplayStack(ItemStack template) {
         ItemStack display = new ItemStack(template.getItem());
-        NbtCompound source = template.getNbt();
+        CompoundTag source = template.getTag();
         if (source == null) {
             return display;
         }
-        NbtCompound kept = new NbtCompound();
+        CompoundTag kept = new CompoundTag();
         for (String key : ORBIT_VISUAL_KEYS) {
-            NbtElement value = source.get(key);
+            Tag value = source.get(key);
             if (value != null) {
                 kept.put(key, value.copy());
             }
         }
-        NbtCompound sourceDisplay = source.getCompound("display");
-        if (sourceDisplay.contains("color", NbtElement.NUMBER_TYPE)) {
-            NbtCompound keptDisplay = new NbtCompound();
+        CompoundTag sourceDisplay = source.getCompound("display");
+        if (sourceDisplay.contains("color", Tag.TAG_ANY_NUMERIC)) {
+            CompoundTag keptDisplay = new CompoundTag();
             keptDisplay.putInt("color", sourceDisplay.getInt("color"));
             kept.put("display", keptDisplay);
         }
         if (!kept.isEmpty()) {
-            display.setNbt(kept);
+            display.setTag(kept);
         }
         return display;
     }
 
     @Override
-    public NbtCompound toInitialChunkDataNbt() {
-        NbtCompound nbt = new NbtCompound();
-        Identifier id = Registries.BLOCK_ENTITY_TYPE.getId(getType());
+    public CompoundTag getUpdateTag() {
+        CompoundTag nbt = new CompoundTag();
+        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(getType());
         if (id != null) {
             nbt.putString("id", id.toString());
         }
-        nbt.putInt("x", pos.getX());
-        nbt.putInt("y", pos.getY());
-        nbt.putInt("z", pos.getZ());
-        nbt.copyFrom(writeOrbitNbt());
+        nbt.putInt("x", worldPosition.getX());
+        nbt.putInt("y", worldPosition.getY());
+        nbt.putInt("z", worldPosition.getZ());
+        nbt.merge(writeOrbitNbt());
         return nbt;
     }
 
     @Override
-    public Packet<ClientPlayPacketListener> toUpdatePacket() {
-        return BlockEntityUpdateS2CPacket.create(this, ignored -> writeOrbitNbt());
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this, ignored -> writeOrbitNbt());
     }
 
     @Override
-    public void readNbt(NbtCompound nbt) {
-        super.readNbt(nbt);
-        if (!nbt.contains(PortableCoreData.ENTRIES_KEY, NbtElement.LIST_TYPE)
-                && nbt.contains(ORBIT_ENTRIES_KEY, NbtElement.LIST_TYPE)) {
+    public void load(CompoundTag nbt) {
+        super.load(nbt);
+        if (!nbt.contains(PortableCoreData.ENTRIES_KEY, Tag.TAG_LIST)
+                && nbt.contains(ORBIT_ENTRIES_KEY, Tag.TAG_LIST)) {
             readOrbitNbt(nbt);
             return;
         }
-        boolean hasStorageId = nbt.contains(STORAGE_ID_KEY, NbtElement.STRING_TYPE);
+        boolean hasStorageId = nbt.contains(STORAGE_ID_KEY, Tag.TAG_STRING);
         StorageId id;
         try {
             id = hasStorageId ? StorageId.parse(nbt.getString(STORAGE_ID_KEY))
@@ -544,14 +544,14 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
             hasStorageId = false;
         }
         boolean hasOwnershipToken = nbt.contains(PortableCoreData.OWNERSHIP_TOKEN_KEY,
-                NbtElement.STRING_TYPE);
+                Tag.TAG_STRING);
         ownershipToken = hasOwnershipToken
                 ? nbt.getString(PortableCoreData.OWNERSHIP_TOKEN_KEY)
                 : UUID.randomUUID().toString();
         StorageRuntime loaded = new StorageRuntime(id);
         loaded.loadInstalledChests(Math.min(Math.max(0,
                 nbt.getInt(PortableCoreData.CHESTS_KEY)), maxChests()));
-        NbtList list = nbt.getList(PortableCoreData.ENTRIES_KEY, NbtElement.COMPOUND_TYPE);
+        ListTag list = nbt.getList(PortableCoreData.ENTRIES_KEY, Tag.TAG_COMPOUND);
         legacyNeedsIdentity = !hasStorageId && (list.size() > 0
                 || loaded.installedChests() > 0);
         boolean requiresStagedLoad = !hasStorageId || !list.isEmpty();
@@ -582,11 +582,11 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
         serverOrbitDirty = true;
     }
 
-    private void readOrbitNbt(NbtCompound nbt) {
+    private void readOrbitNbt(CompoundTag nbt) {
         clientOrbitItems.clear();
-        NbtList list = nbt.getList(ORBIT_ENTRIES_KEY, NbtElement.COMPOUND_TYPE);
+        ListTag list = nbt.getList(ORBIT_ENTRIES_KEY, Tag.TAG_COMPOUND);
         for (int index = 0; index < list.size() && index < ORBIT_ENTRY_LIMIT; index++) {
-            ItemStack stack = ItemStack.fromNbt(list.getCompound(index).getCompound("Stack"));
+            ItemStack stack = ItemStack.of(list.getCompound(index).getCompound("Stack"));
             if (!stack.isEmpty()) {
                 stack.setCount(1);
                 clientOrbitItems.add(stack);
@@ -605,18 +605,18 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
     }
 
     private void syncOrbitToClients() {
-        if (world instanceof ServerWorld serverWorld) {
-            serverWorld.getChunkManager().markForUpdate(pos);
+        if (level instanceof ServerLevel serverWorld) {
+            serverWorld.getChunkSource().blockChanged(worldPosition);
         }
     }
 
     @Override
-    public void markRemoved() {
+    public void setRemoved() {
         runtime.removeListener(anchorListener);
-        if (repositoryAttached && world instanceof ServerWorld serverWorld) {
+        if (repositoryAttached && level instanceof ServerLevel serverWorld) {
             StorageRepositories.get(serverWorld.getServer()).releaseAnchor(storageId());
         }
-        super.markRemoved();
+        super.setRemoved();
     }
 
     public enum EntryOrder {

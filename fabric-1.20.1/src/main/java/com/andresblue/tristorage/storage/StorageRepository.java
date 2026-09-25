@@ -1,16 +1,15 @@
 package com.andresblue.tristorage.storage;
 
 import com.andresblue.tristorage.TriStorageMod;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.WorldSavePath;
-import net.minecraft.util.math.BlockPos;
-
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.LevelResource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -71,7 +70,7 @@ public final class StorageRepository {
 
     StorageRepository(MinecraftServer server) {
         this.server = server;
-        Path root = server.getSavePath(WorldSavePath.ROOT)
+        Path root = server.getWorldPath(LevelResource.ROOT)
                 .resolve("data").resolve(TriStorageMod.MOD_ID);
         storagesPath = root.resolve("storages");
         tempPath = root.resolve("temp");
@@ -97,7 +96,7 @@ public final class StorageRepository {
      * disk-backed runtime is loaded off-thread and published in bounded slices.
      */
     public Attachment attach(StorageRuntime candidate, String presentedToken,
-                             ServerWorld world, BlockPos pos, StorageTier tier,
+                             ServerLevel world, BlockPos pos, StorageTier tier,
                              Runnable durableCallback) {
         Claim claim = claim(candidate.id(), presentedToken, world, pos, tier);
         if (!claim.valid) {
@@ -144,7 +143,7 @@ public final class StorageRepository {
     }
 
     public PortablePreparation preparePortable(StorageId id, String presentedToken,
-                                                ServerWorld world, BlockPos pos) {
+                                                ServerLevel world, BlockPos pos) {
         Ownership current = ownership.get(id);
         if (current == null || !current.token.equals(presentedToken)
                 || !current.matches(world, pos)) {
@@ -218,7 +217,7 @@ public final class StorageRepository {
 
     /** Reverts a prepared break when another block-break listener cancels it. */
     public String cancelPortable(StorageId id, String presentedToken,
-                                 ServerWorld world, BlockPos pos) {
+                                 ServerLevel world, BlockPos pos) {
         Ownership current = ownership.get(id);
         if (current == null || !"PORTABLE".equals(current.lifecycle)
                 || !current.token.equals(presentedToken)) {
@@ -226,7 +225,7 @@ public final class StorageRepository {
         }
         String rotated = UUID.randomUUID().toString();
         ownership.put(id, new Ownership(rotated, "ACTIVE",
-                world.getRegistryKey().getValue().toString(), pos.asLong(), current.tier));
+                world.dimension().location().toString(), pos.asLong(), current.tier));
         writeManifestDurable();
         return rotated;
     }
@@ -409,7 +408,7 @@ public final class StorageRepository {
                 break;
             }
         }
-        if (server.getTicks() % 200 == 0) {
+        if (server.getTickCount() % 200 == 0) {
             evictIdleRuntimes();
         }
     }
@@ -540,19 +539,19 @@ public final class StorageRepository {
         submitIo(() -> {
             try {
                 long serializeStarted = StorageMetrics.startTimer();
-                NbtCompound frame = new NbtCompound();
+                CompoundTag frame = new CompoundTag();
                 frame.putInt("FormatVersion", FORMAT);
                 frame.putLong("Sequence", sequence);
                 frame.putLong("Revision", revision);
                 frame.putInt("InstalledChests", installedChests);
-                NbtList serialized = new NbtList();
+                ListTag serialized = new ListTag();
                 for (JournalOperation captured : operations) {
-                    NbtCompound operation = new NbtCompound();
+                    CompoundTag operation = new CompoundTag();
                     operation.putLong("EntryId", captured.entryId());
                     if (captured.removed()) {
                         operation.putBoolean("Removed", true);
                     } else {
-                        operation.put("Stack", captured.stack().writeNbt(new NbtCompound()));
+                        operation.put("Stack", captured.stack().save(new CompoundTag()));
                         operation.putLong("Count", captured.count());
                     }
                     serialized.add(operation);
@@ -595,11 +594,11 @@ public final class StorageRepository {
     }
 
     private Claim claim(StorageId id, String presentedToken,
-                        ServerWorld world, BlockPos pos, StorageTier tier) {
+                        ServerLevel world, BlockPos pos, StorageTier tier) {
         String safeToken = presentedToken == null || presentedToken.isBlank()
                 ? UUID.randomUUID().toString() : presentedToken;
         Ownership current = ownership.get(id);
-        String dimension = world.getRegistryKey().getValue().toString();
+        String dimension = world.dimension().location().toString();
         if (current == null) {
             ownership.put(id, new Ownership(safeToken, "ACTIVE", dimension, pos.asLong(),
                     tier.name()));
@@ -630,10 +629,10 @@ public final class StorageRepository {
         if (!Files.exists(manifestPath)) {
             return;
         }
-        NbtCompound root = NbtIo.readCompressed(manifestPath.toFile());
-        NbtList list = root.getList("Storages", NbtElement.COMPOUND_TYPE);
+        CompoundTag root = NbtIo.readCompressed(manifestPath.toFile());
+        ListTag list = root.getList("Storages", Tag.TAG_COMPOUND);
         for (int index = 0; index < list.size(); index++) {
-            NbtCompound stored = list.getCompound(index);
+            CompoundTag stored = list.getCompound(index);
             try {
                 StorageId id = StorageId.parse(stored.getString("StorageId"));
                 ownership.put(id, new Ownership(stored.getString("Token"),
@@ -646,11 +645,11 @@ public final class StorageRepository {
     }
 
     private void writeManifestDurable() {
-        NbtCompound root = new NbtCompound();
+        CompoundTag root = new CompoundTag();
         root.putInt("FormatVersion", FORMAT);
-        NbtList list = new NbtList();
+        ListTag list = new ListTag();
         for (Map.Entry<StorageId, Ownership> entry : ownership.entrySet()) {
-            NbtCompound stored = new NbtCompound();
+            CompoundTag stored = new CompoundTag();
             stored.putString("StorageId", entry.getKey().toString());
             stored.putString("Token", entry.getValue().token);
             stored.putString("Lifecycle", entry.getValue().lifecycle);
@@ -693,9 +692,9 @@ public final class StorageRepository {
 
     private Prepared readPrepared(StorageId id) throws IOException {
         Path snapshot = snapshotPath(id);
-        NbtCompound snapshotRoot = Files.exists(snapshot)
+        CompoundTag snapshotRoot = Files.exists(snapshot)
                 ? NbtIo.readCompressed(snapshot.toFile()) : null;
-        List<NbtCompound> frames = new ArrayList<>();
+        List<CompoundTag> frames = new ArrayList<>();
         frames.addAll(readFrames(sealedJournalPath(id)));
         frames.addAll(readFrames(journalPath(id)));
         return replay(snapshotRoot, frames);
@@ -708,8 +707,8 @@ public final class StorageRepository {
      * compaction left a sealed journal behind and a later checkpoint wrote a
      * newer snapshot. Frames at or below the snapshot revision are skipped.
      */
-    static Prepared replay(@Nullable NbtCompound snapshotRoot, List<NbtCompound> frames) {
-        LinkedHashMap<Long, NbtCompound> entries = new LinkedHashMap<>();
+    static Prepared replay(@Nullable CompoundTag snapshotRoot, List<CompoundTag> frames) {
+        LinkedHashMap<Long, CompoundTag> entries = new LinkedHashMap<>();
         int chests = 0;
         long revision = 0;
         long snapshotRevision = Long.MIN_VALUE;
@@ -717,14 +716,14 @@ public final class StorageRepository {
             chests = Math.max(0, snapshotRoot.getInt("InstalledChests"));
             revision = Math.max(0, snapshotRoot.getLong("Revision"));
             snapshotRevision = revision;
-            NbtList list = snapshotRoot.getList("Entries", NbtElement.COMPOUND_TYPE);
+            ListTag list = snapshotRoot.getList("Entries", Tag.TAG_COMPOUND);
             for (int index = 0; index < list.size(); index++) {
-                NbtCompound entry = list.getCompound(index);
+                CompoundTag entry = list.getCompound(index);
                 entries.put(entry.getLong("EntryId"), entry.copy());
             }
         }
         int staleFrames = 0;
-        for (NbtCompound frame : frames) {
+        for (CompoundTag frame : frames) {
             long frameRevision = frame.getLong("Revision");
             if (frameRevision <= snapshotRevision) {
                 staleFrames++;
@@ -732,9 +731,9 @@ public final class StorageRepository {
             }
             chests = Math.max(0, frame.getInt("InstalledChests"));
             revision = Math.max(revision, frameRevision);
-            NbtList operations = frame.getList("Operations", NbtElement.COMPOUND_TYPE);
+            ListTag operations = frame.getList("Operations", Tag.TAG_COMPOUND);
             for (int index = 0; index < operations.size(); index++) {
-                NbtCompound operation = operations.getCompound(index);
+                CompoundTag operation = operations.getCompound(index);
                 long entryId = operation.getLong("EntryId");
                 if (operation.getBoolean("Removed")) {
                     entries.remove(entryId);
@@ -775,13 +774,13 @@ public final class StorageRepository {
     }
 
     private void writePreparedSnapshot(StorageId id, Prepared prepared) throws IOException {
-        NbtCompound root = new NbtCompound();
+        CompoundTag root = new CompoundTag();
         root.putInt("FormatVersion", FORMAT);
         root.putString("StorageId", id.toString());
         root.putLong("Revision", prepared.revision);
         root.putInt("InstalledChests", prepared.chests);
-        NbtList list = new NbtList();
-        for (NbtCompound entry : prepared.entries) {
+        ListTag list = new ListTag();
+        for (CompoundTag entry : prepared.entries) {
             list.add(entry.copy());
         }
         root.put("Entries", list);
@@ -790,16 +789,16 @@ public final class StorageRepository {
 
     private void writeSnapshot(StorageId id, List<StorageRuntime.SnapshotEntry> entries,
                                int chests, long revision) throws IOException {
-        NbtCompound root = new NbtCompound();
+        CompoundTag root = new CompoundTag();
         root.putInt("FormatVersion", FORMAT);
         root.putString("StorageId", id.toString());
         root.putLong("Revision", revision);
         root.putInt("InstalledChests", chests);
-        NbtList list = new NbtList();
+        ListTag list = new ListTag();
         for (StorageRuntime.SnapshotEntry entry : entries) {
-            NbtCompound stored = new NbtCompound();
+            CompoundTag stored = new CompoundTag();
             stored.putLong("EntryId", entry.id());
-            stored.put("Stack", entry.stack().writeNbt(new NbtCompound()));
+            stored.put("Stack", entry.stack().save(new CompoundTag()));
             stored.putLong("Count", entry.count());
             list.add(stored);
         }
@@ -808,7 +807,7 @@ public final class StorageRepository {
         StorageMetrics.increment("repository.snapshots");
     }
 
-    private void writeSnapshotRoot(StorageId id, NbtCompound root) throws IOException {
+    private void writeSnapshotRoot(StorageId id, CompoundTag root) throws IOException {
         Path temporary = tempPath.resolve(id + ".snapshot.tmp");
         NbtIo.writeCompressed(root, temporary.toFile());
         try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
@@ -822,7 +821,7 @@ public final class StorageRepository {
         }
     }
 
-    private static void appendFrame(Path journal, NbtCompound frame, boolean force)
+    private static void appendFrame(Path journal, CompoundTag frame, boolean force)
             throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (DataOutputStream output = new DataOutputStream(bytes)) {
@@ -847,11 +846,11 @@ public final class StorageRepository {
         }
     }
 
-    private static List<NbtCompound> readFrames(Path journal) throws IOException {
+    private static List<CompoundTag> readFrames(Path journal) throws IOException {
         if (!Files.exists(journal)) {
             return List.of();
         }
-        List<NbtCompound> result = new ArrayList<>();
+        List<CompoundTag> result = new ArrayList<>();
         long validBytes = 0;
         try (CountingInputStream counting = new CountingInputStream(
                 Files.newInputStream(journal));
@@ -980,13 +979,13 @@ public final class StorageRepository {
 
     private record Ownership(String token, String lifecycle, String dimension, long blockPos,
                              String tier) {
-        private boolean matches(ServerWorld world, BlockPos pos) {
-            return dimension.equals(world.getRegistryKey().getValue().toString())
+        private boolean matches(ServerLevel world, BlockPos pos) {
+            return dimension.equals(world.dimension().location().toString())
                     && blockPos == pos.asLong();
         }
     }
 
-    record Prepared(int chests, long revision, List<NbtCompound> entries) {
+    record Prepared(int chests, long revision, List<CompoundTag> entries) {
     }
 
     private record JournalOperation(long entryId, ItemStack stack,
@@ -1008,8 +1007,8 @@ public final class StorageRepository {
             int start = index;
             int end = Math.min(prepared.entries.size(), index + budget);
             while (index < end) {
-                NbtCompound stored = prepared.entries.get(index++);
-                ItemStack stack = ItemStack.fromNbt(stored.getCompound("Stack"));
+                CompoundTag stored = prepared.entries.get(index++);
+                ItemStack stack = ItemStack.of(stored.getCompound("Stack"));
                 runtime.loadEntry(stored.getLong("EntryId"), stack,
                         Math.max(0, stored.getLong("Count")));
             }

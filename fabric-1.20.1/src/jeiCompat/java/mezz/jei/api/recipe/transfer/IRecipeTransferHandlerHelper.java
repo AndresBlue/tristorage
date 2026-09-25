@@ -1,13 +1,12 @@
 package mezz.jei.api.recipe.transfer;
 
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
-import net.minecraft.text.Text;
-
+import net.minecraft.network.chat.Component;
 import java.util.Collection;
 
 public interface IRecipeTransferHandlerHelper {
-    IRecipeTransferError createUserErrorWithTooltip(Text tooltipMessage);
+    IRecipeTransferError createUserErrorWithTooltip(Component tooltipMessage);
 
     IRecipeTransferError createUserErrorForMissingSlots(
-            Text tooltipMessage, Collection<IRecipeSlotView> missingItemSlots);
+            Component tooltipMessage, Collection<IRecipeSlotView> missingItemSlots);
 }

@@ -1,9 +1,9 @@
 package com.andresblue.tristorage.block;
 
-import net.minecraft.util.math.Direction;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
+import net.minecraft.core.Direction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

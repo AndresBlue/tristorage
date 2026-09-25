@@ -15,19 +15,18 @@ import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.api.widget.Bounds;
 import dev.emi.emi.api.widget.SlotWidget;
 import dev.emi.emi.api.widget.Widget;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.recipe.CraftingRecipe;
-import net.minecraft.recipe.ShapedRecipe;
-import net.minecraft.util.Identifier;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.ShapedRecipe;
 
 /** Optional EMI bridge; loaded only when EMI requests its Fabric entrypoints. */
 public final class TriStorageEmiPlugin implements EmiPlugin {
@@ -51,8 +50,8 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
      * availability response. Reinitializing RecipeScreen also reinitializes
      * its old terminal screen and is prohibitively expensive in large packs.
      */
-    public static void refreshRecipeFillButtons(Identifier requestedRecipe) {
-        Object screen = MinecraftClient.getInstance().currentScreen;
+    public static void refreshRecipeFillButtons(ResourceLocation requestedRecipe) {
+        Object screen = Minecraft.getInstance().screen;
         if (screen == null || !screen.getClass().getName()
                 .equals("dev.emi.emi.screen.RecipeScreen")) {
             return;
@@ -137,8 +136,8 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
             implements EmiRecipeHandler<CraftingTerminalScreenHandler> {
         @Override
         public EmiPlayerInventory getInventory(
-                HandledScreen<CraftingTerminalScreenHandler> screen) {
-            return new EmiPlayerInventory(screen.getScreenHandler()
+                AbstractContainerScreen<CraftingTerminalScreenHandler> screen) {
+            return new EmiPlayerInventory(screen.getMenu()
                     .recipeTransferClientStacks().stream()
                     .map(EmiStack::of)
                     .toList());
@@ -149,7 +148,7 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
             return recipe.getCategory() == VanillaEmiRecipeCategories.CRAFTING
                     && recipe.getId() != null
                     && recipe.getBackingRecipe() instanceof CraftingRecipe crafting
-                    && crafting.fits(3, 3)
+                    && crafting.canCraftInDimensions(3, 3)
                     && crafting.getIngredients().stream()
                     .anyMatch(ingredient -> !ingredient.isEmpty());
         }
@@ -178,7 +177,7 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
                 return false;
             }
             TerminalClientNetworking.sendRecipeFill(
-                    context.getScreenHandler().syncId,
+                    context.getScreenHandler().containerId,
                     recipe.getId(), context.getAmount());
             return true;
         }
@@ -186,7 +185,7 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
         @Override
         public void render(EmiRecipe recipe,
                            EmiCraftContext<CraftingTerminalScreenHandler> context,
-                           List<Widget> widgets, DrawContext draw) {
+                           List<Widget> widgets, GuiGraphics draw) {
             if (!supportsRecipe(recipe)) {
                 return;
             }

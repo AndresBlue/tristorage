@@ -28,23 +28,23 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.particle.DefaultParticleType;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.resource.featuretoggle.FeatureFlags;
-import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
+import net.minecraft.core.Registry;
+import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.flag.FeatureFlags;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 public final class TriStorageMod implements ModInitializer {
     public static final String MOD_ID = "tristorage";
@@ -52,43 +52,43 @@ public final class TriStorageMod implements ModInitializer {
     // Cores hold whole storages, so every tier resists explosions like obsidian.
     private static final float CORE_BLAST_RESISTANCE = 1200.0f;
     public static final StorageCoreBlock IRON_CORE = new StorageCoreBlock(StorageTier.IRON,
-            AbstractBlock.Settings.copy(Blocks.IRON_BLOCK)
+            BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)
                     .strength(3.5f, CORE_BLAST_RESISTANCE));
     public static final StorageCoreBlock DIAMOND_CORE = new StorageCoreBlock(StorageTier.DIAMOND,
-            AbstractBlock.Settings.copy(Blocks.DIAMOND_BLOCK)
+            BlockBehaviour.Properties.copy(Blocks.DIAMOND_BLOCK)
                     .strength(4.5f, CORE_BLAST_RESISTANCE));
     public static final StorageCoreBlock BLAZE_CORE = new StorageCoreBlock(StorageTier.BLAZE,
-            AbstractBlock.Settings.copy(Blocks.OBSIDIAN)
-                    .strength(12.0f, CORE_BLAST_RESISTANCE).luminance(state -> 4));
+            BlockBehaviour.Properties.copy(Blocks.OBSIDIAN)
+                    .strength(12.0f, CORE_BLAST_RESISTANCE).lightLevel(state -> 4));
     public static final StorageCoreBlock COSMIC_CORE = new StorageCoreBlock(StorageTier.COSMIC,
-            AbstractBlock.Settings.copy(Blocks.OBSIDIAN)
-                    .strength(18.0f, CORE_BLAST_RESISTANCE).luminance(state -> 7));
+            BlockBehaviour.Properties.copy(Blocks.OBSIDIAN)
+                    .strength(18.0f, CORE_BLAST_RESISTANCE).lightLevel(state -> 7));
     public static final TerminalBlock TERMINAL = new TerminalBlock(
-            AbstractBlock.Settings.copy(Blocks.IRON_BLOCK).strength(3.5f).luminance(state -> 5));
+            BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).strength(3.5f).lightLevel(state -> 5));
     public static final CraftingTerminalBlock CRAFTING_TERMINAL = new CraftingTerminalBlock(
-            AbstractBlock.Settings.copy(Blocks.IRON_BLOCK).strength(3.5f).luminance(state -> 5));
+            BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).strength(3.5f).lightLevel(state -> 5));
     public static final LinkerBlock LINKER = new LinkerBlock(
-            AbstractBlock.Settings.copy(Blocks.COPPER_BLOCK).strength(3.0f).luminance(state -> 3));
+            BlockBehaviour.Properties.copy(Blocks.COPPER_BLOCK).strength(3.0f).lightLevel(state -> 3));
     public static final RemoteTabletItem REMOTE_TABLET = new RemoteTabletItem(
-            new Item.Settings().maxCount(1), RemoteTerminalMode.STORAGE);
+            new Item.Properties().stacksTo(1), RemoteTerminalMode.STORAGE);
     public static final RemoteTabletItem WIRELESS_CRAFTING_TERMINAL = new RemoteTabletItem(
-            new Item.Settings().maxCount(1), RemoteTerminalMode.CRAFTING);
+            new Item.Properties().stacksTo(1), RemoteTerminalMode.CRAFTING);
     public static final Item DIMENSIONAL_ANTENNA =
-            new DimensionalAntennaItem(new Item.Settings().maxCount(16));
+            new DimensionalAntennaItem(new Item.Properties().stacksTo(16));
 
     public static BlockEntityType<StorageCoreBlockEntity> STORAGE_CORE_BLOCK_ENTITY;
     public static BlockEntityType<LinkerBlockEntity> LINKER_BLOCK_ENTITY;
-    public static ScreenHandlerType<CoreScreenHandler> CORE_SCREEN_HANDLER;
-    public static ScreenHandlerType<TerminalScreenHandler> TERMINAL_SCREEN_HANDLER;
-    public static ScreenHandlerType<CraftingTerminalScreenHandler> CRAFTING_TERMINAL_SCREEN_HANDLER;
-    public static ScreenHandlerType<LinkerScreenHandler> LINKER_SCREEN_HANDLER;
-    public static ItemGroup TRISTORAGE_ITEM_GROUP;
+    public static MenuType<CoreScreenHandler> CORE_SCREEN_HANDLER;
+    public static MenuType<TerminalScreenHandler> TERMINAL_SCREEN_HANDLER;
+    public static MenuType<CraftingTerminalScreenHandler> CRAFTING_TERMINAL_SCREEN_HANDLER;
+    public static MenuType<LinkerScreenHandler> LINKER_SCREEN_HANDLER;
+    public static CreativeModeTab TRISTORAGE_ITEM_GROUP;
     public static RecipeSerializer<PortableCoreUpgradeRecipe> CORE_UPGRADE_RECIPE_SERIALIZER;
     public static RecipeSerializer<CleanTerminalUpgradeRecipe> CRAFTING_TERMINAL_RECIPE_SERIALIZER;
     public static RecipeSerializer<WirelessCraftingTerminalUpgradeRecipe>
             WIRELESS_CRAFTING_TERMINAL_RECIPE_SERIALIZER;
-    public static DefaultParticleType CONVERGING_PORTAL_PARTICLE;
-    public static DefaultParticleType CONVERGING_END_PARTICLE;
+    public static SimpleParticleType CONVERGING_PORTAL_PARTICLE;
+    public static SimpleParticleType CONVERGING_END_PARTICLE;
 
     @Override
     public void onInitialize() {
@@ -102,15 +102,15 @@ public final class TriStorageMod implements ModInitializer {
                 return true;
             }
             if (!StorageCoreBlock.canBreakSafely(player, state)) {
-                if (!world.isClient) {
-                    player.sendMessage(Text.translatable(
+                if (!world.isClientSide) {
+                    player.displayClientMessage(Component.translatable(
                             "message.tristorage.core_needs_tool"), true);
                 }
                 return false;
             }
             boolean prepared = core.preparePortable();
-            if (!prepared && !world.isClient) {
-                player.sendMessage(Text.translatable(core.isRecoveryRequired()
+            if (!prepared && !world.isClientSide) {
+                player.displayClientMessage(Component.translatable(core.isRecoveryRequired()
                         ? "message.tristorage.core_recovery_required"
                         : "message.tristorage.core_not_ready"), true);
             }
@@ -122,11 +122,11 @@ public final class TriStorageMod implements ModInitializer {
             }
         });
         CONVERGING_PORTAL_PARTICLE = Registry.register(
-                Registries.PARTICLE_TYPE,
+                BuiltInRegistries.PARTICLE_TYPE,
                 id("converging_portal"),
                 FabricParticleTypes.simple());
         CONVERGING_END_PARTICLE = Registry.register(
-                Registries.PARTICLE_TYPE,
+                BuiltInRegistries.PARTICLE_TYPE,
                 id("converging_end"),
                 FabricParticleTypes.simple());
         registerBlock("iron_storage_core", IRON_CORE);
@@ -136,29 +136,29 @@ public final class TriStorageMod implements ModInitializer {
         registerBlock("storage_terminal", TERMINAL);
         registerBlock("crafting_terminal", CRAFTING_TERMINAL);
         registerBlock("storage_linker", LINKER);
-        Registry.register(Registries.ITEM, id("remote_tablet"), REMOTE_TABLET);
-        Registry.register(Registries.ITEM, id("wireless_crafting_terminal"),
+        Registry.register(BuiltInRegistries.ITEM, id("remote_tablet"), REMOTE_TABLET);
+        Registry.register(BuiltInRegistries.ITEM, id("wireless_crafting_terminal"),
                 WIRELESS_CRAFTING_TERMINAL);
-        Registry.register(Registries.ITEM, id("dimensional_antenna"), DIMENSIONAL_ANTENNA);
+        Registry.register(BuiltInRegistries.ITEM, id("dimensional_antenna"), DIMENSIONAL_ANTENNA);
 
         CORE_UPGRADE_RECIPE_SERIALIZER = Registry.register(
-                Registries.RECIPE_SERIALIZER,
+                BuiltInRegistries.RECIPE_SERIALIZER,
                 id("core_upgrade"),
                 new PortableCoreUpgradeRecipe.Serializer()
         );
         CRAFTING_TERMINAL_RECIPE_SERIALIZER = Registry.register(
-                Registries.RECIPE_SERIALIZER,
+                BuiltInRegistries.RECIPE_SERIALIZER,
                 id("clean_terminal_upgrade"),
                 new CleanTerminalUpgradeRecipe.Serializer()
         );
         WIRELESS_CRAFTING_TERMINAL_RECIPE_SERIALIZER = Registry.register(
-                Registries.RECIPE_SERIALIZER,
+                BuiltInRegistries.RECIPE_SERIALIZER,
                 id("wireless_crafting_terminal_upgrade"),
                 new WirelessCraftingTerminalUpgradeRecipe.Serializer()
         );
 
         STORAGE_CORE_BLOCK_ENTITY = Registry.register(
-                Registries.BLOCK_ENTITY_TYPE,
+                BuiltInRegistries.BLOCK_ENTITY_TYPE,
                 id("storage_core"),
                 FabricBlockEntityTypeBuilder.create(
                         StorageCoreBlockEntity::new,
@@ -166,65 +166,65 @@ public final class TriStorageMod implements ModInitializer {
                 ).build()
         );
         LINKER_BLOCK_ENTITY = Registry.register(
-                Registries.BLOCK_ENTITY_TYPE,
+                BuiltInRegistries.BLOCK_ENTITY_TYPE,
                 id("storage_linker"),
                 FabricBlockEntityTypeBuilder.create(LinkerBlockEntity::new, LINKER).build()
         );
         CORE_SCREEN_HANDLER = Registry.register(
-                Registries.SCREEN_HANDLER,
+                BuiltInRegistries.MENU,
                 id("storage_core"),
-                new ScreenHandlerType<>(CoreScreenHandler::new, FeatureFlags.VANILLA_FEATURES)
+                new MenuType<>(CoreScreenHandler::new, FeatureFlags.VANILLA_SET)
         );
         TERMINAL_SCREEN_HANDLER = Registry.register(
-                Registries.SCREEN_HANDLER,
+                BuiltInRegistries.MENU,
                 id("storage_terminal"),
-                new ScreenHandlerType<>(TerminalScreenHandler::new, FeatureFlags.VANILLA_FEATURES)
+                new MenuType<>(TerminalScreenHandler::new, FeatureFlags.VANILLA_SET)
         );
         CRAFTING_TERMINAL_SCREEN_HANDLER = Registry.register(
-                Registries.SCREEN_HANDLER,
+                BuiltInRegistries.MENU,
                 id("crafting_terminal"),
-                new ScreenHandlerType<>(CraftingTerminalScreenHandler::new,
-                        FeatureFlags.VANILLA_FEATURES)
+                new MenuType<>(CraftingTerminalScreenHandler::new,
+                        FeatureFlags.VANILLA_SET)
         );
         LINKER_SCREEN_HANDLER = Registry.register(
-                Registries.SCREEN_HANDLER,
+                BuiltInRegistries.MENU,
                 id("storage_linker"),
-                new ScreenHandlerType<>(LinkerScreenHandler::new, FeatureFlags.VANILLA_FEATURES)
+                new MenuType<>(LinkerScreenHandler::new, FeatureFlags.VANILLA_SET)
         );
 
         TRISTORAGE_ITEM_GROUP = Registry.register(
-                Registries.ITEM_GROUP,
+                BuiltInRegistries.CREATIVE_MODE_TAB,
                 id("tristorage"),
                 FabricItemGroup.builder()
-                        .displayName(Text.translatable("itemGroup.tristorage"))
+                        .title(Component.translatable("itemGroup.tristorage"))
                         .icon(() -> new ItemStack(TERMINAL))
-                        .entries((context, entries) -> {
-                            entries.add(IRON_CORE);
-                            entries.add(DIAMOND_CORE);
-                            entries.add(BLAZE_CORE);
-                            entries.add(COSMIC_CORE);
-                            entries.add(TERMINAL);
-                            entries.add(CRAFTING_TERMINAL);
-                            entries.add(LINKER);
-                            entries.add(DIMENSIONAL_ANTENNA);
-                            entries.add(REMOTE_TABLET);
-                            entries.add(WIRELESS_CRAFTING_TERMINAL);
+                        .displayItems((context, entries) -> {
+                            entries.accept(IRON_CORE);
+                            entries.accept(DIAMOND_CORE);
+                            entries.accept(BLAZE_CORE);
+                            entries.accept(COSMIC_CORE);
+                            entries.accept(TERMINAL);
+                            entries.accept(CRAFTING_TERMINAL);
+                            entries.accept(LINKER);
+                            entries.accept(DIMENSIONAL_ANTENNA);
+                            entries.accept(REMOTE_TABLET);
+                            entries.accept(WIRELESS_CRAFTING_TERMINAL);
                         })
                         .build()
         );
     }
 
     private static void registerBlock(String path, Block block) {
-        Registry.register(Registries.BLOCK, id(path), block);
+        Registry.register(BuiltInRegistries.BLOCK, id(path), block);
         Item item = block instanceof StorageCoreBlock
-                ? new StorageCoreBlockItem(block, new Item.Settings())
+                ? new StorageCoreBlockItem(block, new Item.Properties())
                 : block == TERMINAL
-                ? new TerminalBlockItem(block, new Item.Settings())
-                : new BlockItem(block, new Item.Settings());
-        Registry.register(Registries.ITEM, id(path), item);
+                ? new TerminalBlockItem(block, new Item.Properties())
+                : new BlockItem(block, new Item.Properties());
+        Registry.register(BuiltInRegistries.ITEM, id(path), item);
     }
 
-    public static Identifier id(String path) {
-        return new Identifier(MOD_ID, path);
+    public static ResourceLocation id(String path) {
+        return new ResourceLocation(MOD_ID, path);
     }
 }

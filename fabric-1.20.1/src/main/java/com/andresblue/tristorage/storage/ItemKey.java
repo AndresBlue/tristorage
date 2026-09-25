@@ -1,10 +1,9 @@
 package com.andresblue.tristorage.storage;
 
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-
 import java.util.Objects;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Structural item identity used by storage lookups. Its equality deliberately
@@ -12,10 +11,10 @@ import java.util.Objects;
  */
 public final class ItemKey {
     private final Item item;
-    private final NbtCompound nbt;
+    private final CompoundTag nbt;
     private final int hash;
 
-    private ItemKey(Item item, NbtCompound nbt, boolean copyNbt) {
+    private ItemKey(Item item, CompoundTag nbt, boolean copyNbt) {
         this.item = item;
         this.nbt = nbt == null ? null : (copyNbt ? nbt.copy() : nbt);
         this.hash = 31 * System.identityHashCode(item) + Objects.hashCode(this.nbt);
@@ -23,26 +22,26 @@ public final class ItemKey {
 
     /** Immutable key suitable for retention by StorageRuntime. */
     public static ItemKey frozen(ItemStack stack) {
-        return new ItemKey(stack.getItem(), stack.getNbt(), true);
+        return new ItemKey(stack.getItem(), stack.getTag(), true);
     }
 
     /** Short-lived lookup key. It must never be retained after the lookup. */
     public static ItemKey probe(ItemStack stack) {
-        return new ItemKey(stack.getItem(), stack.getNbt(), false);
+        return new ItemKey(stack.getItem(), stack.getTag(), false);
     }
 
     public Item item() {
         return item;
     }
 
-    public NbtCompound copyNbt() {
+    public CompoundTag copyNbt() {
         return nbt == null ? null : nbt.copy();
     }
 
     public ItemStack toStack() {
         ItemStack stack = new ItemStack(item);
         if (nbt != null) {
-            stack.setNbt(nbt.copy());
+            stack.setTag(nbt.copy());
         }
         return stack;
     }

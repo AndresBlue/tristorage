@@ -9,15 +9,15 @@ import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,23 +53,23 @@ public final class RemoteAccessManager {
         initialized = true;
         ServerTickEvents.END_SERVER_TICK.register(RemoteAccessManager::expireRequestsAndSessions);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-                cancelPending(handler.player.getUuid()));
+                cancelPending(handler.player.getUUID()));
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> cancelAll(server));
     }
 
-    public static void request(ServerPlayerEntity player, Hand hand,
-                               ServerWorld targetWorld, BlockPos linkerPos,
+    public static void request(ServerPlayer player, InteractionHand hand,
+                               ServerLevel targetWorld, BlockPos linkerPos,
                                BlockPos coreHint, RemoteTerminalMode mode) {
         // Prepare creative category metadata before a cold repository begins
         // publishing entries, avoiding a second complete catalog pass later.
         TerminalFilter.prepareCreativeGroups(player);
-        UUID playerId = player.getUuid();
-        SessionKey key = new SessionKey(targetWorld, linkerPos.toImmutable());
+        UUID playerId = player.getUUID();
+        SessionKey key = new SessionKey(targetWorld, linkerPos.immutable());
         PendingRequest current = PENDING.get(playerId);
         if (current != null && current.matches(key, hand, mode)) {
-            current.session().touch(player.getServer().getTicks());
+            current.session().touch(player.getServer().getTickCount());
             StorageMetrics.increment("remote.inflight_request_hits");
-            player.sendMessage(Text.translatable("message.tristorage.remote_loading"), true);
+            player.displayClientMessage(Component.translatable("message.tristorage.remote_loading"), true);
             return;
         }
         cancelPending(playerId);
@@ -81,7 +81,7 @@ public final class RemoteAccessManager {
             readyCore = null;
         }
         SharedSession session = candidate;
-        int now = player.getServer().getTicks();
+        int now = player.getServer().getTickCount();
         session.touch(now);
         PendingRequest pending = new PendingRequest(
                 player.getServer(), playerId, hand, mode, session, now,
@@ -128,7 +128,7 @@ public final class RemoteAccessManager {
         // A fully loaded linker/core path completes synchronously above. Only
         // show the loading notice when the request genuinely remains pending.
         if (PENDING.get(playerId) == pending) {
-            player.sendMessage(Text.translatable(
+            player.displayClientMessage(Component.translatable(
                     "message.tristorage.remote_loading"), true);
         }
     }
@@ -141,7 +141,7 @@ public final class RemoteAccessManager {
         }
         evictOldestIdleSession(server);
         SharedSession created = new SharedSession(
-                server, key, RemoteChunkLease.create(key.world()), server.getTicks());
+                server, key, RemoteChunkLease.create(key.world()), server.getTickCount());
         SESSIONS.put(key, created);
         StorageMetrics.increment("remote.cold_sessions");
         return created;
@@ -151,7 +151,7 @@ public final class RemoteAccessManager {
         if (!isActive(session)) {
             return;
         }
-        session.touch(session.server().getTicks());
+        session.touch(session.server().getTickCount());
         var linkerState = session.key().world().getBlockState(session.key().linkerPos());
         LinkerBlockEntity linker = LinkerBlock.getOrCreateLinkerEntity(
                 session.key().world(), session.key().linkerPos(), linkerState);
@@ -185,7 +185,7 @@ public final class RemoteAccessManager {
     private static void retainCoreAndOpen(SharedSession session,
                                           StorageCoreBlockEntity core) {
         ChunkPos linkerChunk = new ChunkPos(session.key().linkerPos());
-        ChunkPos coreChunk = new ChunkPos(core.getPos());
+        ChunkPos coreChunk = new ChunkPos(core.getBlockPos());
         loadChunks(session, Set.of(linkerChunk, coreChunk), () -> {
             if (!isActive(session) || !isValidCore(session, core)) {
                 failSession(session, "message.tristorage.remote_unavailable");
@@ -198,7 +198,7 @@ public final class RemoteAccessManager {
                 return;
             }
             session.setLoading(false);
-            session.touch(session.server().getTicks());
+            session.touch(session.server().getTickCount());
             openWaitingPlayers(session, core);
         });
     }
@@ -215,14 +215,14 @@ public final class RemoteAccessManager {
 
     private static void openTerminal(PendingRequest pending,
                                      StorageCoreBlockEntity core) {
-        ServerPlayerEntity player = eligiblePlayer(pending);
+        ServerPlayer player = eligiblePlayer(pending);
         if (player == null || !isValidCore(pending.session(), core)) {
             cancelPending(pending.playerId());
             return;
         }
         if (!hasDimensionalAccess(player, pending.session())) {
             cancelPending(pending.playerId());
-            player.sendMessage(Text.translatable(
+            player.displayClientMessage(Component.translatable(
                     "message.tristorage.remote_requires_antenna"), true);
             return;
         }
@@ -233,12 +233,12 @@ public final class RemoteAccessManager {
         SharedSession session = pending.session();
         RemoteAccessHandle handle = acquire(session, player, pending.mode());
         try {
-            OptionalInt opened = player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+            OptionalInt opened = player.openMenu(new SimpleMenuProvider(
                     (syncId, inventory, ignored) -> pending.mode() == RemoteTerminalMode.CRAFTING
                             ? new CraftingTerminalScreenHandler(
                             syncId, inventory, core, handle)
                             : new TerminalScreenHandler(syncId, inventory, core, handle),
-                    Text.translatable(pending.mode() == RemoteTerminalMode.CRAFTING
+                    Component.translatable(pending.mode() == RemoteTerminalMode.CRAFTING
                             ? "screen.tristorage.remote_crafting_terminal"
                             : "screen.tristorage.remote_terminal")
             ));
@@ -254,17 +254,17 @@ public final class RemoteAccessManager {
             handle.close();
             finishPending(pending, "remote.failed_open");
             StorageMetrics.increment("remote.open_failures");
-            player.sendMessage(Text.translatable("message.tristorage.remote_unavailable"), true);
+            player.displayClientMessage(Component.translatable("message.tristorage.remote_unavailable"), true);
             LOGGER.error("Could not open remote storage for {}",
                     player.getGameProfile().getName(), exception);
         }
     }
 
     private static RemoteAccessHandle acquire(SharedSession session,
-                                              ServerPlayerEntity player,
+                                              ServerPlayer player,
                                               RemoteTerminalMode mode) {
         session.incrementOpenUsers();
-        session.touch(session.server().getTicks());
+        session.touch(session.server().getTickCount());
         return new RemoteAccessHandle(
                 () -> release(session),
                 () -> isValidOpenSession(session, player, mode));
@@ -272,7 +272,7 @@ public final class RemoteAccessManager {
 
     private static void release(SharedSession session) {
         session.decrementOpenUsers();
-        session.touch(session.server().getTicks());
+        session.touch(session.server().getTickCount());
     }
 
     private static void loadChunks(SharedSession session,
@@ -304,7 +304,7 @@ public final class RemoteAccessManager {
             failSession(session, "message.tristorage.remote_unavailable");
             return;
         }
-        session.touch(session.server().getTicks());
+        session.touch(session.server().getTickCount());
         if (loads.stream().allMatch(CompletableFuture::isDone)) {
             StorageMetrics.stopTimer("remote.chunk_batch_load", loadStarted);
             StorageMetrics.increment("remote.loaded_chunk_fast_path_batches");
@@ -364,8 +364,8 @@ public final class RemoteAccessManager {
         return isActive(session)
                 && !core.isRemoved()
                 && !core.isRecoveryRequired()
-                && core.getWorld() == session.key().world()
-                && session.key().world().getBlockEntity(core.getPos()) == core
+                && core.getLevel() == session.key().world()
+                && session.key().world().getBlockEntity(core.getBlockPos()) == core
                 && session.key().world().getBlockState(session.key().linkerPos()).getBlock()
                 instanceof LinkerBlock
                 && session.key().world().getBlockEntity(session.key().linkerPos())
@@ -377,7 +377,7 @@ public final class RemoteAccessManager {
         List<PendingRequest> rejected = PENDING.values().stream()
                 .filter(pending -> pending.session() == session)
                 .filter(pending -> {
-                    ServerPlayerEntity player = pending.server().getPlayerManager()
+                    ServerPlayer player = pending.server().getPlayerList()
                             .getPlayer(pending.playerId());
                     return player == null || !hasDimensionalAccess(player, session, linker);
                 })
@@ -386,10 +386,10 @@ public final class RemoteAccessManager {
             if (PENDING.remove(pending.playerId(), pending)) {
                 finishPending(pending, "remote.dimension_rejected_open");
                 StorageMetrics.increment("remote.dimension_rejected_requests");
-                ServerPlayerEntity player = pending.server().getPlayerManager()
+                ServerPlayer player = pending.server().getPlayerList()
                         .getPlayer(pending.playerId());
                 if (player != null) {
-                    player.sendMessage(Text.translatable(
+                    player.displayClientMessage(Component.translatable(
                             "message.tristorage.remote_requires_antenna"), true);
                 }
             }
@@ -397,54 +397,54 @@ public final class RemoteAccessManager {
     }
 
     private static boolean isValidOpenSession(SharedSession session,
-                                              ServerPlayerEntity player,
+                                              ServerPlayer player,
                                               RemoteTerminalMode mode) {
         return isActive(session) && player.isAlive()
                 && hasDimensionalAccess(player, session)
                 && hasLinkedTablet(player, session, mode);
     }
 
-    private static boolean hasLinkedTablet(ServerPlayerEntity player,
+    private static boolean hasLinkedTablet(ServerPlayer player,
                                            SharedSession session,
                                            RemoteTerminalMode mode) {
-        for (int slot = 0; slot < player.getInventory().size(); slot++) {
-            if (RemoteTabletItem.isLinkedTo(player.getInventory().getStack(slot),
-                    session.key().world().getRegistryKey(), session.key().linkerPos(), mode)) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            if (RemoteTabletItem.isLinkedTo(player.getInventory().getItem(slot),
+                    session.key().world().dimension(), session.key().linkerPos(), mode)) {
                 return true;
             }
         }
         return false;
     }
 
-    private static boolean hasDimensionalAccess(ServerPlayerEntity player,
+    private static boolean hasDimensionalAccess(ServerPlayer player,
                                                 SharedSession session) {
         return session.key().world().getBlockEntity(session.key().linkerPos())
                 instanceof LinkerBlockEntity linker
                 && hasDimensionalAccess(player, session, linker);
     }
 
-    private static boolean hasDimensionalAccess(ServerPlayerEntity player,
+    private static boolean hasDimensionalAccess(ServerPlayer player,
                                                 SharedSession session,
                                                 LinkerBlockEntity linker) {
         return RemoteDimensionPolicy.canAccess(
-                player.getWorld().getRegistryKey().equals(World.OVERWORLD),
-                session.key().world().getRegistryKey().equals(World.OVERWORLD),
+                player.level().dimension().equals(Level.OVERWORLD),
+                session.key().world().dimension().equals(Level.OVERWORLD),
                 linker.isAntennaActive());
     }
 
-    private static ServerPlayerEntity eligiblePlayer(PendingRequest pending) {
+    private static ServerPlayer eligiblePlayer(PendingRequest pending) {
         if (PENDING.get(pending.playerId()) != pending || !isActive(pending.session())) {
             return null;
         }
-        ServerPlayerEntity player = pending.server().getPlayerManager()
+        ServerPlayer player = pending.server().getPlayerList()
                 .getPlayer(pending.playerId());
-        if (player == null || player.currentScreenHandler != player.playerScreenHandler) {
+        if (player == null || player.containerMenu != player.inventoryMenu) {
             return null;
         }
         SessionKey key = pending.session().key();
         return RemoteTabletItem.isLinkedTo(
-                player.getStackInHand(pending.hand()),
-                key.world().getRegistryKey(), key.linkerPos(), pending.mode()) ? player : null;
+                player.getItemInHand(pending.hand()),
+                key.world().dimension(), key.linkerPos(), pending.mode()) ? player : null;
     }
 
     private static boolean isActive(SharedSession session) {
@@ -460,7 +460,7 @@ public final class RemoteAccessManager {
                 .toList();
         for (SharedSession session : repositoriesReady) {
             session.setLoading(false);
-            session.touch(server.getTicks());
+            session.touch(server.getTickCount());
             openWaitingPlayers(session, session.core());
         }
 
@@ -473,16 +473,16 @@ public final class RemoteAccessManager {
         List<PendingRequest> expired = PENDING.values().stream()
                 .filter(pending -> pending.server() == server)
                 .filter(pending -> RemoteLoadPolicy.hasTimedOut(
-                        pending.startedAtTick(), server.getTicks()))
+                        pending.startedAtTick(), server.getTickCount()))
                 .toList();
         for (PendingRequest pending : expired) {
             if (PENDING.remove(pending.playerId(), pending)) {
                 finishPending(pending, "remote.timed_out_open");
                 StorageMetrics.increment("remote.request_timeouts");
-                ServerPlayerEntity player = server.getPlayerManager()
+                ServerPlayer player = server.getPlayerList()
                         .getPlayer(pending.playerId());
                 if (player != null) {
-                    player.sendMessage(Text.translatable(
+                    player.displayClientMessage(Component.translatable(
                             "message.tristorage.remote_timeout"), true);
                 }
             }
@@ -493,7 +493,7 @@ public final class RemoteAccessManager {
                 .filter(session -> session.openUsers() == 0)
                 .filter(session -> !hasPendingPlayers(session))
                 .filter(session -> RemoteLoadPolicy.warmSessionExpired(
-                        session.lastUsedTick(), server.getTicks()))
+                        session.lastUsedTick(), server.getTickCount()))
                 .toList();
         cold.forEach(RemoteAccessManager::invalidateSession);
         enforceWarmChunkBudget(server);
@@ -515,10 +515,10 @@ public final class RemoteAccessManager {
             if (PENDING.remove(pending.playerId(), pending)) {
                 finishPending(pending, "remote.failed_open");
                 StorageMetrics.increment("remote.failed_requests");
-                ServerPlayerEntity player = pending.server().getPlayerManager()
+                ServerPlayer player = pending.server().getPlayerList()
                         .getPlayer(pending.playerId());
                 if (player != null) {
-                    player.sendMessage(Text.translatable(translationKey), true);
+                    player.displayClientMessage(Component.translatable(translationKey), true);
                 }
             }
         }
@@ -527,7 +527,7 @@ public final class RemoteAccessManager {
     private static void cancelPending(UUID playerId) {
         PendingRequest pending = PENDING.remove(playerId);
         if (pending != null) {
-            pending.session().touch(pending.server().getTicks());
+            pending.session().touch(pending.server().getTickCount());
             finishPending(pending, "remote.cancelled_open");
             StorageMetrics.increment("remote.cancelled_requests");
         }
@@ -593,14 +593,14 @@ public final class RemoteAccessManager {
         sessions.forEach(RemoteAccessManager::invalidateSession);
     }
 
-    private record SessionKey(ServerWorld world, BlockPos linkerPos) {
+    private record SessionKey(ServerLevel world, BlockPos linkerPos) {
     }
 
-    private record PendingRequest(MinecraftServer server, UUID playerId, Hand hand,
+    private record PendingRequest(MinecraftServer server, UUID playerId, InteractionHand hand,
                                   RemoteTerminalMode mode,
                                   SharedSession session, int startedAtTick,
                                   long startedAtNanos) {
-        private boolean matches(SessionKey candidateKey, Hand candidateHand,
+        private boolean matches(SessionKey candidateKey, InteractionHand candidateHand,
                                 RemoteTerminalMode candidateMode) {
             return session.key().equals(candidateKey) && hand == candidateHand
                     && mode == candidateMode;

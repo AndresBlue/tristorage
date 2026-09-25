@@ -1,10 +1,10 @@
 package com.andresblue.tristorage.storage;
 
-import net.minecraft.Bootstrap;
 import net.minecraft.SharedConstants;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -14,23 +14,23 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 class ItemKeyTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }
 
     @Test
     void equalityMatchesCanCombineIdentityAndNbt() {
         ItemStack first = new ItemStack(Items.DIAMOND_SWORD);
-        NbtCompound tag = new NbtCompound();
+        CompoundTag tag = new CompoundTag();
         tag.putString("Custom", "alpha");
-        first.setNbt(tag);
+        first.setTag(tag);
         ItemStack same = first.copy();
         ItemStack different = first.copy();
-        different.getOrCreateNbt().putString("Custom", "beta");
+        different.getOrCreateTag().putString("Custom", "beta");
 
-        assertEquals(ItemStack.canCombine(first, same),
+        assertEquals(ItemStack.isSameItemSameTags(first, same),
                 ItemKey.frozen(first).equals(ItemKey.probe(same)));
-        assertEquals(ItemStack.canCombine(first, different),
+        assertEquals(ItemStack.isSameItemSameTags(first, different),
                 ItemKey.frozen(first).equals(ItemKey.probe(different)));
         assertNotEquals(ItemKey.frozen(first), ItemKey.frozen(new ItemStack(Items.STONE)));
     }
@@ -38,12 +38,12 @@ class ItemKeyTest {
     @Test
     void frozenKeyDoesNotObserveLaterStackMutation() {
         ItemStack stack = new ItemStack(Items.SHULKER_BOX);
-        stack.getOrCreateNbt().putInt("Payload", 1);
+        stack.getOrCreateTag().putInt("Payload", 1);
         ItemKey frozen = ItemKey.frozen(stack);
-        stack.getOrCreateNbt().putInt("Payload", 2);
+        stack.getOrCreateTag().putInt("Payload", 2);
 
         ItemStack original = new ItemStack(Items.SHULKER_BOX);
-        original.getOrCreateNbt().putInt("Payload", 1);
+        original.getOrCreateTag().putInt("Payload", 1);
         assertEquals(frozen, ItemKey.probe(original));
     }
 }

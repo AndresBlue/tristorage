@@ -1,26 +1,26 @@
 package com.andresblue.tristorage.item;
 
-import net.minecraft.client.item.TooltipContext;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.Level;
 
 public final class DimensionalAntennaItem extends Item {
-    public DimensionalAntennaItem(Settings settings) {
+    public DimensionalAntennaItem(Properties settings) {
         super(settings);
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, @Nullable World world,
-                              List<Text> tooltip, TooltipContext context) {
-        tooltip.add(Text.translatable("tooltip.tristorage.antenna_install")
-                .formatted(Formatting.AQUA));
-        tooltip.add(Text.translatable("tooltip.tristorage.antenna_air")
-                .formatted(Formatting.GRAY));
+    public void appendHoverText(ItemStack stack, @Nullable Level world,
+                              List<Component> tooltip, TooltipFlag context) {
+        tooltip.add(Component.translatable("tooltip.tristorage.antenna_install")
+                .withStyle(ChatFormatting.AQUA));
+        tooltip.add(Component.translatable("tooltip.tristorage.antenna_air")
+                .withStyle(ChatFormatting.GRAY));
     }
 }

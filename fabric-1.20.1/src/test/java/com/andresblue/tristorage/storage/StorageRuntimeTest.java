@@ -1,10 +1,10 @@
 package com.andresblue.tristorage.storage;
 
-import net.minecraft.Bootstrap;
 import net.minecraft.SharedConstants;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.recipe.Ingredient;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Ingredient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StorageRuntimeTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }
 
     @BeforeEach
@@ -99,10 +99,10 @@ class StorageRuntimeTest {
         runtime.insert(new ItemStack(Items.STONE), 50, 100, 1_000);
         runtime.insert(new ItemStack(Items.DRAGON_HEAD), 2, 100, 1_000);
 
-        var matches = runtime.matchingEntries(Ingredient.ofItems(Items.DRAGON_HEAD));
+        var matches = runtime.matchingEntries(Ingredient.of(Items.DRAGON_HEAD));
 
         assertEquals(1, matches.size());
-        assertTrue(matches.get(0).stack().isOf(Items.DRAGON_HEAD));
+        assertTrue(matches.get(0).stack().is(Items.DRAGON_HEAD));
         assertEquals(2, matches.get(0).count());
         assertEquals(0, metric("recipe_transfer_fallback_scans"));
     }
@@ -111,7 +111,7 @@ class StorageRuntimeTest {
     void exactVariantExtractionSupportsCraftingGridRefill() {
         StorageRuntime runtime = new StorageRuntime(StorageId.random());
         ItemStack named = new ItemStack(Items.OAK_PLANKS);
-        named.getOrCreateNbt().putString("TriStorageTest", "named");
+        named.getOrCreateTag().putString("TriStorageTest", "named");
         ItemStack ordinary = new ItemStack(Items.OAK_PLANKS);
         runtime.insert(named, 4, 100, 1_000);
         runtime.insert(ordinary, 4, 100, 1_000);
@@ -119,7 +119,7 @@ class StorageRuntimeTest {
         ItemStack extracted = runtime.extractMatching(named, 1);
 
         assertEquals(1, extracted.getCount());
-        assertEquals("named", extracted.getNbt().getString("TriStorageTest"));
+        assertEquals("named", extracted.getTag().getString("TriStorageTest"));
         assertEquals(7, runtime.totalItems());
     }
 
@@ -149,7 +149,7 @@ class StorageRuntimeTest {
         field.setAccessible(true);
         ((Map<?, ?>) field.get(runtime)).clear();
 
-        Ingredient slime = Ingredient.ofItems(Items.SLIME_BALL);
+        Ingredient slime = Ingredient.of(Items.SLIME_BALL);
         assertTrue(runtime.matchingEntries(slime).isEmpty());
         assertEquals(1, runtime.matchingAnyEntries(List.of(slime), 9).size());
         assertEquals(1, runtime.matchingEntries(slime).size());

@@ -1,28 +1,28 @@
 package com.andresblue.tristorage.item;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.item.TooltipContext;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 
 public final class TerminalBlockItem extends BlockItem {
-    public TerminalBlockItem(Block block, Settings settings) {
+    public TerminalBlockItem(Block block, Properties settings) {
         super(block, settings);
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip,
-                              TooltipContext context) {
-        super.appendTooltip(stack, world, tooltip, context);
-        if (stack.hasNbt()) {
-            tooltip.add(Text.translatable("tooltip.tristorage.terminal_nbt_blocked")
-                    .formatted(Formatting.RED));
+    public void appendHoverText(ItemStack stack, @Nullable Level world, List<Component> tooltip,
+                              TooltipFlag context) {
+        super.appendHoverText(stack, world, tooltip, context);
+        if (stack.hasTag()) {
+            tooltip.add(Component.translatable("tooltip.tristorage.terminal_nbt_blocked")
+                    .withStyle(ChatFormatting.RED));
         }
     }
 }

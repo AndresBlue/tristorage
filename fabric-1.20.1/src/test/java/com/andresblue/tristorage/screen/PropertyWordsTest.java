@@ -1,11 +1,11 @@
 package com.andresblue.tristorage.screen;
 
 import io.netty.buffer.Unpooled;
-import net.minecraft.Bootstrap;
 import net.minecraft.SharedConstants;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.network.packet.s2c.play.ScreenHandlerPropertyUpdateS2CPacket;
-import net.minecraft.screen.ArrayPropertyDelegate;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.game.ClientboundContainerSetDataPacket;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.inventory.SimpleContainerData;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -20,14 +20,14 @@ class PropertyWordsTest {
 
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }
 
     @Test
     void longValuesSurviveTheVanillaPropertyPacket() {
         for (long value : VALUES) {
-            ArrayPropertyDelegate client = transmit(value, PropertyWords.LONG_WORDS);
+            SimpleContainerData client = transmit(value, PropertyWords.LONG_WORDS);
             assertEquals(value, PropertyWords.read(client, 0, PropertyWords.LONG_WORDS),
                     "value " + value);
         }
@@ -39,7 +39,7 @@ class PropertyWordsTest {
             if (value > Integer.MAX_VALUE) {
                 continue;
             }
-            ArrayPropertyDelegate client = transmit(value, PropertyWords.INT_WORDS);
+            SimpleContainerData client = transmit(value, PropertyWords.INT_WORDS);
             assertEquals(value, PropertyWords.read(client, 0, PropertyWords.INT_WORDS),
                     "value " + value);
         }
@@ -51,8 +51,8 @@ class PropertyWordsTest {
         assertNotEquals(40_000, roundTrip(40_000));
     }
 
-    private static ArrayPropertyDelegate transmit(long value, int words) {
-        ArrayPropertyDelegate client = new ArrayPropertyDelegate(words);
+    private static SimpleContainerData transmit(long value, int words) {
+        SimpleContainerData client = new SimpleContainerData(words);
         for (int index = 0; index < words; index++) {
             client.set(index, roundTrip(PropertyWords.word(value, index)));
         }
@@ -60,8 +60,8 @@ class PropertyWordsTest {
     }
 
     private static int roundTrip(int value) {
-        PacketByteBuf buffer = new PacketByteBuf(Unpooled.buffer());
-        new ScreenHandlerPropertyUpdateS2CPacket(1, 0, value).write(buffer);
-        return new ScreenHandlerPropertyUpdateS2CPacket(buffer).getValue();
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        new ClientboundContainerSetDataPacket(1, 0, value).write(buffer);
+        return new ClientboundContainerSetDataPacket(buffer).getValue();
     }
 }

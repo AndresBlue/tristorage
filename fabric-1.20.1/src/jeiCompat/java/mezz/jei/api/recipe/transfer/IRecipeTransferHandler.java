@@ -2,22 +2,21 @@ package mezz.jei.api.recipe.transfer;
 
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.RecipeType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.ScreenHandlerType;
-
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
 import java.util.Optional;
 
-public interface IRecipeTransferHandler<C extends ScreenHandler, R> {
+public interface IRecipeTransferHandler<C extends AbstractContainerMenu, R> {
     Class<? extends C> getContainerClass();
 
-    Optional<ScreenHandlerType<C>> getMenuType();
+    Optional<MenuType<C>> getMenuType();
 
     RecipeType<R> getRecipeType();
 
     IRecipeTransferError transferRecipe(C container, R recipe,
                                         IRecipeSlotsView recipeSlots,
-                                        PlayerEntity player,
+                                        Player player,
                                         boolean maxTransfer,
                                         boolean doTransfer);
 }

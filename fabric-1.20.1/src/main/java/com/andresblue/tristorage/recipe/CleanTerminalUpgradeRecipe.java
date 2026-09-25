@@ -2,32 +2,32 @@ package com.andresblue.tristorage.recipe;
 
 import com.andresblue.tristorage.TriStorageMod;
 import com.google.gson.JsonObject;
-import net.minecraft.inventory.RecipeInputInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.recipe.ShapedRecipe;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.level.Level;
 
 /** Shaped terminal upgrade that refuses to consume a terminal carrying any NBT. */
 public final class CleanTerminalUpgradeRecipe extends ShapedRecipe {
     private CleanTerminalUpgradeRecipe(ShapedRecipe recipe) {
-        super(recipe.getId(), recipe.getGroup(), recipe.getCategory(),
+        super(recipe.getId(), recipe.getGroup(), recipe.category(),
                 recipe.getWidth(), recipe.getHeight(), recipe.getIngredients(),
-                recipe.getOutput(net.minecraft.registry.DynamicRegistryManager.EMPTY).copy(),
+                recipe.getResultItem(net.minecraft.core.RegistryAccess.EMPTY).copy(),
                 recipe.showNotification());
     }
 
     @Override
-    public boolean matches(RecipeInputInventory inventory, World world) {
+    public boolean matches(CraftingContainer inventory, Level world) {
         if (!super.matches(inventory, world)) {
             return false;
         }
-        for (int slot = 0; slot < inventory.size(); slot++) {
-            ItemStack ingredient = inventory.getStack(slot);
-            if (ingredient.isOf(TriStorageMod.TERMINAL.asItem())) {
-                return TerminalUpgradeSafety.isClean(ingredient.getNbt());
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack ingredient = inventory.getItem(slot);
+            if (ingredient.is(TriStorageMod.TERMINAL.asItem())) {
+                return TerminalUpgradeSafety.isClean(ingredient.getTag());
             }
         }
         return false;
@@ -40,18 +40,18 @@ public final class CleanTerminalUpgradeRecipe extends ShapedRecipe {
 
     public static final class Serializer implements RecipeSerializer<CleanTerminalUpgradeRecipe> {
         @Override
-        public CleanTerminalUpgradeRecipe read(Identifier id, JsonObject json) {
-            return new CleanTerminalUpgradeRecipe(RecipeSerializer.SHAPED.read(id, json));
+        public CleanTerminalUpgradeRecipe fromJson(ResourceLocation id, JsonObject json) {
+            return new CleanTerminalUpgradeRecipe(RecipeSerializer.SHAPED_RECIPE.fromJson(id, json));
         }
 
         @Override
-        public CleanTerminalUpgradeRecipe read(Identifier id, PacketByteBuf buf) {
-            return new CleanTerminalUpgradeRecipe(RecipeSerializer.SHAPED.read(id, buf));
+        public CleanTerminalUpgradeRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buf) {
+            return new CleanTerminalUpgradeRecipe(RecipeSerializer.SHAPED_RECIPE.fromNetwork(id, buf));
         }
 
         @Override
-        public void write(PacketByteBuf buf, CleanTerminalUpgradeRecipe recipe) {
-            RecipeSerializer.SHAPED.write(buf, recipe);
+        public void toNetwork(FriendlyByteBuf buf, CleanTerminalUpgradeRecipe recipe) {
+            RecipeSerializer.SHAPED_RECIPE.toNetwork(buf, recipe);
         }
     }
 }
