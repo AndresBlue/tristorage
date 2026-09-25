@@ -75,6 +75,7 @@
   "config.tristorage.always": "Always",
   "message.tristorage.core_recovery_required": "This Storage Core could not verify its ownership token. Its contents were not modified.",
   "message.tristorage.core_not_ready": "Storage is still loading or waiting for a safe save.",
+  "message.tristorage.core_needs_tool": "Use a pickaxe to pick up this Storage Core without losing its storage.",
   "message.tristorage.recipe_transfer_missing": "The complete storage system does not contain enough ingredients.",
   "message.tristorage.recipe_availability_checking": "Checking the complete storage system...",
   "message.tristorage.recipe_transfer_unsupported": "This crafting recipe cannot be transferred into a 3×3 grid."

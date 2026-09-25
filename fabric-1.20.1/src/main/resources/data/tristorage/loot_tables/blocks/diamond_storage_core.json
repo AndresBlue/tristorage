@@ -18,7 +18,6 @@
           {"source": "TotalItemsSummary", "target": "BlockEntityTag.TotalItemsSummary", "op": "replace"}
         ]
       }]
-    }],
-    "conditions": [{"condition": "minecraft:survives_explosion"}]
+    }]
   }]
 }

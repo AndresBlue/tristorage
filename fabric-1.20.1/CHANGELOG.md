@@ -1,5 +1,31 @@
 # TriStorage changelog
 
+## Unreleased — Minecraft 1.20.1 Fabric
+
+- Fixed item counts, type counts and Core capacities above 32,767 showing
+  corrupted values on dedicated and LAN servers. Screen properties now travel
+  as 16-bit words, which is what the vanilla property packet carries.
+- Fixed a leftover sealed journal (from an interrupted compaction) rolling
+  items back on the next load. Journal frames already contained in the snapshot
+  are skipped, leftovers are folded into a snapshot, and checkpoints remove them.
+- Storage Cores can no longer be orphaned by breaking them without a pickaxe;
+  mining makes no progress and the server refuses the break.
+- Every Core tier now resists explosions like obsidian, cannot be broken by the
+  Wither or the Ender Dragon, and always drops its item if another mod breaks it.
+- Operator recovery now restores the Core's real tier instead of guessing it from
+  the installed chests. Tiers are recorded in the manifest from now on.
+- Terminals reached through a long network no longer close immediately: reach is
+  measured from the terminal that was used, not from the Core.
+- Filter requests are coalesced and spaced by their own cost, so flooding them
+  can no longer stall the server on very large storages.
+- The Core's orbit display no longer sends full item NBT to nearby players; only
+  visual tags are kept, preventing oversized chunk packets and content leaks.
+- Items that cannot return to storage after a failed transfer go to the player
+  instead of being deleted.
+- Stopping the server now closes open terminals and Core screens before the
+  repository is flushed, so crafting-grid items and pending chests are saved.
+- Corrected the Dimensional Antenna recipe in the README.
+
 ## 1.12.1 — Minecraft 1.20.1 Fabric
 
 - Fixed JEI/EMI recipe availability occasionally reporting stored ingredients

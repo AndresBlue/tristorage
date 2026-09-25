@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.UUID;
 import java.util.Comparator;
 import java.util.zip.CRC32;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,9 +97,9 @@ public final class StorageRepository {
      * disk-backed runtime is loaded off-thread and published in bounded slices.
      */
     public Attachment attach(StorageRuntime candidate, String presentedToken,
-                             ServerWorld world, BlockPos pos,
+                             ServerWorld world, BlockPos pos, StorageTier tier,
                              Runnable durableCallback) {
-        Claim claim = claim(candidate.id(), presentedToken, world, pos);
+        Claim claim = claim(candidate.id(), presentedToken, world, pos, tier);
         if (!claim.valid) {
             return new Attachment(candidate, presentedToken, false);
         }
@@ -162,7 +163,7 @@ public final class StorageRepository {
             return PortablePreparation.pending();
         }
         String rotated = UUID.randomUUID().toString();
-        ownership.put(id, new Ownership(rotated, "PORTABLE", "", 0));
+        ownership.put(id, new Ownership(rotated, "PORTABLE", "", 0, current.tier));
         try {
             writeManifestDurable();
         } catch (RuntimeException exception) {
@@ -225,7 +226,7 @@ public final class StorageRepository {
         }
         String rotated = UUID.randomUUID().toString();
         ownership.put(id, new Ownership(rotated, "ACTIVE",
-                world.getRegistryKey().getValue().toString(), pos.asLong()));
+                world.getRegistryKey().getValue().toString(), pos.asLong(), current.tier));
         writeManifestDurable();
         return rotated;
     }
@@ -338,12 +339,13 @@ public final class StorageRepository {
         Record record = records.get(id);
         if (!status.ready || record == null || record.anchorCount != 0
                 || record.pendingWrites.get() != 0 || !awaitDurableBarrier(id)) {
-            return new PortableRecovery(status, "NOT_READY", "");
+            return new PortableRecovery(status, "NOT_READY", "", "");
         }
+        String tier = ownership.get(id).tier;
         String token = UUID.randomUUID().toString();
-        ownership.put(id, new Ownership(token, "PORTABLE", "", 0));
+        ownership.put(id, new Ownership(token, "PORTABLE", "", 0, tier));
         writeManifestDurable();
-        return new PortableRecovery(summary(id), "RECOVERED", token);
+        return new PortableRecovery(summary(id), "RECOVERED", token, tier);
     }
 
     /** Deletes only a fully loaded, unanchored storage with no chests or items. */
@@ -574,6 +576,7 @@ public final class StorageRepository {
         submitIo(() -> {
             writeSnapshot(record.runtime.id(), entries, chests, revision);
             Files.deleteIfExists(journalPath(record.runtime.id()));
+            Files.deleteIfExists(sealedJournalPath(record.runtime.id()));
             if (migrationBarrier) {
                 server.execute(() -> markDurable(record));
             }
@@ -592,25 +595,33 @@ public final class StorageRepository {
     }
 
     private Claim claim(StorageId id, String presentedToken,
-                        ServerWorld world, BlockPos pos) {
+                        ServerWorld world, BlockPos pos, StorageTier tier) {
         String safeToken = presentedToken == null || presentedToken.isBlank()
                 ? UUID.randomUUID().toString() : presentedToken;
         Ownership current = ownership.get(id);
         String dimension = world.getRegistryKey().getValue().toString();
         if (current == null) {
-            ownership.put(id, new Ownership(safeToken, "ACTIVE", dimension, pos.asLong()));
+            ownership.put(id, new Ownership(safeToken, "ACTIVE", dimension, pos.asLong(),
+                    tier.name()));
             writeManifestDurable();
             return new Claim(safeToken, true);
         }
         if ("ACTIVE".equals(current.lifecycle)) {
-            return new Claim(current.token,
-                    current.token.equals(safeToken) && current.matches(world, pos));
+            boolean valid = current.token.equals(safeToken) && current.matches(world, pos);
+            if (valid && current.tier.isEmpty()) {
+                // Manifests written before tiers were recorded learn them on load.
+                ownership.put(id, new Ownership(current.token, current.lifecycle,
+                        current.dimension, current.blockPos, tier.name()));
+                writeManifestDurable();
+            }
+            return new Claim(current.token, valid);
         }
         if (!"PORTABLE".equals(current.lifecycle) || !current.token.equals(safeToken)) {
             return new Claim(current.token, false);
         }
         String rotated = UUID.randomUUID().toString();
-        ownership.put(id, new Ownership(rotated, "ACTIVE", dimension, pos.asLong()));
+        ownership.put(id, new Ownership(rotated, "ACTIVE", dimension, pos.asLong(),
+                tier.name()));
         writeManifestDurable();
         return new Claim(rotated, true);
     }
@@ -627,7 +638,7 @@ public final class StorageRepository {
                 StorageId id = StorageId.parse(stored.getString("StorageId"));
                 ownership.put(id, new Ownership(stored.getString("Token"),
                         stored.getString("Lifecycle"), stored.getString("Dimension"),
-                        stored.getLong("BlockPos")));
+                        stored.getLong("BlockPos"), stored.getString("Tier")));
             } catch (IllegalArgumentException ignored) {
                 StorageMetrics.increment("repository.invalid_manifest_entries");
             }
@@ -645,6 +656,7 @@ public final class StorageRepository {
             stored.putString("Lifecycle", entry.getValue().lifecycle);
             stored.putString("Dimension", entry.getValue().dimension);
             stored.putLong("BlockPos", entry.getValue().blockPos);
+            stored.putString("Tier", entry.getValue().tier);
             list.add(stored);
         }
         root.put("Storages", list);
@@ -680,26 +692,46 @@ public final class StorageRepository {
     }
 
     private Prepared readPrepared(StorageId id) throws IOException {
+        Path snapshot = snapshotPath(id);
+        NbtCompound snapshotRoot = Files.exists(snapshot)
+                ? NbtIo.readCompressed(snapshot.toFile()) : null;
+        List<NbtCompound> frames = new ArrayList<>();
+        frames.addAll(readFrames(sealedJournalPath(id)));
+        frames.addAll(readFrames(journalPath(id)));
+        return replay(snapshotRoot, frames);
+    }
+
+    /**
+     * Rebuilds a catalog from its snapshot and journal frames. A frame stores
+     * the final state of every entry it touched, so replaying a frame that the
+     * snapshot already contains rolls those entries back. That happened when a
+     * compaction left a sealed journal behind and a later checkpoint wrote a
+     * newer snapshot. Frames at or below the snapshot revision are skipped.
+     */
+    static Prepared replay(@Nullable NbtCompound snapshotRoot, List<NbtCompound> frames) {
         LinkedHashMap<Long, NbtCompound> entries = new LinkedHashMap<>();
         int chests = 0;
         long revision = 0;
-        Path snapshot = snapshotPath(id);
-        if (Files.exists(snapshot)) {
-            NbtCompound root = NbtIo.readCompressed(snapshot.toFile());
-            chests = Math.max(0, root.getInt("InstalledChests"));
-            revision = Math.max(0, root.getLong("Revision"));
-            NbtList list = root.getList("Entries", NbtElement.COMPOUND_TYPE);
+        long snapshotRevision = Long.MIN_VALUE;
+        if (snapshotRoot != null) {
+            chests = Math.max(0, snapshotRoot.getInt("InstalledChests"));
+            revision = Math.max(0, snapshotRoot.getLong("Revision"));
+            snapshotRevision = revision;
+            NbtList list = snapshotRoot.getList("Entries", NbtElement.COMPOUND_TYPE);
             for (int index = 0; index < list.size(); index++) {
                 NbtCompound entry = list.getCompound(index);
                 entries.put(entry.getLong("EntryId"), entry.copy());
             }
         }
-        List<NbtCompound> frames = new ArrayList<>();
-        frames.addAll(readFrames(sealedJournalPath(id)));
-        frames.addAll(readFrames(journalPath(id)));
+        int staleFrames = 0;
         for (NbtCompound frame : frames) {
+            long frameRevision = frame.getLong("Revision");
+            if (frameRevision <= snapshotRevision) {
+                staleFrames++;
+                continue;
+            }
             chests = Math.max(0, frame.getInt("InstalledChests"));
-            revision = Math.max(revision, frame.getLong("Revision"));
+            revision = Math.max(revision, frameRevision);
             NbtList operations = frame.getList("Operations", NbtElement.COMPOUND_TYPE);
             for (int index = 0; index < operations.size(); index++) {
                 NbtCompound operation = operations.getCompound(index);
@@ -711,14 +743,24 @@ public final class StorageRepository {
                 }
             }
         }
+        if (staleFrames > 0) {
+            StorageMetrics.add("repository.stale_frames_skipped", staleFrames);
+        }
         return new Prepared(chests, revision, new ArrayList<>(entries.values()));
     }
 
     private void compactIfNeeded(StorageId id) throws IOException {
         Path journal = journalPath(id);
         Path sealed = sealedJournalPath(id);
-        if (!Files.exists(journal) || Files.size(journal) < COMPACTION_THRESHOLD
-                || Files.exists(sealed)) {
+        if (Files.exists(sealed)) {
+            // An earlier compaction stopped after sealing. Fold the leftover
+            // into a snapshot first; otherwise compaction stays blocked and the
+            // journal grows without bound.
+            writePreparedSnapshot(id, readPrepared(id));
+            Files.deleteIfExists(sealed);
+            StorageMetrics.increment("repository.sealed_journals_recovered");
+        }
+        if (!Files.exists(journal) || Files.size(journal) < COMPACTION_THRESHOLD) {
             return;
         }
         try {
@@ -908,7 +950,9 @@ public final class StorageRepository {
                                  int storedTypes, long storedItems) {
     }
 
-    public record PortableRecovery(StorageSummary summary, String result, String token) {
+    /** {@code tier} is the recorded {@link StorageTier} name, or empty for old manifests. */
+    public record PortableRecovery(StorageSummary summary, String result, String token,
+                                   String tier) {
     }
 
     public enum PortablePreparationStatus {
@@ -934,14 +978,15 @@ public final class StorageRepository {
     private record Claim(String token, boolean valid) {
     }
 
-    private record Ownership(String token, String lifecycle, String dimension, long blockPos) {
+    private record Ownership(String token, String lifecycle, String dimension, long blockPos,
+                             String tier) {
         private boolean matches(ServerWorld world, BlockPos pos) {
             return dimension.equals(world.getRegistryKey().getValue().toString())
                     && blockPos == pos.asLong();
         }
     }
 
-    private record Prepared(int chests, long revision, List<NbtCompound> entries) {
+    record Prepared(int chests, long revision, List<NbtCompound> entries) {
     }
 
     private record JournalOperation(long entryId, ItemStack stack,

@@ -514,12 +514,13 @@ public final class StorageDiagnostics {
             return 0;
         }
         StorageRepository.StorageSummary summary = recovery.summary();
-        ItemStack portable = new ItemStack(summary.installedChests() <= StorageTier.IRON.chestCapacity()
-                ? TriStorageMod.IRON_CORE
-                : summary.installedChests() <= StorageTier.DIAMOND.chestCapacity()
-                ? TriStorageMod.DIAMOND_CORE
-                : summary.installedChests() <= StorageTier.BLAZE.chestCapacity()
-                ? TriStorageMod.BLAZE_CORE : TriStorageMod.COSMIC_CORE);
+        ItemStack portable = new ItemStack(switch (StorageTier.forRecovery(
+                recovery.tier(), summary.installedChests())) {
+            case IRON -> TriStorageMod.IRON_CORE;
+            case DIAMOND -> TriStorageMod.DIAMOND_CORE;
+            case BLAZE -> TriStorageMod.BLAZE_CORE;
+            case COSMIC -> TriStorageMod.COSMIC_CORE;
+        });
         NbtCompound data = new NbtCompound();
         data.putString(PortableCoreData.STORAGE_ID_KEY, id.toString());
         data.putString(PortableCoreData.OWNERSHIP_TOKEN_KEY, recovery.token());

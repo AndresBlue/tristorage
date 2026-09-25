@@ -1,11 +1,15 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.screen.CoreScreenHandler;
+import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Server lifecycle owner for world-local TriStorage repositories. */
@@ -45,12 +49,31 @@ public final class StorageRepositories {
                 });
         ServerTickEvents.END_SERVER_TICK.register(server -> get(server).tick());
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            closeOpenStorageScreens(server);
             StorageTickCoordinator.flush();
             StorageRepository repository = REPOSITORIES.remove(server);
             if (repository != null) {
                 repository.closeAndFlush();
             }
         });
+    }
+
+    /**
+     * SERVER_STOPPING fires before players are saved and disconnected.
+     * Closing TriStorage screens here returns crafting-grid items and pending
+     * chests while the repository still journals them; closing them later
+     * mutated an already closed repository and the change was never saved.
+     */
+    private static void closeOpenStorageScreens(MinecraftServer server) {
+        if (server.getPlayerManager() == null) {
+            return;
+        }
+        for (ServerPlayerEntity player : List.copyOf(server.getPlayerManager().getPlayerList())) {
+            if (player.currentScreenHandler instanceof TerminalScreenHandler
+                    || player.currentScreenHandler instanceof CoreScreenHandler) {
+                player.closeHandledScreen();
+            }
+        }
     }
 
     public static StorageRepository get(MinecraftServer server) {

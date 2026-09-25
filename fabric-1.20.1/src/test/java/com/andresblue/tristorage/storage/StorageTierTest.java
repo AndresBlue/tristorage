@@ -19,4 +19,19 @@ class StorageTierTest {
         assertEquals(5_184, StorageTier.IRON.itemCapacity(3));
         assertEquals(23_887_872L, StorageTier.COSMIC.itemCapacity(13_824));
     }
+
+    @Test
+    void recoveryKeepsTheRecordedTierOfALightlyFilledCore() {
+        assertEquals(StorageTier.COSMIC, StorageTier.forRecovery("COSMIC", 3));
+        assertEquals(StorageTier.DIAMOND, StorageTier.forRecovery("DIAMOND", 0));
+    }
+
+    @Test
+    void recoveryFallsBackToTheSmallestFittingTier() {
+        assertEquals(StorageTier.IRON, StorageTier.forRecovery("", 27));
+        assertEquals(StorageTier.DIAMOND, StorageTier.forRecovery("", 28));
+        assertEquals(StorageTier.BLAZE, StorageTier.forRecovery("UNKNOWN", 500));
+        // A recorded tier that cannot hold the chests is never trusted.
+        assertEquals(StorageTier.COSMIC, StorageTier.forRecovery("IRON", 2_000));
+    }
 }

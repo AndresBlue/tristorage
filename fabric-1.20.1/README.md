@@ -107,10 +107,14 @@ Q T Q
 Antena Dimensional:
 
 ```text
-Q G Q
-R B R
-Q C Q
+G Q G
+Q O Q
+G Q G
 ```
+
+- `G`: lingote de oro
+- `Q`: cuarzo del Nether
+- `O`: obsidiana llorosa
 
 ## Seguridad y upgrades
 

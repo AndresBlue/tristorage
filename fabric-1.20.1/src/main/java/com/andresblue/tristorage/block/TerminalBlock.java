@@ -64,7 +64,8 @@ public final class TerminalBlock extends Block implements NetworkBlock {
             return ActionResult.CONSUME;
         }
         player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, inventory, ignored) -> new TerminalScreenHandler(syncId, inventory, core),
+                (syncId, inventory, ignored) -> new TerminalScreenHandler(syncId, inventory, core)
+                        .accessedFrom(pos),
                 Text.translatable("screen.tristorage.terminal")
         ));
         return ActionResult.CONSUME;

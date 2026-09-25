@@ -49,14 +49,20 @@ import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
 public final class TriStorageMod implements ModInitializer {
     public static final String MOD_ID = "tristorage";
 
+    // Cores hold whole storages, so every tier resists explosions like obsidian.
+    private static final float CORE_BLAST_RESISTANCE = 1200.0f;
     public static final StorageCoreBlock IRON_CORE = new StorageCoreBlock(StorageTier.IRON,
-            AbstractBlock.Settings.copy(Blocks.IRON_BLOCK).strength(3.5f));
+            AbstractBlock.Settings.copy(Blocks.IRON_BLOCK)
+                    .strength(3.5f, CORE_BLAST_RESISTANCE));
     public static final StorageCoreBlock DIAMOND_CORE = new StorageCoreBlock(StorageTier.DIAMOND,
-            AbstractBlock.Settings.copy(Blocks.DIAMOND_BLOCK).strength(4.5f));
+            AbstractBlock.Settings.copy(Blocks.DIAMOND_BLOCK)
+                    .strength(4.5f, CORE_BLAST_RESISTANCE));
     public static final StorageCoreBlock BLAZE_CORE = new StorageCoreBlock(StorageTier.BLAZE,
-            AbstractBlock.Settings.copy(Blocks.OBSIDIAN).strength(12.0f, 50.0f).luminance(state -> 4));
+            AbstractBlock.Settings.copy(Blocks.OBSIDIAN)
+                    .strength(12.0f, CORE_BLAST_RESISTANCE).luminance(state -> 4));
     public static final StorageCoreBlock COSMIC_CORE = new StorageCoreBlock(StorageTier.COSMIC,
-            AbstractBlock.Settings.copy(Blocks.OBSIDIAN).strength(18.0f, 1200.0f).luminance(state -> 7));
+            AbstractBlock.Settings.copy(Blocks.OBSIDIAN)
+                    .strength(18.0f, CORE_BLAST_RESISTANCE).luminance(state -> 7));
     public static final TerminalBlock TERMINAL = new TerminalBlock(
             AbstractBlock.Settings.copy(Blocks.IRON_BLOCK).strength(3.5f).luminance(state -> 5));
     public static final CraftingTerminalBlock CRAFTING_TERMINAL = new CraftingTerminalBlock(
@@ -94,6 +100,13 @@ public final class TriStorageMod implements ModInitializer {
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
             if (!(blockEntity instanceof StorageCoreBlockEntity core)) {
                 return true;
+            }
+            if (!StorageCoreBlock.canBreakSafely(player, state)) {
+                if (!world.isClient) {
+                    player.sendMessage(Text.translatable(
+                            "message.tristorage.core_needs_tool"), true);
+                }
+                return false;
             }
             boolean prepared = core.preparePortable();
             if (!prepared && !world.isClient) {

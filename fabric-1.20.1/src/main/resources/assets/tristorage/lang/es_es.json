@@ -75,6 +75,7 @@
   "config.tristorage.always": "Siempre",
   "message.tristorage.core_recovery_required": "Este núcleo no pudo verificar su token de propiedad. Su contenido no fue modificado.",
   "message.tristorage.core_not_ready": "El almacenamiento aún está cargando o esperando un guardado seguro.",
+  "message.tristorage.core_needs_tool": "Usa un pico para recoger este núcleo sin perder su almacenamiento.",
   "message.tristorage.recipe_transfer_missing": "El sistema de almacenamiento completo no contiene suficientes ingredientes.",
   "message.tristorage.recipe_availability_checking": "Comprobando el sistema de almacenamiento completo...",
   "message.tristorage.recipe_transfer_unsupported": "Esta receta no se puede transferir a una cuadrícula de 3×3."

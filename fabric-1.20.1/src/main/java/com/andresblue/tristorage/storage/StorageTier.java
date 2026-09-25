@@ -32,4 +32,32 @@ public enum StorageTier {
     public long itemCapacity(int installedChests) {
         return (long) Math.max(0, Math.min(installedChests, chestCapacity)) * ITEMS_PER_CHEST;
     }
+
+    /** Smallest tier that can hold {@code installedChests}. */
+    public static StorageTier smallestFor(int installedChests) {
+        for (StorageTier tier : values()) {
+            if (installedChests <= tier.chestCapacity) {
+                return tier;
+            }
+        }
+        return COSMIC;
+    }
+
+    /**
+     * Tier for an operator recovery: the recorded tier when it still fits the
+     * installed chests, otherwise the smallest tier that does. Manifests from
+     * before tiers were recorded have no name and fall back as well.
+     */
+    public static StorageTier forRecovery(String recorded, int installedChests) {
+        StorageTier fallback = smallestFor(installedChests);
+        if (recorded == null || recorded.isEmpty()) {
+            return fallback;
+        }
+        try {
+            StorageTier tier = valueOf(recorded);
+            return tier.chestCapacity >= installedChests ? tier : fallback;
+        } catch (IllegalArgumentException unknownTier) {
+            return fallback;
+        }
+    }
 }

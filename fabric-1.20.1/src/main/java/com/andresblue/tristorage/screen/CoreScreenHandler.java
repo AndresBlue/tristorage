@@ -14,7 +14,13 @@ import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 
 public final class CoreScreenHandler extends ScreenHandler {
-    private static final int PROPERTY_COUNT = 8;
+    private static final int INSTALLED_CHESTS = 0;
+    private static final int MAX_CHESTS = INSTALLED_CHESTS + PropertyWords.INT_WORDS;
+    private static final int STORED_TYPES = MAX_CHESTS + PropertyWords.INT_WORDS;
+    private static final int TYPE_CAPACITY = STORED_TYPES + PropertyWords.INT_WORDS;
+    private static final int TOTAL_ITEMS = TYPE_CAPACITY + PropertyWords.INT_WORDS;
+    private static final int ITEM_CAPACITY = TOTAL_ITEMS + PropertyWords.LONG_WORDS;
+    private static final int PROPERTY_COUNT = ITEM_CAPACITY + PropertyWords.LONG_WORDS;
     private final Inventory input = new SimpleInventory(1);
     private final StorageCoreBlockEntity core;
     private final PropertyDelegate syncedProperties;
@@ -102,29 +108,29 @@ public final class CoreScreenHandler extends ScreenHandler {
     }
 
     public int installedChests() {
-        return syncedProperties.get(0);
+        return (int) PropertyWords.read(
+                syncedProperties, INSTALLED_CHESTS, PropertyWords.INT_WORDS);
     }
 
     public int maxChests() {
-        return syncedProperties.get(1);
+        return (int) PropertyWords.read(syncedProperties, MAX_CHESTS, PropertyWords.INT_WORDS);
     }
 
     public int storedTypes() {
-        return syncedProperties.get(2);
+        return (int) PropertyWords.read(syncedProperties, STORED_TYPES, PropertyWords.INT_WORDS);
     }
 
     public int typeCapacity() {
-        return syncedProperties.get(3);
+        return (int) PropertyWords.read(
+                syncedProperties, TYPE_CAPACITY, PropertyWords.INT_WORDS);
     }
 
     public long totalItems() {
-        return Integer.toUnsignedLong(syncedProperties.get(4))
-                | (Integer.toUnsignedLong(syncedProperties.get(5)) << 32);
+        return PropertyWords.read(syncedProperties, TOTAL_ITEMS, PropertyWords.LONG_WORDS);
     }
 
     public long itemCapacity() {
-        return Integer.toUnsignedLong(syncedProperties.get(6))
-                | (Integer.toUnsignedLong(syncedProperties.get(7)) << 32);
+        return PropertyWords.read(syncedProperties, ITEM_CAPACITY, PropertyWords.LONG_WORDS);
     }
 
     private void absorbInput() {
@@ -146,19 +152,25 @@ public final class CoreScreenHandler extends ScreenHandler {
         return new PropertyDelegate() {
             @Override
             public int get(int index) {
-                long total = core.totalItems();
-                long capacity = core.itemCapacity();
-                return switch (index) {
-                    case 0 -> core.installedChests();
-                    case 1 -> core.maxChests();
-                    case 2 -> core.storedTypes();
-                    case 3 -> core.typeCapacity();
-                    case 4 -> (int) total;
-                    case 5 -> (int) (total >>> 32);
-                    case 6 -> (int) capacity;
-                    case 7 -> (int) (capacity >>> 32);
-                    default -> 0;
-                };
+                if (index < MAX_CHESTS) {
+                    return PropertyWords.word(core.installedChests(), index - INSTALLED_CHESTS);
+                }
+                if (index < STORED_TYPES) {
+                    return PropertyWords.word(core.maxChests(), index - MAX_CHESTS);
+                }
+                if (index < TYPE_CAPACITY) {
+                    return PropertyWords.word(core.storedTypes(), index - STORED_TYPES);
+                }
+                if (index < TOTAL_ITEMS) {
+                    return PropertyWords.word(core.typeCapacity(), index - TYPE_CAPACITY);
+                }
+                if (index < ITEM_CAPACITY) {
+                    return PropertyWords.word(core.totalItems(), index - TOTAL_ITEMS);
+                }
+                if (index < PROPERTY_COUNT) {
+                    return PropertyWords.word(core.itemCapacity(), index - ITEM_CAPACITY);
+                }
+                return 0;
             }
 
             @Override

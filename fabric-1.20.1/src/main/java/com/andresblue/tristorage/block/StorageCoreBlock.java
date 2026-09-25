@@ -17,6 +17,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,6 +55,24 @@ public final class StorageCoreBlock extends BlockWithEntity implements NetworkBl
             }
         }
         super.onBreak(world, pos, state, player);
+    }
+
+    /**
+     * Without a suitable tool vanilla drops nothing, and the dropped Core item
+     * is what carries the storage. Refuse to make progress instead of letting
+     * the storage end up orphaned.
+     */
+    @Override
+    public float calcBlockBreakingDelta(BlockState state, PlayerEntity player,
+                                        BlockView world, BlockPos pos) {
+        if (!canBreakSafely(player, state)) {
+            return 0.0f;
+        }
+        return super.calcBlockBreakingDelta(state, player, world, pos);
+    }
+
+    public static boolean canBreakSafely(PlayerEntity player, BlockState state) {
+        return player.isCreative() || player.canHarvest(state);
     }
 
     @Override

@@ -51,6 +51,9 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
     private static final String ORBIT_ENTRIES_KEY = "TriStorageOrbitEntries";
     private static final String ORBIT_REVISION_KEY = "TriStorageOrbitRevision";
     private static final int ORBIT_ENTRY_LIMIT = 24;
+    private static final List<String> ORBIT_VISUAL_KEYS = List.of(
+            "Enchantments", "StoredEnchantments", "Potion", "CustomPotionColor",
+            "CustomModelData", "SkullOwner", "Trim");
 
     private StorageRuntime runtime;
     private final StorageRuntime.Listener anchorListener = this::onRuntimeFlush;
@@ -109,7 +112,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
             repositoryAttached = true;
             StorageRepository.Attachment attachment = StorageRepositories
                     .get(serverWorld.getServer()).attach(runtime, ownershipToken,
-                    serverWorld, pos, () -> {
+                    serverWorld, pos, tier(), () -> {
                         repositoryDurable = true;
                         markDirty();
                     });
@@ -466,11 +469,42 @@ public final class StorageCoreBlockEntity extends BlockEntity implements NamedSc
         NbtList list = new NbtList();
         for (ItemStack template : serverOrbitSnapshot()) {
             NbtCompound stored = new NbtCompound();
-            stored.put("Stack", template.writeNbt(new NbtCompound()));
+            stored.put("Stack", orbitDisplayStack(template).writeNbt(new NbtCompound()));
             list.add(stored);
         }
         nbt.put(ORBIT_ENTRIES_KEY, list);
         return nbt;
+    }
+
+    /**
+     * Orbit stacks are sent to every nearby player in chunk and update
+     * packets. Only tags that change how the item renders are kept, so
+     * shulker contents or book pages can neither overflow the chunk packet nor
+     * reveal what the storage holds.
+     */
+    static ItemStack orbitDisplayStack(ItemStack template) {
+        ItemStack display = new ItemStack(template.getItem());
+        NbtCompound source = template.getNbt();
+        if (source == null) {
+            return display;
+        }
+        NbtCompound kept = new NbtCompound();
+        for (String key : ORBIT_VISUAL_KEYS) {
+            NbtElement value = source.get(key);
+            if (value != null) {
+                kept.put(key, value.copy());
+            }
+        }
+        NbtCompound sourceDisplay = source.getCompound("display");
+        if (sourceDisplay.contains("color", NbtElement.NUMBER_TYPE)) {
+            NbtCompound keptDisplay = new NbtCompound();
+            keptDisplay.putInt("color", sourceDisplay.getInt("color"));
+            kept.put("display", keptDisplay);
+        }
+        if (!kept.isEmpty()) {
+            display.setNbt(kept);
+        }
+        return display;
     }
 
     @Override

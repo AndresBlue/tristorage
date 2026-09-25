@@ -1,6 +1,7 @@
 package com.andresblue.tristorage.storage;
 
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -46,6 +47,81 @@ class StorageRepositoryJournalTest {
 
         assertTrue(invokeRead(journal).isEmpty());
         assertEquals(0, Files.size(journal));
+    }
+
+    @Test
+    void replaySkipsFramesTheSnapshotAlreadyContains() {
+        // A sealed journal left by an interrupted compaction still holds
+        // revision 8, while a later checkpoint wrote the revision-10 snapshot.
+        NbtCompound snapshot = snapshot(10, 2, entry(1, 5));
+        List<NbtCompound> frames = List.of(
+                frame(8, 1, entry(1, 100)),
+                frame(9, 1, removal(1)),
+                frame(11, 2, entry(1, 7), entry(2, 3)));
+
+        StorageRepository.Prepared prepared = StorageRepository.replay(snapshot, frames);
+
+        assertEquals(11, prepared.revision());
+        assertEquals(2, prepared.chests());
+        assertEquals(2, prepared.entries().size());
+        assertEquals(7, countOf(prepared, 1));
+        assertEquals(3, countOf(prepared, 2));
+    }
+
+    @Test
+    void replayWithoutSnapshotAppliesEveryFrame() {
+        List<NbtCompound> frames = List.of(
+                frame(1, 1, entry(1, 4)),
+                frame(2, 1, removal(1)),
+                frame(3, 1, entry(2, 9)));
+
+        StorageRepository.Prepared prepared = StorageRepository.replay(null, frames);
+
+        assertEquals(3, prepared.revision());
+        assertEquals(1, prepared.entries().size());
+        assertEquals(9, countOf(prepared, 2));
+    }
+
+    private static NbtCompound snapshot(long revision, int chests, NbtCompound... entries) {
+        NbtCompound root = new NbtCompound();
+        root.putLong("Revision", revision);
+        root.putInt("InstalledChests", chests);
+        NbtList list = new NbtList();
+        list.addAll(List.of(entries));
+        root.put("Entries", list);
+        return root;
+    }
+
+    private static NbtCompound frame(long revision, int chests, NbtCompound... operations) {
+        NbtCompound frame = new NbtCompound();
+        frame.putLong("Revision", revision);
+        frame.putInt("InstalledChests", chests);
+        NbtList list = new NbtList();
+        list.addAll(List.of(operations));
+        frame.put("Operations", list);
+        return frame;
+    }
+
+    private static NbtCompound entry(long entryId, long count) {
+        NbtCompound entry = new NbtCompound();
+        entry.putLong("EntryId", entryId);
+        entry.putLong("Count", count);
+        return entry;
+    }
+
+    private static NbtCompound removal(long entryId) {
+        NbtCompound removal = new NbtCompound();
+        removal.putLong("EntryId", entryId);
+        removal.putBoolean("Removed", true);
+        return removal;
+    }
+
+    private static long countOf(StorageRepository.Prepared prepared, long entryId) {
+        return prepared.entries().stream()
+                .filter(entry -> entry.getLong("EntryId") == entryId)
+                .findFirst()
+                .orElseThrow()
+                .getLong("Count");
     }
 
     private static void invokeAppend(Path path, NbtCompound frame) throws Exception {

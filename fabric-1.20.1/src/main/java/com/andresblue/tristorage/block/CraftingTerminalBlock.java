@@ -65,7 +65,8 @@ public final class CraftingTerminalBlock extends Block implements NetworkBlock {
         }
         player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
                 (syncId, inventory, ignored) ->
-                        new CraftingTerminalScreenHandler(syncId, inventory, core),
+                        new CraftingTerminalScreenHandler(syncId, inventory, core)
+                                .accessedFrom(pos),
                 Text.translatable("screen.tristorage.crafting_terminal")
         ));
         return ActionResult.CONSUME;
