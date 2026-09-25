@@ -90,7 +90,13 @@ que las entradas guardadas deben convertirse al formato de cada versión.
 - [x] Fase 1: Gradle 9.5.1, Loom 1.17.17 y Mojang Mappings. Tests, destinos de
   los mixins y una auditoría de las 237 sobrescrituras coinciden con la
   versión anterior. Falta probarlo en el juego.
-- [ ] Fase 2
+- [x] 1.12.2 publicada para 1.20.1 con todos los arreglos
+- [x] Fase 2: estructura Stonecutter (Gradle 9.8, Loom 1.18.2, ModDevGradle
+  2.0.147 legacyforge, daemon en Java 25), capa de plataforma, APIs reales de
+  JEI y EMI, y nodos `1.20.1-fabric` y `1.20.1-forge`. Los 65 tests pasan en
+  Fabric. Ambos clientes llegan al menú, cargan un mundo de desarrollo de
+  Fabric y se apagan sin errores. Falta probar en el juego abrir terminales y
+  la tableta en Forge.
 - [ ] Fase 3
 - [ ] Fase 4
 - [ ] Fase 5

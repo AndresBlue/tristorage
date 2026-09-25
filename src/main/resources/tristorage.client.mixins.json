@@ -1,6 +1,8 @@
 {
   "required": true,
   "package": "com.andresblue.tristorage.mixin.client",
+  "minVersion": "0.8",
+  "refmap": "tristorage.refmap.json",
   "compatibilityLevel": "JAVA_17",
   "client": [
     "ClientPlayerInteractionManagerMixin",

@@ -2,7 +2,7 @@ package com.andresblue.tristorage.client;
 
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import com.andresblue.tristorage.storage.TerminalFilter;
-import net.fabricmc.loader.api.FabricLoader;
+import com.andresblue.tristorage.platform.Platform;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -337,9 +337,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             CreativeModeTab group = creativeGroup(category);
             return group == null ? Component.literal(category) : group.getDisplayName();
         }
-        return Component.literal(FabricLoader.getInstance().getModContainer(category)
-                .map(container -> container.getMetadata().getName())
-                .orElse(category));
+        return Component.literal(Platform.get().modName(category).orElse(category));
     }
 
     private ItemStack categoryIcon(String category) {

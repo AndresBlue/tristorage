@@ -45,7 +45,11 @@ loom {
     fabricModJsonPath = rootProject.file("src/main/resources/fabric.mod.json")
 
     runConfigs.all {
-        runDir = "../../run/$minecraft-fabric"
+        runDirectory = rootProject.file("run/$minecraft-fabric")
+    }
+    // `-PquickPlayWorld=<save name>` opens that world directly.
+    providers.gradleProperty("quickPlayWorld").orNull?.let {
+        runConfigs.named("client") { programArgs(listOf("--quickPlaySingleplayer", it)) }
     }
 }
 

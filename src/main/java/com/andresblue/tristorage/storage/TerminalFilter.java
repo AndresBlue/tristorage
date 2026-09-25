@@ -1,6 +1,6 @@
 package com.andresblue.tristorage.storage;
 
-import net.fabricmc.loader.api.FabricLoader;
+import com.andresblue.tristorage.platform.Platform;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -44,8 +44,7 @@ public final class TerminalFilter {
 
     public static String searchText(ItemStack stack) {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        String modName = FabricLoader.getInstance().getModContainer(id.getNamespace())
-                .map(container -> container.getMetadata().getName())
+        String modName = Platform.get().modName(id.getNamespace())
                 .orElse(id.getNamespace());
         return normalize(String.join(" ",
                 id.toString(),

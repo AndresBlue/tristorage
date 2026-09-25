@@ -5,8 +5,8 @@ import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
 import com.andresblue.tristorage.screen.RecipeTransferPlanner;
 import com.andresblue.tristorage.storage.TerminalFilter;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import com.andresblue.tristorage.platform.Platform;
+import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -34,8 +34,8 @@ public final class TerminalPackets {
     }
 
     public static void initializeServer() {
-        ServerPlayNetworking.registerGlobalReceiver(FILTER_UPDATE,
-                (server, player, networkHandler, buffer, responseSender) -> {
+        Platform.get().registerServerReceiver(FILTER_UPDATE,
+                (server, player, buffer) -> {
                     int syncId = buffer.readVarInt();
                     int sequence = buffer.readVarInt();
                     String query = buffer.readUtf(TerminalFilter.MAX_QUERY_LENGTH);
@@ -49,8 +49,8 @@ public final class TerminalPackets {
                         }
                     });
                 });
-        ServerPlayNetworking.registerGlobalReceiver(VIRTUAL_ACTION,
-                (server, player, networkHandler, buffer, responseSender) -> {
+        Platform.get().registerServerReceiver(VIRTUAL_ACTION,
+                (server, player, buffer) -> {
                     int syncId = buffer.readVarInt();
                     UUID storageId = buffer.readUUID();
                     long clientRevision = buffer.readLong();
@@ -69,8 +69,8 @@ public final class TerminalPackets {
                                 slot, entryId, button, ClickType.values()[actionOrdinal]);
                     });
                 });
-        ServerPlayNetworking.registerGlobalReceiver(RECIPE_FILL,
-                (server, player, networkHandler, buffer, responseSender) -> {
+        Platform.get().registerServerReceiver(RECIPE_FILL,
+                (server, player, buffer) -> {
                     int syncId = buffer.readVarInt();
                     int requestId = buffer.readVarInt();
                     ResourceLocation recipeId = buffer.readResourceLocation();
@@ -97,8 +97,8 @@ public final class TerminalPackets {
                                 recipeId, success);
                     });
                 });
-        ServerPlayNetworking.registerGlobalReceiver(RECIPE_AVAILABILITY,
-                (server, player, networkHandler, buffer, responseSender) -> {
+        Platform.get().registerServerReceiver(RECIPE_AVAILABILITY,
+                (server, player, buffer) -> {
                     int syncId = buffer.readVarInt();
                     long clientRevision = buffer.readLong();
                     long localFingerprint = buffer.readLong();
@@ -131,7 +131,7 @@ public final class TerminalPackets {
 
     public static void sendFilterState(ServerPlayer player,
                                        TerminalScreenHandler terminal) {
-        FriendlyByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(terminal.containerId);
         buffer.writeVarInt(terminal.filterSequence());
         buffer.writeVarInt(terminal.filterMode().ordinal());
@@ -143,19 +143,19 @@ public final class TerminalPackets {
         for (int index = 0; index < size; index++) {
             buffer.writeUtf(categories.get(index), TerminalFilter.MAX_CATEGORY_LENGTH);
         }
-        ServerPlayNetworking.send(player, FILTER_STATE, buffer);
+        Platform.get().sendToPlayer(player, FILTER_STATE, buffer);
     }
 
     public static void sendPageState(ServerPlayer player,
                                      TerminalScreenHandler terminal) {
-        FriendlyByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(terminal.containerId);
         buffer.writeUUID(terminal.storageUuid());
         buffer.writeLong(terminal.serverPageRevision());
         for (int slot = 0; slot < TerminalScreenHandler.PAGE_SIZE; slot++) {
             buffer.writeVarLong(terminal.serverEntryId(slot));
         }
-        ServerPlayNetworking.send(player, PAGE_STATE, buffer);
+        Platform.get().sendToPlayer(player, PAGE_STATE, buffer);
     }
 
     private static void sendRecipeAvailabilityState(ServerPlayer player,
@@ -163,25 +163,25 @@ public final class TerminalPackets {
                                                      long localFingerprint,
                                                      ResourceLocation recipeId,
                                                      RecipeTransferPlanner.Availability state) {
-        FriendlyByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(syncId);
         buffer.writeLong(clientRevision);
         buffer.writeLong(localFingerprint);
         buffer.writeResourceLocation(recipeId);
         buffer.writeVarInt(state.requiredMask() & 0x1FF);
         buffer.writeVarInt(state.availableMask() & 0x1FF);
-        ServerPlayNetworking.send(player, RECIPE_AVAILABILITY_STATE, buffer);
+        Platform.get().sendToPlayer(player, RECIPE_AVAILABILITY_STATE, buffer);
     }
 
     private static void sendRecipeFillState(ServerPlayer player,
                                             int syncId, int requestId,
                                             ResourceLocation recipeId,
                                             boolean success) {
-        FriendlyByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(syncId);
         buffer.writeVarInt(requestId);
         buffer.writeResourceLocation(recipeId);
         buffer.writeBoolean(success);
-        ServerPlayNetworking.send(player, RECIPE_FILL_STATE, buffer);
+        Platform.get().sendToPlayer(player, RECIPE_FILL_STATE, buffer);
     }
 }

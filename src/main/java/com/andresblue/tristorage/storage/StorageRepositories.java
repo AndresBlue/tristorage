@@ -1,10 +1,8 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.platform.Platform;
 import com.andresblue.tristorage.screen.CoreScreenHandler;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import java.util.IdentityHashMap;
@@ -29,9 +27,9 @@ public final class StorageRepositories {
         // creative catalog here means a large runtime is indexed with the final
         // category generation immediately, instead of paying an O(types)
         // recategorization on the first terminal/tablet open.
-        ServerWorldEvents.LOAD.register((server, world) ->
+        Platform.get().onLevelLoad((server, world) ->
                 TerminalFilter.prepareCreativeGroups(world));
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+        Platform.get().onServerStarted(server -> {
             get(server);
             // Build creative-tab metadata during server startup rather than on
             // the first tablet click. In large packs updateDisplayContext can
@@ -39,15 +37,12 @@ public final class StorageRepositories {
             // data-pack reload.
             TerminalFilter.prepareCreativeGroups(server.overworld());
         });
-        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(
-                (server, resourceManager, success) -> {
-                    if (success) {
-                        TerminalFilter.invalidateCreativeGroups();
-                        TerminalFilter.prepareCreativeGroups(server.overworld());
-                    }
-                });
-        ServerTickEvents.END_SERVER_TICK.register(server -> get(server).tick());
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+        Platform.get().onDataPackReloaded(server -> {
+            TerminalFilter.invalidateCreativeGroups();
+            TerminalFilter.prepareCreativeGroups(server.overworld());
+        });
+        Platform.get().onServerTickEnd(server -> get(server).tick());
+        Platform.get().onServerStopping(server -> {
             closeOpenStorageScreens(server);
             StorageTickCoordinator.flush();
             StorageRepository repository = REPOSITORIES.remove(server);

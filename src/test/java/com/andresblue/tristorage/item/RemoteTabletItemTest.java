@@ -1,6 +1,7 @@
 package com.andresblue.tristorage.item;
 
 import com.andresblue.tristorage.TriStorageMod;
+import com.andresblue.tristorage.platform.Registrar;
 import com.andresblue.tristorage.storage.RemoteTerminalMode;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
@@ -31,6 +32,20 @@ class RemoteTabletItemTest {
     static void bootstrap() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+        if (TriStorageMod.REMOTE_TABLET == null) {
+            // Creates the content objects without a loader registering them.
+            TriStorageMod.registerBlocks(unregistered());
+            TriStorageMod.registerItems(unregistered());
+        }
+    }
+
+    private static <T> Registrar<T> unregistered() {
+        return new Registrar<>() {
+            @Override
+            public <V extends T> V register(String path, V value) {
+                return value;
+            }
+        };
     }
 
     @Test

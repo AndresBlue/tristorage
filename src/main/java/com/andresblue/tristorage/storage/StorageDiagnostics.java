@@ -5,8 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import com.andresblue.tristorage.platform.Platform;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -51,8 +50,8 @@ public final class StorageDiagnostics {
             return;
         }
         initialized = true;
-        ServerLifecycleEvents.SERVER_STOPPING.register(ignored -> ACTIVE_BENCHMARKS.clear());
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+        Platform.get().onServerStopping(ignored -> ACTIVE_BENCHMARKS.clear());
+        Platform.get().onRegisterCommands(dispatcher -> {
             dispatcher.register(literal("tristorage")
                     .requires(source -> source.hasPermission(2))
                     .then(literal("metrics")

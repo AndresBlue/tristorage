@@ -9,8 +9,8 @@
   "icon": "assets/tristorage/icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.andresblue.tristorage.TriStorageMod"],
-    "client": ["com.andresblue.tristorage.TriStorageClient"],
+    "main": ["com.andresblue.tristorage.platform.fabric.TriStorageFabric"],
+    "client": ["com.andresblue.tristorage.platform.fabric.TriStorageFabricClient"],
     "emi": ["com.andresblue.tristorage.compat.emi.TriStorageEmiPlugin"],
     "jei_mod_plugin": ["com.andresblue.tristorage.compat.jei.TriStorageJeiPlugin"]
   },

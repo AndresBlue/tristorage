@@ -3,6 +3,7 @@ package com.andresblue.tristorage.compat.emi;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.client.TerminalClientNetworking;
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
+import dev.emi.emi.api.EmiEntrypoint;
 import dev.emi.emi.api.EmiPlugin;
 import dev.emi.emi.api.EmiRegistry;
 import dev.emi.emi.api.recipe.EmiPlayerInventory;
@@ -28,7 +29,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 
-/** Optional EMI bridge; loaded only when EMI requests its Fabric entrypoints. */
+/**
+ * Optional EMI bridge, loaded only when EMI is installed: through the {@code emi}
+ * entrypoint on Fabric and through this annotation on Forge.
+ */
+@EmiEntrypoint
 public final class TriStorageEmiPlugin implements EmiPlugin {
     private static Field currentPageField;
     private static Field groupRecipeField;

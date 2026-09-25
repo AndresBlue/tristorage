@@ -1,15 +1,23 @@
 # TriStorage
 
-TriStorage es un mod Fabric para Minecraft 1.20.1 centrado en almacenamiento
-grande, directo y sin multibloques arquitectónicos. Una red se forma colocando
-de manera contigua un Núcleo, un Terminal y, opcionalmente, un Linker.
+TriStorage es un mod de Minecraft centrado en almacenamiento grande, directo y
+sin multibloques arquitectónicos. Una red se forma colocando de manera contigua
+un Núcleo, un Terminal y, opcionalmente, un Linker.
 
-## Requisitos
+Todas las versiones se construyen desde un único código con
+[Stonecutter](https://stonecutter.kikugie.dev/). El plan y el estado de la
+unificación están en [`docs/MULTIVERSION.md`](docs/MULTIVERSION.md).
 
-- Minecraft 1.20.1
-- Fabric Loader 0.14.22 o posterior (desarrollado y probado con 0.18.4)
-- Fabric API 0.92.11+1.20.1
-- Java 17
+## Plataformas
+
+| Minecraft | Loader | Requisitos | Java |
+| --- | --- | --- | --- |
+| 1.20.1 | Fabric | Fabric Loader 0.14.22+, Fabric API 0.92.11+1.20.1 | 17 |
+| 1.20.1 | Forge | Forge 47+ | 17 |
+
+Las versiones 2.x aún no se han publicado. Las releases actuales de cada
+versión de Minecraft salen de los puertos anteriores (ver
+[Puertos anteriores](#puertos-anteriores)).
 
 ## Uso
 
@@ -168,17 +176,56 @@ respeta la capacidad real del Core y permite reproducir datasets con una seed.
 La matriz sintética automatizada se ejecuta con:
 
 ```powershell
-.\gradlew.bat stressTest
+.\gradlew.bat :1.20.1-fabric:stressTest
 ```
 
-El reporte queda en `build/reports/tristorage-stress/benchmark.json` e incluye
-escalas de hasta 100.000 tipos, NBT pesado, journal, operaciones aleatorias y
-ocho actores concurrentes.
+El reporte queda en `versions/1.20.1-fabric/build/reports/tristorage-stress/benchmark.json`
+e incluye escalas de hasta 100.000 tipos, NBT pesado, journal, operaciones
+aleatorias y ocho actores concurrentes.
 
 ## Build
 
+Cada combinación de versión y loader es un nodo de Stonecutter en
+`versions/{minecraft}-{loader}`. Gradle se ejecuta sobre Java 25, que descarga
+automáticamente la primera vez; cada nodo compila con la versión de Java de su
+Minecraft.
+
 ```powershell
-.\gradlew.bat clean test build
+.\gradlew.bat build
+.\gradlew.bat :1.20.1-fabric:runClient
+.\gradlew.bat :1.20.1-forge:runClient
 ```
 
-El JAR remapeado se genera en `build/libs/tristorage-mc1.20.1-1.12.2.jar`.
+`build` compila todos los nodos y ejecuta los tests en los nodos Fabric. Los
+JAR quedan en `versions/{nodo}/build/libs/`, con nombres como
+`tristorage-2.0.0-alpha.1+mc1.20.1-fabric.jar`. La tarea `buildAndCollect` de
+cada nodo los copia además a `build/libs/{versión}/`.
+
+El código específico de cada loader vive en `platform/fabric` y
+`platform/forge`, dentro de bloques `//? if fabric {` que Stonecutter activa
+según el nodo. El resto del código es común.
+
+## Puertos anteriores
+
+Hasta completar la unificación, estas carpetas siguen siendo proyectos Gradle
+independientes con sus propias releases.
+
+| Minecraft | Loader | Proyecto | Release |
+| --- | --- | --- | --- |
+| 1.16.5 | Fabric | [`fabric-1.16.5`](fabric-1.16.5) | [1.0](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.16.5-v1.0) |
+| 1.18.2 | Fabric | [`fabric-1.18.2`](fabric-1.18.2) | [1.0](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.18.2-v1.0) |
+| 1.20.1 | Fabric | Este proyecto (etiqueta `fabric-1.20.1-v1.12.2`) | [1.12.2](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.20.1-v1.12.2) |
+| 1.21.1 | Fabric | [`fabric-1.21.1`](fabric-1.21.1) | [1.0](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.21.1-v1.0) |
+| 1.21.11 | Fabric | [`fabric-1.21.11`](fabric-1.21.11) | [1.1](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.21.11-v1.1) |
+| 1.21.1 | NeoForge | [`neoforge-1.21.1`](neoforge-1.21.1) | [1.1](https://github.com/AndresBlue/tristorage/releases/tag/neoforge-1.21.1-v1.1) |
+
+Notas de compatibilidad de esos puertos:
+
+- Minecraft 1.16.5 no incluye cobre: pepitas de oro sustituyen cobre en las
+  tres recetas auxiliares tempranas.
+- Fabric API 0.42.0+1.16 usa el mod id histórico `fabric`; el manifiesto de
+  ese puerto lo declara así.
+- El puerto 1.21.11 usa components para el enlace de la tableta,
+  ReadView/WriteView, rutas de data pack modernas y modelos de ítem actuales.
+- El puerto Fabric 1.21.1 usa components para el enlace, NBT consciente del
+  registro, y tickets remotos separados por terminal abierto.

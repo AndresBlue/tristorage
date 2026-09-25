@@ -1,6 +1,6 @@
 package com.andresblue.tristorage.storage;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import com.andresblue.tristorage.platform.Platform;
 
 import java.util.Collections;
 import java.util.ArrayDeque;
@@ -23,7 +23,7 @@ public final class StorageTickCoordinator {
             return;
         }
         initialized = true;
-        ServerTickEvents.END_SERVER_TICK.register(server -> {
+        Platform.get().onServerTickEnd(server -> {
             runBoundedTasks();
             flush();
         });

@@ -24,7 +24,7 @@ stonecutter {
             }
         }
 
-        match("1.20.1", "fabric")
+        match("1.20.1", "fabric", "forge")
         vcsVersion = "1.20.1-fabric"
     }
 }

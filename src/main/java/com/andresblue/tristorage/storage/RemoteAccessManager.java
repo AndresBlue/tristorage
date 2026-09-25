@@ -6,9 +6,7 @@ import com.andresblue.tristorage.blockentity.LinkerBlockEntity;
 import com.andresblue.tristorage.item.RemoteTabletItem;
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import com.andresblue.tristorage.platform.Platform;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -51,10 +49,10 @@ public final class RemoteAccessManager {
             return;
         }
         initialized = true;
-        ServerTickEvents.END_SERVER_TICK.register(RemoteAccessManager::expireRequestsAndSessions);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-                cancelPending(handler.player.getUUID()));
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> cancelAll(server));
+        Platform.get().onServerTickEnd(RemoteAccessManager::expireRequestsAndSessions);
+        Platform.get().onPlayerDisconnect(player ->
+                cancelPending(player.getUUID()));
+        Platform.get().onServerStopping(RemoteAccessManager::cancelAll);
     }
 
     public static void request(ServerPlayer player, InteractionHand hand,

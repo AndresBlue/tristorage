@@ -3,7 +3,7 @@ package com.andresblue.tristorage.client;
 import com.andresblue.tristorage.storage.TerminalFilter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
+import com.andresblue.tristorage.platform.Platform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +16,7 @@ import java.nio.file.StandardCopyOption;
 public final class TerminalClientConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger("TriStorage/ClientConfig");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path PATH = FabricLoader.getInstance().getConfigDir()
+    private static final Path PATH = Platform.get().configDir()
             .resolve("tristorage-client.json");
     private static final int[] THRESHOLDS = {0, 54, 108, 216, 432};
     private static final TerminalClientConfig INSTANCE = load();

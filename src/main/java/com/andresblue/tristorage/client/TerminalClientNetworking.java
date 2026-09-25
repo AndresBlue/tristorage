@@ -4,9 +4,8 @@ import com.andresblue.tristorage.network.TerminalPackets;
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import com.andresblue.tristorage.storage.TerminalFilter;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import com.andresblue.tristorage.platform.ClientPlatform;
+import io.netty.buffer.Unpooled;
 import net.minecraft.Util;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -42,7 +41,7 @@ public final class TerminalClientNetworking {
     }
 
     public static void initialize() {
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+        ClientPlatform.get().onClientTickEnd(client -> {
             long now = Util.getMillis();
             if (pendingRecipeFill != null
                     && now - pendingRecipeFill.sentAt()
@@ -54,8 +53,8 @@ public final class TerminalClientNetworking {
                 refreshRecipeViewerButtons(client, null);
             }
         });
-        ClientPlayNetworking.registerGlobalReceiver(TerminalPackets.FILTER_STATE,
-                (client, networkHandler, buffer, responseSender) -> {
+        ClientPlatform.get().registerClientReceiver(TerminalPackets.FILTER_STATE,
+                (client, buffer) -> {
                     int syncId = buffer.readVarInt();
                     int sequence = buffer.readVarInt();
                     TerminalFilter.CategoryMode mode = TerminalFilter.CategoryMode.byNetworkId(
@@ -75,8 +74,8 @@ public final class TerminalClientNetworking {
                         }
                     });
                 });
-        ClientPlayNetworking.registerGlobalReceiver(TerminalPackets.PAGE_STATE,
-                (client, networkHandler, buffer, responseSender) -> {
+        ClientPlatform.get().registerClientReceiver(TerminalPackets.PAGE_STATE,
+                (client, buffer) -> {
                     int syncId = buffer.readVarInt();
                     UUID storageId = buffer.readUUID();
                     long revision = buffer.readLong();
@@ -100,8 +99,8 @@ public final class TerminalClientNetworking {
                         }
                     });
                 });
-        ClientPlayNetworking.registerGlobalReceiver(TerminalPackets.RECIPE_AVAILABILITY_STATE,
-                (client, networkHandler, buffer, responseSender) -> {
+        ClientPlatform.get().registerClientReceiver(TerminalPackets.RECIPE_AVAILABILITY_STATE,
+                (client, buffer) -> {
                     int syncId = buffer.readVarInt();
                     long revision = buffer.readLong();
                     long localFingerprint = buffer.readLong();
@@ -128,8 +127,8 @@ public final class TerminalClientNetworking {
                         refreshRecipeViewerButtons(client, recipeId);
                     });
                 });
-        ClientPlayNetworking.registerGlobalReceiver(TerminalPackets.RECIPE_FILL_STATE,
-                (client, networkHandler, buffer, responseSender) -> {
+        ClientPlatform.get().registerClientReceiver(TerminalPackets.RECIPE_FILL_STATE,
+                (client, buffer) -> {
                     int syncId = buffer.readVarInt();
                     int requestId = buffer.readVarInt();
                     ResourceLocation recipeId = buffer.readResourceLocation();
@@ -176,13 +175,13 @@ public final class TerminalClientNetworking {
 
     static void sendFilter(int syncId, int sequence, String query,
                            TerminalFilter.CategoryMode mode, String category) {
-        FriendlyByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(syncId);
         buffer.writeVarInt(sequence);
         buffer.writeUtf(query, TerminalFilter.MAX_QUERY_LENGTH);
         buffer.writeVarInt(mode.ordinal());
         buffer.writeUtf(category, TerminalFilter.MAX_CATEGORY_LENGTH);
-        ClientPlayNetworking.send(TerminalPackets.FILTER_UPDATE, buffer);
+        ClientPlatform.get().sendToServer(TerminalPackets.FILTER_UPDATE, buffer);
     }
 
     static void sendVirtualAction(TerminalScreenHandler handler, int slot,
@@ -191,7 +190,7 @@ public final class TerminalClientNetworking {
         if (storageId == null || !handler.hasAuthoritativePageState()) {
             return;
         }
-        FriendlyByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(handler.containerId);
         buffer.writeUUID(storageId);
         buffer.writeLong(handler.clientPageRevision());
@@ -199,7 +198,7 @@ public final class TerminalClientNetworking {
         buffer.writeVarLong(handler.clientEntryId(slot));
         buffer.writeVarInt(button);
         buffer.writeVarInt(actionType.ordinal());
-        ClientPlayNetworking.send(TerminalPackets.VIRTUAL_ACTION, buffer);
+        ClientPlatform.get().sendToServer(TerminalPackets.VIRTUAL_ACTION, buffer);
     }
 
     public static void sendRecipeFill(int syncId, ResourceLocation recipeId,
@@ -219,12 +218,12 @@ public final class TerminalClientNetworking {
         int requestId = ++nextRecipeFillRequestId;
         pendingRecipeFill = new PendingRecipeFill(
                 syncId, requestId, recipeId, now);
-        FriendlyByteBuf buffer = PacketByteBufs.create();
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(syncId);
         buffer.writeVarInt(requestId);
         buffer.writeResourceLocation(recipeId);
         buffer.writeInt(requestedCrafts);
-        ClientPlayNetworking.send(TerminalPackets.RECIPE_FILL, buffer);
+        ClientPlatform.get().sendToServer(TerminalPackets.RECIPE_FILL, buffer);
     }
 
     /**
@@ -252,12 +251,12 @@ public final class TerminalClientNetworking {
         long lastRequest = AVAILABILITY_PENDING.getOrDefault(key, Long.MIN_VALUE);
         if (lastRequest == Long.MIN_VALUE || now - lastRequest >= AVAILABILITY_RETRY_MS) {
             AVAILABILITY_PENDING.put(key, now);
-            FriendlyByteBuf buffer = PacketByteBufs.create();
+            FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
             buffer.writeVarInt(handler.containerId);
             buffer.writeLong(revision);
             buffer.writeLong(localFingerprint);
             buffer.writeResourceLocation(recipeId);
-            ClientPlayNetworking.send(TerminalPackets.RECIPE_AVAILABILITY, buffer);
+            ClientPlatform.get().sendToServer(TerminalPackets.RECIPE_AVAILABILITY, buffer);
         }
         return null;
     }
