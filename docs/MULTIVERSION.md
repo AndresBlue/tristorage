@@ -97,7 +97,10 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   `StreamCodec` desde 1.21).
 - Red: los paquetes siguen escribiéndose como bytes. Desde 1.20.5 cada
   dirección usa un único payload tipado con el canal y esos bytes
-  (`FabricPayload`).
+  (`ChannelPayload`); Fabric y NeoForge solo lo registran a su manera.
+- Pantallas: `TriStorageClient.registerScreens` recibe el registro del
+  loader (`MenuScreens::register` en Fabric y Forge,
+  `RegisterMenuScreensEvent` en NeoForge, donde ese método es privado).
 - Datos: el data pack se escribe una vez, en formato 1.20.1. `buildSrc`
   (`upgradeDataPack`) lo convierte al empaquetar: carpetas en singular desde
   1.21, `result.id` en recetas y `copy_components` en la loot table del Core
@@ -127,11 +130,16 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   Fabric. Ambos clientes llegan al menú, cargan un mundo de desarrollo de
   Fabric y se apagan sin errores. Falta probar en el juego abrir terminales y
   la tableta en Forge.
-- [ ] Fase 3: nodo `1.21.1-fabric` listo. Los 71 tests pasan en 1.20.1 y en
-  1.21.1. El cliente 1.21.1 abre un mundo de 1.20.1 con un Core de 80 tipos
-  y 941 ítems y lo guarda en el formato nuevo sin perder nada. Falta el nodo
-  NeoForge y migrar los formatos de `fabric-1.21.1` 1.0 y `neoforge-1.21.1`
-  1.1.
+- [x] Fase 3: nodos `1.21.1-fabric` y `1.21.1-neoforge` (NeoForge 21.1.251,
+  ModDevGradle 2.0.147). Los 75 tests pasan en 1.20.1 y en 1.21.1. Los
+  clientes Fabric y NeoForge de 1.21.1 abren un mundo de 1.20.1 con un Core
+  de 80 tipos y 941 ítems y lo guardan en el formato nuevo sin perder nada.
+  Los block entities de `fabric-1.21.1` 1.0 y `neoforge-1.21.1` 1.x usan las
+  mismas claves (`InstalledChests`, `Entries`) y entran por la carga legacy;
+  los Cores portátiles de NeoForge (`custom_data`, con o sin
+  `TriStorageCore`) se leen y pasan a `block_entity_data` al colocarlos.
+  Falta probar en el juego terminales, tableta y un Core portátil de
+  NeoForge 1.x.
 - [ ] Fase 4
 - [ ] Fase 5
 - [ ] Fase 6

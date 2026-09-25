@@ -10,6 +10,10 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+//? if >=1.20.5 {
+/*import com.andresblue.tristorage.platform.ChannelPayload;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+*///?}
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.FriendlyByteBuf;
@@ -47,8 +51,11 @@ public final class FabricPlatformHooks implements PlatformHooks {
     /*private final Map<ResourceLocation, ServerReceiver> receivers = new ConcurrentHashMap<>();
 
     public FabricPlatformHooks() {
-        FabricPayload.registerTypes();
-        ServerPlayNetworking.registerGlobalReceiver(FabricPayload.TO_SERVER, (payload, context) -> {
+        PayloadTypeRegistry.playC2S().register(ChannelPayload.TO_SERVER,
+                ChannelPayload.codec(ChannelPayload.TO_SERVER));
+        PayloadTypeRegistry.playS2C().register(ChannelPayload.TO_CLIENT,
+                ChannelPayload.codec(ChannelPayload.TO_CLIENT));
+        ServerPlayNetworking.registerGlobalReceiver(ChannelPayload.TO_SERVER, (payload, context) -> {
             ServerReceiver receiver = receivers.get(payload.channel());
             if (receiver != null) {
                 receiver.receive(context.server(), context.player(), payload.buffer());
@@ -63,7 +70,7 @@ public final class FabricPlatformHooks implements PlatformHooks {
 
     @Override
     public void sendToPlayer(ServerPlayer player, ResourceLocation id, FriendlyByteBuf buffer) {
-        ServerPlayNetworking.send(player, FabricPayload.wrap(FabricPayload.TO_CLIENT, id, buffer));
+        ServerPlayNetworking.send(player, ChannelPayload.wrap(ChannelPayload.TO_CLIENT, id, buffer));
     }
     *///?} else {
     @Override

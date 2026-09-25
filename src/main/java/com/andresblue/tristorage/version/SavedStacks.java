@@ -18,8 +18,13 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class SavedStacks {
     public static final String DATA_VERSION_KEY = "DataVersion";
-    /** Minecraft 1.20.1: TriStorage builds before 2.0 recorded no version. */
-    private static final int UNRECORDED_VERSION = 3465;
+    /**
+     * TriStorage builds before 2.0 recorded no version. Those that saved the
+     * pre-1.20.5 stack layout are taken to be 1.20.1; the only ones that saved
+     * components, the Fabric and NeoForge ports, were for 1.21.1.
+     */
+    private static final int UNRECORDED_LEGACY_LAYOUT = 3465;
+    private static final int UNRECORDED_COMPONENT_LAYOUT = 3955;
 
     private SavedStacks() {
     }
@@ -28,11 +33,7 @@ public final class SavedStacks {
         return SharedConstants.getCurrentVersion().getDataVersion().getVersion();
     }
 
-    /**
-     * Reads a stack saved by the given data version; zero means the writer
-     * recorded none. Those stacks are taken to be from 1.20.1 when they still
-     * use the pre-1.20.5 layout, and from this version otherwise.
-     */
+    /** Reads a stack saved by the given data version; zero means the writer recorded none. */
     public static ItemStack parse(CompoundTag stack, int writtenBy,
                                   HolderLookup.Provider registries) {
         return Stacks.parse(upgrade(stack, writtenBy), registries);
@@ -51,6 +52,7 @@ public final class SavedStacks {
 
     private static int unrecordedVersion(CompoundTag stack, int current) {
         boolean legacyLayout = stack.contains("Count", Tag.TAG_BYTE) && !stack.contains("count");
-        return legacyLayout ? Math.min(UNRECORDED_VERSION, current) : current;
+        return Math.min(legacyLayout ? UNRECORDED_LEGACY_LAYOUT : UNRECORDED_COMPONENT_LAYOUT,
+                current);
     }
 }

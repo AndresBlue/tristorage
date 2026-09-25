@@ -5,6 +5,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import com.andresblue.tristorage.version.Stacks;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Defines the small, explicit part of a core block entity that is allowed to
@@ -21,13 +22,54 @@ public final class PortableCoreData {
     public static final String DATA_VERSION_KEY = "TriStorageDataVersion";
     public static final String TYPES_SUMMARY_KEY = "StoredTypesSummary";
     public static final String ITEMS_SUMMARY_KEY = "TotalItemsSummary";
+    private static final String NEOFORGE_PORT_PAYLOAD = "TriStorageCore";
 
     private PortableCoreData() {
     }
 
     public static CompoundTag copyFrom(ItemStack stack) {
+        return sanitizedCopy(carried(stack));
+    }
+
+    /**
+     * The storage an item carries: its block entity data, or where the NeoForge
+     * 1.21.1 port (TriStorage 1.x) kept it, in custom data directly or under
+     * {@code TriStorageCore}.
+     */
+    @Nullable
+    private static CompoundTag carried(ItemStack stack) {
+        CompoundTag data = Stacks.blockEntityData(stack);
+        if (data != null) {
+            return data.contains(NEOFORGE_PORT_PAYLOAD, Tag.TAG_COMPOUND)
+                    ? data.getCompound(NEOFORGE_PORT_PAYLOAD) : data;
+        }
+        CompoundTag custom = Stacks.customData(stack);
+        if (custom.contains(NEOFORGE_PORT_PAYLOAD, Tag.TAG_COMPOUND)) {
+            return custom.getCompound(NEOFORGE_PORT_PAYLOAD);
+        }
+        return custom.contains(CHESTS_KEY, Tag.TAG_ANY_NUMERIC)
+                || custom.contains(ENTRIES_KEY, Tag.TAG_LIST) ? custom : null;
+    }
+
+    /**
+     * Moves storage kept in a NeoForge port layout into the block entity data
+     * a Core is placed from. Other custom data stays where it is.
+     */
+    public static void adoptPortLayout(ItemStack stack) {
         CompoundTag blockEntityData = Stacks.blockEntityData(stack);
-        return sanitizedCopy(blockEntityData);
+        if (blockEntityData != null && !blockEntityData.contains(NEOFORGE_PORT_PAYLOAD)) {
+            return;
+        }
+        CompoundTag carried = carried(stack);
+        if (carried == null) {
+            return;
+        }
+        CompoundTag custom = Stacks.customData(stack);
+        custom.remove(NEOFORGE_PORT_PAYLOAD);
+        custom.remove(CHESTS_KEY);
+        custom.remove(ENTRIES_KEY);
+        Stacks.setCustomData(stack, custom);
+        applyTo(stack, carried);
     }
 
     public static CompoundTag sanitizedCopy(CompoundTag blockEntityData) {
@@ -74,12 +116,12 @@ public final class PortableCoreData {
     }
 
     public static int installedChests(ItemStack stack) {
-        CompoundTag data = Stacks.blockEntityData(stack);
+        CompoundTag data = carried(stack);
         return data == null ? 0 : Math.max(0, data.getInt(CHESTS_KEY));
     }
 
     public static int storedTypes(ItemStack stack) {
-        CompoundTag data = Stacks.blockEntityData(stack);
+        CompoundTag data = carried(stack);
         if (data == null) {
             return 0;
         }
@@ -89,7 +131,7 @@ public final class PortableCoreData {
     }
 
     public static long totalItems(ItemStack stack) {
-        CompoundTag data = Stacks.blockEntityData(stack);
+        CompoundTag data = carried(stack);
         if (data == null) {
             return 0;
         }

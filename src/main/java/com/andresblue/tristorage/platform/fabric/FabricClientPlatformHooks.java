@@ -4,6 +4,9 @@ package com.andresblue.tristorage.platform.fabric;
 import com.andresblue.tristorage.platform.ClientPlatformHooks;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+//? if >=1.20.5 {
+/*import com.andresblue.tristorage.platform.ChannelPayload;
+*///?}
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -17,7 +20,7 @@ public final class FabricClientPlatformHooks implements ClientPlatformHooks {
     /*private final Map<ResourceLocation, ClientReceiver> receivers = new ConcurrentHashMap<>();
 
     public FabricClientPlatformHooks() {
-        ClientPlayNetworking.registerGlobalReceiver(FabricPayload.TO_CLIENT, (payload, context) -> {
+        ClientPlayNetworking.registerGlobalReceiver(ChannelPayload.TO_CLIENT, (payload, context) -> {
             ClientReceiver receiver = receivers.get(payload.channel());
             if (receiver != null) {
                 receiver.receive(context.client(), payload.buffer());
@@ -32,7 +35,7 @@ public final class FabricClientPlatformHooks implements ClientPlatformHooks {
 
     @Override
     public void sendToServer(ResourceLocation id, FriendlyByteBuf buffer) {
-        ClientPlayNetworking.send(FabricPayload.wrap(FabricPayload.TO_SERVER, id, buffer));
+        ClientPlayNetworking.send(ChannelPayload.wrap(ChannelPayload.TO_SERVER, id, buffer));
     }
     *///?} else {
     @Override

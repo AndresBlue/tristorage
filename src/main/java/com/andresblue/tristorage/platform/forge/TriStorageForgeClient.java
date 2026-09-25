@@ -6,6 +6,7 @@ import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.client.ConvergingPortalParticle;
 import com.andresblue.tristorage.client.LinkerBlockEntityRenderer;
 import com.andresblue.tristorage.platform.ClientPlatform;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -20,7 +21,8 @@ final class TriStorageForgeClient {
         ClientPlatform.install(new ForgeClientPlatformHooks());
         TriStorageClient.initialize();
         modBus.addListener(EventPriority.NORMAL, false, FMLClientSetupEvent.class,
-                event -> event.enqueueWork(TriStorageClient::registerScreens));
+                event -> event.enqueueWork(
+                        () -> TriStorageClient.registerScreens(MenuScreens::register)));
         modBus.addListener(EventPriority.NORMAL, false,
                 EntityRenderersEvent.RegisterRenderers.class,
                 event -> event.registerBlockEntityRenderer(TriStorageMod.LINKER_BLOCK_ENTITY,

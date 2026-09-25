@@ -14,6 +14,8 @@ unificación están en [`docs/MULTIVERSION.md`](docs/MULTIVERSION.md).
 | --- | --- | --- | --- |
 | 1.20.1 | Fabric | Fabric Loader 0.14.22+, Fabric API 0.92.11+1.20.1 | 17 |
 | 1.20.1 | Forge | Forge 47+ | 17 |
+| 1.21.1 | Fabric | Fabric Loader 0.14.22+, Fabric API 0.116.17+1.21.1 | 21 |
+| 1.21.1 | NeoForge | NeoForge 21.1.251+ | 21 |
 
 Las versiones 2.x aún no se han publicado. Las releases actuales de cada
 versión de Minecraft salen de los puertos anteriores (ver

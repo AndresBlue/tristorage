@@ -8,6 +8,7 @@ import com.andresblue.tristorage.client.LinkerBlockEntityRenderer;
 import com.andresblue.tristorage.platform.ClientPlatform;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 
 public final class TriStorageFabricClient implements ClientModInitializer {
@@ -21,7 +22,7 @@ public final class TriStorageFabricClient implements ClientModInitializer {
                 TriStorageMod.CONVERGING_PORTAL_PARTICLE, ConvergingPortalParticle.Factory::new);
         ParticleFactoryRegistry.getInstance().register(
                 TriStorageMod.CONVERGING_END_PARTICLE, ConvergingPortalParticle.EndFactory::new);
-        TriStorageClient.registerScreens();
+        TriStorageClient.registerScreens(MenuScreens::register);
     }
 }
 //?}
