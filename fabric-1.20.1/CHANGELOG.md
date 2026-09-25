@@ -1,6 +1,6 @@
 # TriStorage changelog
 
-## Unreleased — Minecraft 1.20.1 Fabric
+## 1.12.2 — Minecraft 1.20.1 Fabric
 
 - Fixed Remote Access Tablets and Wireless Crafting Terminals failing to open
   when the Linker and its Core share a chunk, the usual layout. The 1.12.1 fast

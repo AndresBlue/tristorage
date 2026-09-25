@@ -8,7 +8,7 @@ usa su `gradlew`.
 | --- | --- | --- | --- | --- |
 | 1.16.5 | Fabric Loader 0.16.14 | 8 | [`fabric-1.16.5`](fabric-1.16.5) | [1.0](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.16.5-v1.0) |
 | 1.18.2 | Fabric Loader 0.16.14 | 17 | [`fabric-1.18.2`](fabric-1.18.2) | [1.0](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.18.2-v1.0) |
-| 1.20.1 | Fabric Loader 0.18.4 | 17 | [`fabric-1.20.1`](fabric-1.20.1) | [1.12.1](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.20.1-v1.12.1) |
+| 1.20.1 | Fabric Loader 0.18.4 | 17 | [`fabric-1.20.1`](fabric-1.20.1) | [1.12.2](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.20.1-v1.12.2) |
 | 1.21.1 | Fabric Loader 0.18.4 | 21 | [`fabric-1.21.1`](fabric-1.21.1) | [1.0](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.21.1-v1.0) |
 | 1.21.11 | Fabric Loader 0.18.4 | 21 | [`fabric-1.21.11`](fabric-1.21.11) | [1.1](https://github.com/AndresBlue/tristorage/releases/tag/fabric-1.21.11-v1.1) |
 | 1.21.1 | NeoForge 21.1.228 | 21 | [`neoforge-1.21.1`](neoforge-1.21.1) | [1.1](https://github.com/AndresBlue/tristorage/releases/tag/neoforge-1.21.1-v1.1) |

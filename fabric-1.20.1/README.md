@@ -181,4 +181,4 @@ ocho actores concurrentes.
 .\gradlew.bat clean test build
 ```
 
-El JAR remapeado se genera en `build/libs/tristorage-mc1.20.1-1.12.1.jar`.
+El JAR remapeado se genera en `build/libs/tristorage-mc1.20.1-1.12.2.jar`.
