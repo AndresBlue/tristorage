@@ -44,9 +44,10 @@ Cada fase termina con los tests en verde y un JAR probado. 1.20.1 sigue siendo
 publicable durante todo el proceso.
 
 1. **1.20.1 a Gradle 9 y Mojang Mappings.** Loom `fabric-loom-remap` 1.17.17,
-   `migrateMappings`, revisión manual de mixins y del puente de JEI. Separar el
-   código de Fabric detrás de la capa de plataforma. Comportamiento idéntico.
-2. **Stonecutter y Forge 1.20.1.** Nueva estructura del proyecto y primer loader
+   `migrateMappings`, revisión manual de mixins y del puente de JEI.
+   Comportamiento idéntico.
+2. **Stonecutter y Forge 1.20.1.** Nueva estructura del proyecto, capa de
+   plataforma para los 11 archivos que usan la API de Fabric, y primer loader
    adicional.
 3. **1.21.1 (Fabric, NeoForge).** Componentes de ítem en lugar de NBT, payloads
    de red con codecs, recetas con `MapCodec`, carpetas de datos en singular.
@@ -86,7 +87,9 @@ que las entradas guardadas deben convertirse al formato de cada versión.
 ## Estado
 
 - [x] Arreglos de 1.20.1 (`fix/known-bugs-1.20.1`)
-- [ ] Fase 1
+- [x] Fase 1: Gradle 9.5.1, Loom 1.17.17 y Mojang Mappings. Tests, destinos de
+  los mixins y una auditoría de las 237 sobrescrituras coinciden con la
+  versión anterior. Falta probarlo en el juego.
 - [ ] Fase 2
 - [ ] Fase 3
 - [ ] Fase 4
