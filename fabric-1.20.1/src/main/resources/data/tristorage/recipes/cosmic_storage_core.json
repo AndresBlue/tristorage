@@ -1,0 +1,13 @@
+{
+  "type": "tristorage:core_upgrade",
+  "pattern": ["DND", "SCS", "RHR"],
+  "key": {
+    "D": {"item": "minecraft:diamond_block"},
+    "N": {"item": "minecraft:nether_star"},
+    "S": {"item": "minecraft:shulker_shell"},
+    "C": {"item": "tristorage:blaze_storage_core"},
+    "R": {"item": "minecraft:redstone_block"},
+    "H": {"item": "minecraft:dragon_head"}
+  },
+  "result": {"item": "tristorage:cosmic_storage_core"}
+}

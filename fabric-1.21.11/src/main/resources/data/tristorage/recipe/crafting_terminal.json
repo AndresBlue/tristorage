@@ -1,0 +1,13 @@
+{
+  "type": "tristorage:clean_terminal_upgrade",
+  "pattern": ["GCG", "RTR", "IQI"],
+  "key": {
+    "G": "minecraft:glass",
+    "C": "minecraft:crafting_table",
+    "R": "minecraft:redstone",
+    "T": "tristorage:storage_terminal",
+    "I": "minecraft:iron_ingot",
+    "Q": "minecraft:quartz"
+  },
+  "result": {"id": "tristorage:crafting_terminal"}
+}

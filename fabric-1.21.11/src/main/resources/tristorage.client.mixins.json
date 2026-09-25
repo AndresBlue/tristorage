@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.andresblue.tristorage.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ClientPlayerInteractionManagerMixin",
+    "MouseMixin",
+    "MouseScrollEndMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

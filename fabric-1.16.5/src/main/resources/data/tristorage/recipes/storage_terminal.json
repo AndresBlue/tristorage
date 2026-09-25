@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["GIG", "RHR", "ICI"],
+  "key": {
+    "G": {"item": "minecraft:glass"},
+    "I": {"item": "minecraft:iron_ingot"},
+    "R": {"item": "minecraft:redstone"},
+    "H": {"item": "minecraft:chest"},
+    "C": {"item": "minecraft:gold_nugget"}
+  },
+  "result": {"item": "tristorage:storage_terminal"}
+}

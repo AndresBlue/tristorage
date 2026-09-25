@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.andresblue.tristorage.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MouseHandlerMixin",
+    "MouseScrollEndMixin",
+    "MultiPlayerGameModeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

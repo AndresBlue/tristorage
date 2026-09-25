@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "GQG",
+    "QOQ",
+    "GQG"
+  ],
+  "key": {
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "Q": {
+      "item": "minecraft:quartz"
+    },
+    "O": {
+      "item": "minecraft:crying_obsidian"
+    }
+  },
+  "result": {
+    "id": "tristorage:dimensional_antenna"
+  }
+}

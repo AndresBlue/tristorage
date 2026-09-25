@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "tristorage",
+  "version": "${version}",
+  "name": "TriStorage",
+  "description": "Almacenamiento enorme y directo mediante tres bloques contiguos.",
+  "authors": ["AndresBlue"],
+  "license": "MIT",
+  "icon": "assets/tristorage/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.andresblue.tristorage.TriStorageMod"],
+    "client": ["com.andresblue.tristorage.TriStorageClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.14 <0.17.0",
+    "minecraft": "1.18.2",
+    "java": ">=17",
+    "fabric-api": "*"
+  }
+}

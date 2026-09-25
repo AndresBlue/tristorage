@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["GTG", "CRC", "III"],
+  "key": {
+    "G": "minecraft:glass_pane",
+    "T": "minecraft:redstone_torch",
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone",
+    "I": "minecraft:iron_ingot"
+  },
+  "result": {"id": "tristorage:storage_linker"}
+}

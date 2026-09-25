@@ -1,0 +1,1 @@
+{"type":"minecraft:block","pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"tristorage:cosmic_storage_core","functions":[{"function":"minecraft:copy_components","source":"block_entity","include":["tristorage:core_storage"]}]}],"conditions":[{"condition":"minecraft:survives_explosion"}]}]}

@@ -1,0 +1,32 @@
+package com.andresblue.tristorage.client;
+
+import net.minecraft.client.MinecraftClient;
+
+/**
+ * Prevents inventory helper mods from turning the same wheel event used for
+ * terminal navigation into a slot transfer. The guard only lives for the
+ * synchronous dispatch of Mouse.onMouseScroll.
+ */
+public final class TerminalScrollGuard {
+    private static int depth;
+
+    private TerminalScrollGuard() {
+    }
+
+    public static void begin() {
+        if (MinecraftClient.getInstance().currentScreen instanceof TerminalScreenMarker) {
+            depth++;
+        }
+    }
+
+    public static void end() {
+        if (depth > 0) {
+            depth--;
+        }
+    }
+
+    public static boolean blocksInventoryClicks() {
+        return depth > 0
+                && MinecraftClient.getInstance().currentScreen instanceof TerminalScreenMarker;
+    }
+}

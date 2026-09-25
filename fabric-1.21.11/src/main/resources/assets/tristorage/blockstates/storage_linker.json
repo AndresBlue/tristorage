@@ -1,0 +1,11 @@
+{
+  "multipart": [
+    {"apply": {"model": "tristorage:block/storage_linker"}},
+    {"when": {"antenna": "up"}, "apply": {"model": "tristorage:block/dimensional_antenna"}},
+    {"when": {"antenna": "down"}, "apply": {"model": "tristorage:block/dimensional_antenna", "x": 180}},
+    {"when": {"antenna": "north"}, "apply": {"model": "tristorage:block/dimensional_antenna", "x": 90}},
+    {"when": {"antenna": "south"}, "apply": {"model": "tristorage:block/dimensional_antenna", "x": 90, "y": 180}},
+    {"when": {"antenna": "west"}, "apply": {"model": "tristorage:block/dimensional_antenna", "x": 90, "y": 270}},
+    {"when": {"antenna": "east"}, "apply": {"model": "tristorage:block/dimensional_antenna", "x": 90, "y": 90}}
+  ]
+}

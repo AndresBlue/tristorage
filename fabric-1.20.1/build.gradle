@@ -1,0 +1,92 @@
+plugins {
+    id "fabric-loom" version "${loom_version}"
+    id "maven-publish"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "Sleeping Town"
+        url = "https://repo.sleeping.town/"
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    modCompileOnly "dev.emi:emi-fabric:${project.emi_version}:api"
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+}
+
+// JEI 1.20.1 publishes its API in Mojang/intermediary mappings while this
+// port uses Yarn. Compile the tiny optional bridge against matching Yarn-side
+// contracts, then package only TriStorage's plugin class. JEI supplies every
+// mezz.jei class at runtime, so none are bundled or required by TriStorage.
+sourceSets {
+    jeiCompat {
+        java.srcDir "src/jeiCompat/java"
+        compileClasspath += sourceSets.main.output + configurations.compileClasspath
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand(version: project.version)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = "UTF-8"
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.named("test", Test) {
+    useJUnitPlatform {
+        excludeTags "stress"
+    }
+}
+
+tasks.register("stressTest", Test) {
+    description = "Runs TriStorage's high-volume storage stress benchmarks."
+    group = "verification"
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = "2g"
+    systemProperty "tristorage.stress.output",
+            layout.buildDirectory.file("reports/tristorage-stress/benchmark.json").get().asFile.absolutePath
+    useJUnitPlatform {
+        includeTags "stress"
+    }
+    shouldRunAfter tasks.test
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+    from(sourceSets.jeiCompat.output) {
+        exclude "mezz/jei/**"
+    }
+}

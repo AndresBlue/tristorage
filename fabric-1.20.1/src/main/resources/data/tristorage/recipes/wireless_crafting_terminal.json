@@ -1,0 +1,15 @@
+{
+  "type": "tristorage:wireless_crafting_terminal_upgrade",
+  "category": "misc",
+  "pattern": ["ENE", "BCB", "QTQ"],
+  "key": {
+    "E": {"item": "minecraft:ender_pearl"},
+    "N": {"item": "minecraft:netherite_ingot"},
+    "B": {"item": "minecraft:blaze_rod"},
+    "C": {"item": "minecraft:crafting_table"},
+    "Q": {"item": "minecraft:quartz"},
+    "T": {"item": "tristorage:remote_tablet"}
+  },
+  "result": {"item": "tristorage:wireless_crafting_terminal"},
+  "show_notification": true
+}

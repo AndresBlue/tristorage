@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "tristorage:iron_storage_core",
+    "tristorage:diamond_storage_core",
+    "tristorage:blaze_storage_core",
+    "tristorage:cosmic_storage_core",
+    "tristorage:storage_terminal",
+    "tristorage:storage_linker"
+  ]
+}

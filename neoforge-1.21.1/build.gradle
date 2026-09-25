@@ -1,0 +1,70 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.107'
+}
+
+group = project.maven_group
+version = project.mod_version
+
+base {
+    archivesName = project.archives_base_name
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        client {
+            client()
+            gameDirectory = project.file('run')
+        }
+        server {
+            server()
+            gameDirectory = project.file('run')
+        }
+    }
+
+    mods {
+        "tristorage" {
+            sourceSet sourceSets.main
+        }
+    }
+
+    unitTest {
+        enable()
+        testedMod = mods.tristorage
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': 'TriStorage',
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': 'AndresBlue'
+        )
+    }
+    from('../LICENSE') {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "tristorage",
+  "version": "${version}",
+  "name": "TriStorage",
+  "description": "Compact high-capacity storage with crafting, creative-style search, animated machines and optimized dimensional remote access.",
+  "authors": ["AndresBlue"],
+  "license": "MIT",
+  "icon": "assets/tristorage/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.andresblue.tristorage.TriStorageMod"],
+    "client": ["com.andresblue.tristorage.TriStorageClient"]
+  },
+  "mixins": ["tristorage.client.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

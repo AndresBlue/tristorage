@@ -1,0 +1,16 @@
+.gradle/
+.gradle-tmp/
+.gradle-codex/
+build/
+out/
+run/
+logs/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.log
+
+# Built JARs are published as GitHub releases.
+dist/

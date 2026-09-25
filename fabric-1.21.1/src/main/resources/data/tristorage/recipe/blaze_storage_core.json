@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["RGR", "BCB", "ROR"],
+  "key": {
+    "R": {"item": "minecraft:redstone_block"},
+    "G": {"item": "minecraft:gold_block"},
+    "B": {"item": "minecraft:blaze_rod"},
+    "C": {"item": "tristorage:diamond_storage_core"},
+    "O": {"item": "minecraft:obsidian"}
+  },
+  "result": {"id": "tristorage:blaze_storage_core"}
+}

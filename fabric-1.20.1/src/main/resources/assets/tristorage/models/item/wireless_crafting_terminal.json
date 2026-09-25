@@ -1,0 +1,10 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {"layer0": "tristorage:item/wireless_crafting_terminal"},
+  "display": {
+    "gui": {
+      "translation": [0, 0, 0],
+      "scale": [1.0, 1.0, 1.0]
+    }
+  }
+}

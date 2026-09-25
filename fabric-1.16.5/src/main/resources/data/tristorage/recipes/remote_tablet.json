@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["NGN", "CRC", "NNN"],
+  "key": {
+    "N": {"item": "minecraft:iron_nugget"},
+    "G": {"item": "minecraft:glass_pane"},
+    "C": {"item": "minecraft:gold_nugget"},
+    "R": {"item": "minecraft:redstone"}
+  },
+  "result": {"item": "tristorage:remote_tablet"}
+}

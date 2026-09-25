@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:block",
+  "pools": [{
+    "rolls": 1,
+    "entries": [{
+      "type": "minecraft:item",
+      "name": "tristorage:diamond_storage_core",
+      "functions": [{
+        "function": "minecraft:copy_nbt",
+        "source": "block_entity",
+        "ops": [
+          {"source": "InstalledChests", "target": "BlockEntityTag.InstalledChests", "op": "replace"},
+          {"source": "Entries", "target": "BlockEntityTag.Entries", "op": "replace"},
+          {"source": "TriStorageId", "target": "BlockEntityTag.TriStorageId", "op": "replace"},
+          {"source": "OwnershipToken", "target": "BlockEntityTag.OwnershipToken", "op": "replace"},
+          {"source": "TriStorageFormat", "target": "BlockEntityTag.TriStorageFormat", "op": "replace"},
+          {"source": "StoredTypesSummary", "target": "BlockEntityTag.StoredTypesSummary", "op": "replace"},
+          {"source": "TotalItemsSummary", "target": "BlockEntityTag.TotalItemsSummary", "op": "replace"}
+        ]
+      }]
+    }],
+    "conditions": [{"condition": "minecraft:survives_explosion"}]
+  }]
+}

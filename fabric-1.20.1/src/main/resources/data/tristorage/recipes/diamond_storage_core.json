@@ -1,0 +1,11 @@
+{
+  "type": "tristorage:core_upgrade",
+  "pattern": ["OGO", "DCD", "OGO"],
+  "key": {
+    "O": {"item": "minecraft:obsidian"},
+    "G": {"item": "minecraft:gold_ingot"},
+    "D": {"item": "minecraft:diamond"},
+    "C": {"item": "tristorage:iron_storage_core"}
+  },
+  "result": {"item": "tristorage:diamond_storage_core"}
+}
