@@ -68,9 +68,13 @@ tasks {
         val props = mapOf(
             "version" to modVersion,
             "minecraft" to sc.properties.get<String>("mod.mc_compat"),
+            "java" to requiredJava.majorVersion,
         )
+        inputs.property("dataPackMinecraft", minecraft)
         inputs.properties(props)
         filesMatching("fabric.mod.json") { expand(props) }
+        upgradeDataPack(minecraft)
+        filterVersionedMixins(minecraft)
         // Fabric remaps mixins without a refmap; the entry is only for Forge.
         filesMatching("*.mixins.json") {
             filter { line -> if (line.contains("\"refmap\"")) "" else line }
@@ -81,6 +85,7 @@ tasks {
     withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
         options.release = requiredJava.majorVersion.toInt()
+        options.compilerArgs.addAll(listOf("-Xmaxerrs", "1000"))
     }
 
     test {

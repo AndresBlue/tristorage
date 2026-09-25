@@ -14,7 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class WirelessCraftingTerminalRecipeTest {
     @Test
     void recipeIsTheExactPostNetherUpgrade() throws Exception {
+        // The data pack is written in the 1.20.1 format and upgraded by the build.
+        //? if >=1.21 {
+        /*String path = "/data/tristorage/recipe/wireless_crafting_terminal.json";
+        String resultKey = "id";
+        *///?} else {
         String path = "/data/tristorage/recipes/wireless_crafting_terminal.json";
+        String resultKey = "item";
+        //?}
         try (InputStream stream = getClass().getResourceAsStream(path)) {
             assertNotNull(stream, "missing wireless crafting recipe resource");
             JsonObject recipe = JsonParser.parseReader(new InputStreamReader(
@@ -40,7 +47,7 @@ class WirelessCraftingTerminalRecipeTest {
             assertEquals("tristorage:remote_tablet",
                     keys.getAsJsonObject("T").get("item").getAsString());
             assertEquals("tristorage:wireless_crafting_terminal",
-                    recipe.getAsJsonObject("result").get("item").getAsString());
+                    recipe.getAsJsonObject("result").get(resultKey).getAsString());
         }
     }
 }

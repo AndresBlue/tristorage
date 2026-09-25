@@ -13,12 +13,21 @@ import com.andresblue.tristorage.storage.StorageRepository;
 import com.andresblue.tristorage.storage.StorageTickCoordinator;
 import com.andresblue.tristorage.storage.StorageTier;
 import com.andresblue.tristorage.storage.TerminalFilter;
+import com.andresblue.tristorage.version.SavedStacks;
+import com.andresblue.tristorage.version.Stacks;
 import org.jetbrains.annotations.Nullable;
+//? if >=1.20.5 {
+/*import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
+*///?}
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -51,9 +60,17 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
     private static final String ORBIT_ENTRIES_KEY = "TriStorageOrbitEntries";
     private static final String ORBIT_REVISION_KEY = "TriStorageOrbitRevision";
     private static final int ORBIT_ENTRY_LIMIT = 24;
+    //? if >=1.20.5 {
+    /*private static final List<DataComponentType<?>> ORBIT_VISUAL_COMPONENTS = List.of(
+            DataComponents.ENCHANTMENTS, DataComponents.STORED_ENCHANTMENTS,
+            DataComponents.POTION_CONTENTS, DataComponents.DYED_COLOR,
+            DataComponents.CUSTOM_MODEL_DATA, DataComponents.PROFILE, DataComponents.TRIM,
+            DataComponents.ENCHANTMENT_GLINT_OVERRIDE);
+    *///?} else {
     private static final List<String> ORBIT_VISUAL_KEYS = List.of(
             "Enchantments", "StoredEnchantments", "Potion", "CustomPotionColor",
             "CustomModelData", "SkullOwner", "Trim");
+    //?}
 
     private StorageRuntime runtime;
     private final StorageRuntime.Listener anchorListener = this::onRuntimeFlush;
@@ -88,6 +105,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
     private long pendingLegacyRevision;
     private int pendingLegacyTypeSummary;
     private long pendingLegacyItemSummary;
+    private int pendingLegacyDataVersion;
     private StorageTickCoordinator.BoundedTask legacyLoadTask;
 
     public StorageCoreBlockEntity(BlockPos pos, BlockState state) {
@@ -149,7 +167,8 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
                     if (legacyNeedsIdentity) {
                         legacyChecksum = 31 * legacyChecksum + stored.hashCode();
                     }
-                    ItemStack stack = ItemStack.of(stored.getCompound("Stack"));
+                    ItemStack stack = SavedStacks.parse(stored.getCompound("Stack"),
+                            pendingLegacyDataVersion, serverWorld.registryAccess());
                     long count = Math.max(0, stored.getLong("Count"));
                     long entryId = stored.contains(ENTRY_ID_KEY, Tag.TAG_ANY_NUMERIC)
                             ? Math.max(1, stored.getLong(ENTRY_ID_KEY))
@@ -428,15 +447,47 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
         return new CoreScreenHandler(syncId, inventory, this);
     }
 
+    /** The block entity data a portable Core item carries. */
+    public CompoundTag portableData() {
+        //? if >=1.20.5 {
+        /*return saveWithoutMetadata(level.registryAccess());
+        *///?} else {
+        return saveWithoutMetadata();
+        //?}
+    }
+
+    //? if >=1.20.5 {
+    /*// Loot tables copy this component onto the dropped Core (see copy_components).
+    @Override
+    protected void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        CompoundTag portable = PortableCoreData.sanitizedCopy(portableData());
+        if (portable != null) {
+            BlockEntity.addEntityType(portable, getType());
+            components.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(portable));
+        }
+    }
+
+    @Override
+    protected void saveAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
+        super.saveAdditional(nbt, registries);
+    *///?} else {
     @Override
     protected void saveAdditional(CompoundTag nbt) {
         super.saveAdditional(nbt);
+        HolderLookup.Provider registries = null;
+    //?}
         activeRuntime();
         if (!legacyNeedsIdentity) {
             nbt.putString(STORAGE_ID_KEY, storageId().toString());
             nbt.putString(PortableCoreData.OWNERSHIP_TOKEN_KEY, ownershipToken);
         }
         nbt.putInt(PortableCoreData.FORMAT_VERSION_KEY, 1);
+        int dataVersion = pendingLegacyEntries == null
+                ? SavedStacks.currentVersion() : pendingLegacyDataVersion;
+        if (dataVersion > 0) {
+            nbt.putInt(PortableCoreData.DATA_VERSION_KEY, dataVersion);
+        }
         nbt.putLong(REVISION_KEY, pendingLegacyEntries == null
                 ? revision() : pendingLegacyRevision);
         nbt.putInt(PortableCoreData.CHESTS_KEY, installedChests());
@@ -447,7 +498,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
             for (StorageRuntime.SnapshotEntry entry : runtime.snapshotEntries()) {
                 CompoundTag stored = new CompoundTag();
                 stored.putLong(ENTRY_ID_KEY, entry.id());
-                stored.put("Stack", entry.stack().save(new CompoundTag()));
+                stored.put("Stack", Stacks.save(entry.stack(), registries));
                 stored.putLong("Count", entry.count());
                 list.add(stored);
             }
@@ -463,13 +514,13 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
         nbt.putLong(PortableCoreData.ITEMS_SUMMARY_KEY, itemSummary);
     }
 
-    private CompoundTag writeOrbitNbt() {
+    private CompoundTag writeOrbitNbt(HolderLookup.Provider registries) {
         CompoundTag nbt = new CompoundTag();
         nbt.putLong(ORBIT_REVISION_KEY, revision());
         ListTag list = new ListTag();
         for (ItemStack template : serverOrbitSnapshot()) {
             CompoundTag stored = new CompoundTag();
-            stored.put("Stack", orbitDisplayStack(template).save(new CompoundTag()));
+            stored.put("Stack", Stacks.save(orbitDisplayStack(template), registries));
             list.add(stored);
         }
         nbt.put(ORBIT_ENTRIES_KEY, list);
@@ -478,10 +529,26 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
 
     /**
      * Orbit stacks are sent to every nearby player in chunk and update
-     * packets. Only tags that change how the item renders are kept, so
+     * packets. Only data that changes how the item renders is kept, so
      * shulker contents or book pages can neither overflow the chunk packet nor
      * reveal what the storage holds.
      */
+    //? if >=1.20.5 {
+    /*static ItemStack orbitDisplayStack(ItemStack template) {
+        ItemStack display = new ItemStack(template.getItem());
+        for (DataComponentType<?> type : ORBIT_VISUAL_COMPONENTS) {
+            copyComponent(template, display, type);
+        }
+        return display;
+    }
+
+    private static <T> void copyComponent(ItemStack from, ItemStack to, DataComponentType<T> type) {
+        T value = from.get(type);
+        if (value != null) {
+            to.set(type, value);
+        }
+    }
+    *///?} else {
     static ItemStack orbitDisplayStack(ItemStack template) {
         ItemStack display = new ItemStack(template.getItem());
         CompoundTag source = template.getTag();
@@ -506,9 +573,16 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
         }
         return display;
     }
+    //?}
 
+    //? if >=1.20.5 {
+    /*@Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+    *///?} else {
     @Override
     public CompoundTag getUpdateTag() {
+        HolderLookup.Provider registries = null;
+    //?}
         CompoundTag nbt = new CompoundTag();
         ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(getType());
         if (id != null) {
@@ -517,21 +591,33 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
         nbt.putInt("x", worldPosition.getX());
         nbt.putInt("y", worldPosition.getY());
         nbt.putInt("z", worldPosition.getZ());
-        nbt.merge(writeOrbitNbt());
+        nbt.merge(writeOrbitNbt(registries));
         return nbt;
     }
 
     @Override
     public Packet<ClientGamePacketListener> getUpdatePacket() {
-        return ClientboundBlockEntityDataPacket.create(this, ignored -> writeOrbitNbt());
+        //? if >=1.20.5 {
+        /*return ClientboundBlockEntityDataPacket.create(this,
+                (blockEntity, registries) -> writeOrbitNbt(registries));
+        *///?} else {
+        return ClientboundBlockEntityDataPacket.create(this, ignored -> writeOrbitNbt(null));
+        //?}
     }
 
+    //? if >=1.20.5 {
+    /*@Override
+    protected void loadAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
+        super.loadAdditional(nbt, registries);
+    *///?} else {
     @Override
     public void load(CompoundTag nbt) {
         super.load(nbt);
+        HolderLookup.Provider registries = null;
+    //?}
         if (!nbt.contains(PortableCoreData.ENTRIES_KEY, Tag.TAG_LIST)
                 && nbt.contains(ORBIT_ENTRIES_KEY, Tag.TAG_LIST)) {
-            readOrbitNbt(nbt);
+            readOrbitNbt(nbt, registries);
             return;
         }
         boolean hasStorageId = nbt.contains(STORAGE_ID_KEY, Tag.TAG_STRING);
@@ -565,6 +651,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
                     nbt.getInt(PortableCoreData.TYPES_SUMMARY_KEY));
             pendingLegacyItemSummary = Math.max(0,
                     nbt.getLong(PortableCoreData.ITEMS_SUMMARY_KEY));
+            pendingLegacyDataVersion = nbt.getInt(PortableCoreData.DATA_VERSION_KEY);
             legacyChecksum = 31 + loaded.installedChests();
             legacyLoadTask = null;
         } else {
@@ -582,11 +669,12 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
         serverOrbitDirty = true;
     }
 
-    private void readOrbitNbt(CompoundTag nbt) {
+    private void readOrbitNbt(CompoundTag nbt, HolderLookup.Provider registries) {
         clientOrbitItems.clear();
         ListTag list = nbt.getList(ORBIT_ENTRIES_KEY, Tag.TAG_COMPOUND);
         for (int index = 0; index < list.size() && index < ORBIT_ENTRY_LIMIT; index++) {
-            ItemStack stack = ItemStack.of(list.getCompound(index).getCompound("Stack"));
+            ItemStack stack = Stacks.parse(list.getCompound(index).getCompound("Stack"),
+                    registries);
             if (!stack.isEmpty()) {
                 stack.setCount(1);
                 clientOrbitItems.add(stack);

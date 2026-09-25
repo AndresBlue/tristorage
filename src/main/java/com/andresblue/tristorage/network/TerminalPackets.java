@@ -11,8 +11,8 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.ClickType;
+import com.andresblue.tristorage.version.Recipes;
 import net.minecraft.world.item.crafting.CraftingRecipe;
-import net.minecraft.world.item.crafting.Recipe;
 import java.util.List;
 import java.util.UUID;
 
@@ -87,11 +87,11 @@ public final class TerminalPackets {
                         int safeRequested = requested == RecipeTransferPlanner.MAX_TRANSFER
                                 ? RecipeTransferPlanner.MAX_TRANSFER
                                 : Math.max(1, Math.min(64, requested));
-                        Recipe<?> recipe = player.getServer().getRecipeManager()
-                                .byKey(recipeId).orElse(null);
-                        if (recipe instanceof CraftingRecipe craftingRecipe) {
+                        CraftingRecipe craftingRecipe = Recipes.crafting(
+                                player.getServer().getRecipeManager(), recipeId);
+                        if (craftingRecipe != null) {
                             success = terminal.fillRecipe(
-                                    player, craftingRecipe, safeRequested);
+                                    player, recipeId, craftingRecipe, safeRequested);
                         }
                         sendRecipeFillState(player, syncId, requestId,
                                 recipeId, success);
@@ -114,9 +114,9 @@ public final class TerminalPackets {
                                 player.serverLevel().getGameTime())) {
                             return;
                         }
-                        Recipe<?> recipe = player.getServer().getRecipeManager()
-                                .byKey(recipeId).orElse(null);
-                        if (!(recipe instanceof CraftingRecipe craftingRecipe)) {
+                        CraftingRecipe craftingRecipe = Recipes.crafting(
+                                player.getServer().getRecipeManager(), recipeId);
+                        if (craftingRecipe == null) {
                             sendRecipeAvailabilityState(player, syncId, clientRevision,
                                     localFingerprint, recipeId,
                                     new RecipeTransferPlanner.Availability(0, 0));
@@ -124,7 +124,7 @@ public final class TerminalPackets {
                         }
                         sendRecipeAvailabilityState(player, syncId, clientRevision,
                                 localFingerprint, recipeId,
-                                terminal.recipeAvailability(craftingRecipe));
+                                terminal.recipeAvailability(recipeId, craftingRecipe));
                     });
                 });
     }

@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.screen;
 
+import com.andresblue.tristorage.version.Stacks;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.block.NetworkBlock;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
@@ -404,7 +405,7 @@ public class TerminalScreenHandler extends AbstractContainerMenu {
 
         ItemStack cursor = getCarried();
         if (!cursor.isEmpty()) {
-            if (!ItemStack.isSameItemSameTags(cursor, shown)) {
+            if (!Stacks.sameItemSameData(cursor, shown)) {
                 return;
             }
             player.getInventory().add(cursor);
@@ -436,14 +437,14 @@ public class TerminalScreenHandler extends AbstractContainerMenu {
         }
         reference.setCount(1);
 
-        if (!cursor.isEmpty() && ItemStack.isSameItemSameTags(cursor, reference)) {
+        if (!cursor.isEmpty() && Stacks.sameItemSameData(cursor, reference)) {
             long inserted = core.insert(cursor, cursor.getCount());
             cursor.shrink((int) inserted);
             setCarried(cursor);
         }
         for (int inventorySlot = 0; inventorySlot < 36; inventorySlot++) {
             ItemStack stack = player.getInventory().getItem(inventorySlot);
-            if (stack.isEmpty() || !ItemStack.isSameItemSameTags(stack, reference)) {
+            if (stack.isEmpty() || !Stacks.sameItemSameData(stack, reference)) {
                 continue;
             }
             long inserted = core.insert(stack, stack.getCount());

@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.client;
 
+import com.andresblue.tristorage.version.Ids;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import com.andresblue.tristorage.storage.TerminalFilter;
 import com.andresblue.tristorage.platform.Platform;
@@ -28,7 +29,7 @@ import java.util.Map;
 abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         extends AbstractContainerScreen<H> implements TerminalScreenMarker {
     protected static final ResourceLocation VANILLA_CHEST_TEXTURE =
-            new ResourceLocation("minecraft", "textures/gui/container/generic_54.png");
+            Ids.of("minecraft", "textures/gui/container/generic_54.png");
     private static final float STORED_COUNT_Z = 325.0f;
     private static final float MAX_COUNT_WIDTH = 16.0f;
     private static final int CATEGORY_TAB_COUNT = 7;
@@ -172,7 +173,9 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     @Override
     public void containerTick() {
         super.containerTick();
+        //? if <1.20.2 {
         searchField.tick();
+        //?}
         previousButton.active = pendingFilterSequence < 0 && menu.page() > 0;
         nextButton.active = pendingFilterSequence < 0
                 && menu.page() + 1 < menu.pageCount();
@@ -482,7 +485,10 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
 
     @Override
     public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        // From 1.20.2 on, super.render draws the background itself.
+        //? if <1.20.2 {
         renderBackground(context);
+        //?}
         super.render(context, mouseX, mouseY, delta);
         if (settingsOpen) {
             drawSettingsOverlay(context, mouseX, mouseY, delta);
@@ -626,13 +632,27 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    //? if >=1.20.2 {
+    /*@Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double amount) {
+        return scrollTerminal(mouseX, mouseY, amount)
+                || super.mouseScrolled(mouseX, mouseY, horizontal, amount);
+    }
+    *///?} else {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        return scrollTerminal(mouseX, mouseY, amount)
+                || super.mouseScrolled(mouseX, mouseY, amount);
+    }
+    //?}
+
+    /** Handles the wheel over the terminal; false lets the screen handle it. */
+    private boolean scrollTerminal(double mouseX, double mouseY, double amount) {
         if (settingsOpen) {
             return true;
         }
         if (amount == 0) {
-            return super.mouseScrolled(mouseX, mouseY, amount);
+            return false;
         }
         if (categoriesVisible() && mouseY >= topPos - 23 && mouseY < topPos + 2
                 && mouseX >= leftPos && mouseX < leftPos + 176) {
@@ -646,7 +666,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             clickPageButton(amount > 0 ? 0 : 1);
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, amount);
+        return false;
     }
 
     private Component sortButtonText() {

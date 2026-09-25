@@ -82,6 +82,36 @@ class StorageRepositoryJournalTest {
         assertEquals(9, countOf(prepared, 2));
     }
 
+    @Test
+    void replayRemembersWhichGameVersionWroteEachEntry() {
+        // A world saved by 1.20.1 (3465) and then played on 1.21.1 (3955).
+        CompoundTag snapshot = snapshot(1, 1, entry(1, 5), entry(2, 6));
+        snapshot.putInt("DataVersion", 3465);
+        CompoundTag newer = frame(2, 1, entry(2, 8));
+        newer.putInt("DataVersion", 3955);
+
+        StorageRepository.Prepared prepared = StorageRepository.replay(snapshot, List.of(newer));
+
+        assertEquals(3465, dataVersionOf(prepared, 1));
+        assertEquals(3955, dataVersionOf(prepared, 2));
+    }
+
+    @Test
+    void replayMarksUnrecordedVersionsAsUnknown() {
+        StorageRepository.Prepared prepared = StorageRepository.replay(
+                null, List.of(frame(1, 1, entry(1, 4))));
+
+        assertEquals(0, dataVersionOf(prepared, 1));
+    }
+
+    private static int dataVersionOf(StorageRepository.Prepared prepared, long entryId) {
+        return prepared.entries().stream()
+                .filter(entry -> entry.getLong("EntryId") == entryId)
+                .findFirst()
+                .orElseThrow()
+                .getInt("DataVersion");
+    }
+
     private static CompoundTag snapshot(long revision, int chests, CompoundTag... entries) {
         CompoundTag root = new CompoundTag();
         root.putLong("Revision", revision);

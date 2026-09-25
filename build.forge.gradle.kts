@@ -79,6 +79,8 @@ tasks {
         )
         inputs.properties(props)
         filesMatching("META-INF/mods.toml") { expand(props) }
+        inputs.property("dataPackMinecraft", minecraft)
+        upgradeDataPack(minecraft)
         exclude("fabric.mod.json", "META-INF/neoforge.mods.toml")
     }
 

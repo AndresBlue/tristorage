@@ -3,7 +3,7 @@ package com.andresblue.tristorage.storage;
 import com.andresblue.tristorage.TriStorageMod;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.world.item.BlockItem;
+import com.andresblue.tristorage.version.Stacks;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -17,6 +17,8 @@ public final class PortableCoreData {
     public static final String STORAGE_ID_KEY = "TriStorageId";
     public static final String OWNERSHIP_TOKEN_KEY = "OwnershipToken";
     public static final String FORMAT_VERSION_KEY = "TriStorageFormat";
+    /** Data version of the game that saved the stacks in {@link #ENTRIES_KEY}. */
+    public static final String DATA_VERSION_KEY = "TriStorageDataVersion";
     public static final String TYPES_SUMMARY_KEY = "StoredTypesSummary";
     public static final String ITEMS_SUMMARY_KEY = "TotalItemsSummary";
 
@@ -24,7 +26,7 @@ public final class PortableCoreData {
     }
 
     public static CompoundTag copyFrom(ItemStack stack) {
-        CompoundTag blockEntityData = BlockItem.getBlockEntityData(stack);
+        CompoundTag blockEntityData = Stacks.blockEntityData(stack);
         return sanitizedCopy(blockEntityData);
     }
 
@@ -49,6 +51,9 @@ public final class PortableCoreData {
         }
         portable.putInt(FORMAT_VERSION_KEY,
                 Math.max(1, blockEntityData.getInt(FORMAT_VERSION_KEY)));
+        if (blockEntityData.contains(DATA_VERSION_KEY, Tag.TAG_INT)) {
+            portable.putInt(DATA_VERSION_KEY, blockEntityData.getInt(DATA_VERSION_KEY));
+        }
         if (blockEntityData.contains(TYPES_SUMMARY_KEY, Tag.TAG_ANY_NUMERIC)) {
             portable.putInt(TYPES_SUMMARY_KEY,
                     Math.max(0, blockEntityData.getInt(TYPES_SUMMARY_KEY)));
@@ -63,18 +68,18 @@ public final class PortableCoreData {
     public static void applyTo(ItemStack stack, CompoundTag portable) {
         CompoundTag sanitized = sanitizedCopy(portable);
         if (sanitized != null && !sanitized.isEmpty()) {
-            BlockItem.setBlockEntityData(
+            Stacks.setBlockEntityData(
                     stack, TriStorageMod.STORAGE_CORE_BLOCK_ENTITY, sanitized);
         }
     }
 
     public static int installedChests(ItemStack stack) {
-        CompoundTag data = BlockItem.getBlockEntityData(stack);
+        CompoundTag data = Stacks.blockEntityData(stack);
         return data == null ? 0 : Math.max(0, data.getInt(CHESTS_KEY));
     }
 
     public static int storedTypes(ItemStack stack) {
-        CompoundTag data = BlockItem.getBlockEntityData(stack);
+        CompoundTag data = Stacks.blockEntityData(stack);
         if (data == null) {
             return 0;
         }
@@ -84,7 +89,7 @@ public final class PortableCoreData {
     }
 
     public static long totalItems(ItemStack stack) {
-        CompoundTag data = BlockItem.getBlockEntityData(stack);
+        CompoundTag data = Stacks.blockEntityData(stack);
         if (data == null) {
             return 0;
         }

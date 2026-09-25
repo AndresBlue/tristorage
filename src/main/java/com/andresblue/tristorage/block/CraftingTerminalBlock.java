@@ -39,9 +39,15 @@ public final class CraftingTerminalBlock extends Block implements NetworkBlock {
         super.onRemove(state, world, pos, newState, moved);
     }
 
+    //? if >=1.20.5 {
+    /*@Override
+    protected InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos,
+                                               Player player, BlockHitResult hit) {
+    *///?} else {
     @Override
     public InteractionResult use(BlockState state, Level world, BlockPos pos,
-                              Player player, InteractionHand hand, BlockHitResult hit) {
+                                 Player player, InteractionHand hand, BlockHitResult hit) {
+    //?}
         if (world.isClientSide) {
             return InteractionResult.SUCCESS;
         }

@@ -8,7 +8,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import com.andresblue.tristorage.TestStacks;
+import com.andresblue.tristorage.version.Ids;
+import com.andresblue.tristorage.version.Stacks;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -25,7 +27,7 @@ class RemoteTabletItemTest {
 
     private static ResourceKey<Level> dimension() {
         return ResourceKey.create(Registries.DIMENSION,
-                new ResourceLocation("minecraft", "overworld"));
+                Ids.of("minecraft", "overworld"));
     }
 
     @BeforeAll
@@ -51,11 +53,12 @@ class RemoteTabletItemTest {
     @Test
     void upgradeCopiesOnlyValidatedLinkData() {
         ItemStack source = new ItemStack(TriStorageMod.REMOTE_TABLET);
-        CompoundTag sourceNbt = source.getOrCreateTag();
-        sourceNbt.putString("LinkedDimension", "minecraft:overworld");
-        sourceNbt.putLong("LinkedPosition", LINKER.asLong());
-        sourceNbt.putLong("LinkedCorePosition", new BlockPos(13, 64, -9).asLong());
-        sourceNbt.putString("InjectedData", "must-not-survive");
+        TestStacks.edit(source, sourceNbt -> {
+            sourceNbt.putString("LinkedDimension", "minecraft:overworld");
+            sourceNbt.putLong("LinkedPosition", LINKER.asLong());
+            sourceNbt.putLong("LinkedCorePosition", new BlockPos(13, 64, -9).asLong());
+            sourceNbt.putString("InjectedData", "must-not-survive");
+        });
 
         ItemStack result = new ItemStack(TriStorageMod.WIRELESS_CRAFTING_TERMINAL);
         assertTrue(RemoteTabletItem.copyValidatedLink(source, result));
@@ -64,20 +67,21 @@ class RemoteTabletItemTest {
         assertFalse(RemoteTabletItem.isLinkedTo(
                 result, dimension(), LINKER, RemoteTerminalMode.STORAGE));
         assertEquals("minecraft:overworld",
-                result.getTag().getString("LinkedDimension"));
-        assertFalse(result.getTag().contains("InjectedData"));
+                TestStacks.data(result).getString("LinkedDimension"));
+        assertFalse(TestStacks.data(result).contains("InjectedData"));
     }
 
     @Test
     void malformedLinkProducesCleanUpgrade() {
         ItemStack source = new ItemStack(TriStorageMod.REMOTE_TABLET);
-        CompoundTag sourceNbt = source.getOrCreateTag();
-        sourceNbt.putString("LinkedDimension", "not an identifier");
-        sourceNbt.putLong("LinkedPosition", LINKER.asLong());
+        TestStacks.edit(source, sourceNbt -> {
+            sourceNbt.putString("LinkedDimension", "not an identifier");
+            sourceNbt.putLong("LinkedPosition", LINKER.asLong());
+        });
 
         ItemStack result = new ItemStack(TriStorageMod.WIRELESS_CRAFTING_TERMINAL);
         assertFalse(RemoteTabletItem.copyValidatedLink(source, result));
-        assertNull(result.getTag());
+        assertFalse(Stacks.hasCustomData(result));
     }
 
     @Test

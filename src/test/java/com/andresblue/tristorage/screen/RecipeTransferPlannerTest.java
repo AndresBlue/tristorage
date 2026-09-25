@@ -1,16 +1,14 @@
 package com.andresblue.tristorage.screen;
 
+import com.andresblue.tristorage.TestStacks;
+
 import net.minecraft.SharedConstants;
 import net.minecraft.core.NonNullList;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapedRecipe;
-import com.google.gson.JsonParser;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -140,9 +138,7 @@ class RecipeTransferPlannerTest {
 
     @Test
     void parsesAndFillsTheRealStorageTerminalRecipe() {
-        ShapedRecipe recipe = RecipeSerializer.SHAPED_RECIPE.fromJson(
-                new ResourceLocation("tristorage", "storage_terminal"),
-                JsonParser.parseString("""
+        ShapedRecipe recipe = TestStacks.shapedRecipe("storage_terminal", """
                         {"type":"minecraft:crafting_shaped",
                          "pattern":["GIG","RHR","ICI"],
                          "key":{"G":{"item":"minecraft:glass"},
@@ -151,7 +147,7 @@ class RecipeTransferPlannerTest {
                                 "H":{"item":"minecraft:chest"},
                                 "C":{"item":"minecraft:copper_ingot"}},
                          "result":{"item":"minecraft:crafting_table"}}
-                        """).getAsJsonObject());
+                        """);
         RecipeTransferPlanner.Plan plan = RecipeTransferPlanner.plan(recipe,
                 List.of(
                         resource(Items.GLASS, 64),
@@ -168,9 +164,7 @@ class RecipeTransferPlannerTest {
 
     @Test
     void realStorageTerminalAvailabilityAcceptsExactMinimumCounts() {
-        ShapedRecipe recipe = RecipeSerializer.SHAPED_RECIPE.fromJson(
-                new ResourceLocation("tristorage", "storage_terminal_minimum"),
-                JsonParser.parseString("""
+        ShapedRecipe recipe = TestStacks.shapedRecipe("storage_terminal_minimum", """
                         {"type":"minecraft:crafting_shaped",
                          "pattern":["GIG","RHR","ICI"],
                          "key":{"G":{"item":"minecraft:glass"},
@@ -179,7 +173,7 @@ class RecipeTransferPlannerTest {
                                 "H":{"item":"minecraft:chest"},
                                 "C":{"item":"minecraft:copper_ingot"}},
                          "result":{"item":"minecraft:crafting_table"}}
-                        """).getAsJsonObject());
+                        """);
         List<RecipeTransferPlanner.Resource> resources = List.of(
                 resource(Items.GLASS, 2),
                 resource(Items.IRON_INGOT, 3),
@@ -198,9 +192,7 @@ class RecipeTransferPlannerTest {
 
     @Test
     void realStorageTerminalAvailabilityMarksOnlyTheMissingSlot() {
-        ShapedRecipe recipe = RecipeSerializer.SHAPED_RECIPE.fromJson(
-                new ResourceLocation("tristorage", "storage_terminal_missing"),
-                JsonParser.parseString("""
+        ShapedRecipe recipe = TestStacks.shapedRecipe("storage_terminal_missing", """
                         {"type":"minecraft:crafting_shaped",
                          "pattern":["GIG","RHR","ICI"],
                          "key":{"G":{"item":"minecraft:glass"},
@@ -209,7 +201,7 @@ class RecipeTransferPlannerTest {
                                 "H":{"item":"minecraft:chest"},
                                 "C":{"item":"minecraft:copper_ingot"}},
                          "result":{"item":"minecraft:crafting_table"}}
-                        """).getAsJsonObject());
+                        """);
         RecipeTransferPlanner.Availability availability =
                 RecipeTransferPlanner.availability(recipe, List.of(
                         resource(Items.GLASS, 2),
@@ -229,9 +221,7 @@ class RecipeTransferPlannerTest {
         for (int index = 0; index < ingredients.length; index++) {
             pattern.set(index, ingredients[index]);
         }
-        return new ShapedRecipe(new ResourceLocation("tristorage", "planner_test"), "",
-                CraftingBookCategory.MISC, width, height, pattern,
-                new ItemStack(Items.STICK), true);
+        return TestStacks.shapedRecipe(width, height, pattern, new ItemStack(Items.STICK));
     }
 
     private static RecipeTransferPlanner.Resource resource(

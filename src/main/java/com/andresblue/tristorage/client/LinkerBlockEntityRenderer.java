@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.client;
 
+import com.andresblue.tristorage.version.Ids;
+import com.andresblue.tristorage.version.Stacks;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.block.AntennaMount;
 import com.andresblue.tristorage.blockentity.LinkerBlockEntity;
@@ -29,8 +31,6 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix3f;
-import org.joml.Matrix4f;
 
 /** Client-only miniature item projections orbiting an active dimensional singularity. */
 public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<LinkerBlockEntity> {
@@ -41,7 +41,7 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
     private static final int PARTICLE_DIRECTIONS = 48;
     private static final long PARTICLE_INTERVAL_TICKS = 10L;
     private static final double GOLDEN_ANGLE = Math.PI * (3.0 - Math.sqrt(5.0));
-    private static final ResourceLocation SINGULARITY_TEXTURE = new ResourceLocation(
+    private static final ResourceLocation SINGULARITY_TEXTURE = Ids.of(
             TriStorageMod.MOD_ID,
             "textures/block/dimensional_singularity_billboard_animated.png");
     private static final RenderType SINGULARITY_LAYER =
@@ -167,34 +167,36 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
         matrices.scale(pulse, pulse, pulse);
 
         PoseStack.Pose entry = matrices.last();
-        Matrix4f positionMatrix = entry.pose();
-        Matrix3f normalMatrix = entry.normal();
         VertexConsumer vertices = vertexConsumers.getBuffer(SINGULARITY_LAYER);
         int frame = Math.floorMod((int) (time / SINGULARITY_FRAME_TICKS),
                 SINGULARITY_FRAMES);
         float u0 = frame / (float) SINGULARITY_FRAMES;
         float u1 = (frame + 1) / (float) SINGULARITY_FRAMES;
-        billboardVertex(vertices, positionMatrix, normalMatrix,
-                -0.5f, -0.5f, 0.0f, u0, 1.0f);
-        billboardVertex(vertices, positionMatrix, normalMatrix,
-                0.5f, -0.5f, 0.0f, u1, 1.0f);
-        billboardVertex(vertices, positionMatrix, normalMatrix,
-                0.5f, 0.5f, 0.0f, u1, 0.0f);
-        billboardVertex(vertices, positionMatrix, normalMatrix,
-                -0.5f, 0.5f, 0.0f, u0, 0.0f);
+        billboardVertex(vertices, entry, -0.5f, -0.5f, 0.0f, u0, 1.0f);
+        billboardVertex(vertices, entry, 0.5f, -0.5f, 0.0f, u1, 1.0f);
+        billboardVertex(vertices, entry, 0.5f, 0.5f, 0.0f, u1, 0.0f);
+        billboardVertex(vertices, entry, -0.5f, 0.5f, 0.0f, u0, 0.0f);
         matrices.popPose();
     }
 
-    private static void billboardVertex(VertexConsumer vertices, Matrix4f positionMatrix,
-                                        Matrix3f normalMatrix, float x, float y, float z,
-                                        float u, float v) {
-        vertices.vertex(positionMatrix, x, y, z)
+    private static void billboardVertex(VertexConsumer vertices, PoseStack.Pose entry,
+                                        float x, float y, float z, float u, float v) {
+        //? if >=1.21 {
+        /*vertices.addVertex(entry, x, y, z)
+                .setColor(255, 255, 255, 255)
+                .setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(LightTexture.FULL_BRIGHT)
+                .setNormal(entry, 0.0f, 0.0f, 1.0f);
+        *///?} else {
+        vertices.vertex(entry.pose(), x, y, z)
                 .color(255, 255, 255, 255)
                 .uv(u, v)
                 .overlayCoords(OverlayTexture.NO_OVERLAY)
                 .uv2(LightTexture.FULL_BRIGHT)
-                .normal(normalMatrix, 0.0f, 0.0f, 1.0f)
+                .normal(entry.normal(), 0.0f, 0.0f, 1.0f)
                 .endVertex();
+        //?}
     }
 
     /**
@@ -398,7 +400,7 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
     }
 
     private static boolean sameItem(ItemStack left, ItemStack right) {
-        return !left.isEmpty() && !right.isEmpty() && ItemStack.isSameItemSameTags(left, right);
+        return !left.isEmpty() && !right.isEmpty() && Stacks.sameItemSameData(left, right);
     }
 
     private static ItemStack singleCopy(ItemStack source) {

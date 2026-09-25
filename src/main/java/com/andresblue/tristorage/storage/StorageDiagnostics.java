@@ -1,6 +1,7 @@
 package com.andresblue.tristorage.storage;
 
 import com.andresblue.tristorage.TriStorageMod;
+import com.andresblue.tristorage.version.Stacks;
 import com.google.gson.GsonBuilder;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -219,7 +220,8 @@ public final class StorageDiagnostics {
                 continue;
             }
             Item item = BuiltInRegistries.ITEM.get(id);
-            if (item != null && item != Items.AIR && item.getMaxStackSize() > 0) {
+            if (item != null && item != Items.AIR
+                    && item.getDefaultInstance().getMaxStackSize() > 0) {
                 result.add(item);
             }
         }
@@ -368,10 +370,11 @@ public final class StorageDiagnostics {
         private static ItemStack variantStack(Item item, BenchmarkProfile profile,
                                               int index, long seed) {
             ItemStack stack = new ItemStack(item);
-            CompoundTag tag = stack.getOrCreateTag();
+            CompoundTag tag = Stacks.customData(stack);
             tag.putString("TriStorageBenchmarkProfile", profile.id);
             tag.putInt("TriStorageBenchmarkVariant", index);
             tag.putLong("TriStorageBenchmarkSeed", seed);
+            Stacks.setCustomData(stack, tag);
             return stack;
         }
 
@@ -390,7 +393,9 @@ public final class StorageDiagnostics {
             }
             blockEntityTag.put("Items", contents);
             blockEntityTag.putInt("TriStorageBenchmarkPayload", index);
-            stack.getOrCreateTag().put("BlockEntityTag", blockEntityTag);
+            CompoundTag tag = Stacks.customData(stack);
+            tag.put("BlockEntityTag", blockEntityTag);
+            Stacks.setCustomData(stack, tag);
             return stack;
         }
 
@@ -412,14 +417,17 @@ public final class StorageDiagnostics {
     private static int runSelfTest(net.minecraft.commands.CommandSourceStack source) {
         try {
             ItemStack tagged = new ItemStack(Items.DIAMOND_SWORD);
-            tagged.getOrCreateTag().putString("TriStorageTest", "same");
+            CompoundTag marker = new CompoundTag();
+            marker.putString("TriStorageTest", "same");
+            Stacks.setCustomData(tagged, marker);
             ItemStack same = tagged.copy();
             ItemStack different = tagged.copy();
-            different.getOrCreateTag().putString("TriStorageTest", "different");
+            marker.putString("TriStorageTest", "different");
+            Stacks.setCustomData(different, marker);
             if (ItemKey.frozen(tagged).equals(ItemKey.probe(same))
-                    != ItemStack.isSameItemSameTags(tagged, same)
+                    != Stacks.sameItemSameData(tagged, same)
                     || ItemKey.frozen(tagged).equals(ItemKey.probe(different))
-                    != ItemStack.isSameItemSameTags(tagged, different)) {
+                    != Stacks.sameItemSameData(tagged, different)) {
                 throw new IllegalStateException("ItemKey/canCombine mismatch");
             }
 

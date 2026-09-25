@@ -21,3 +21,13 @@ mod.mc_compat = "1.20.1"
 [forge."1.20.1"]
 deps.forge = "47.4.23"
 mod.mc_compat = "[1.20.1,1.20.2)"
+
+
+["1.21.1"]
+deps.jei = "19.57.0.449"
+
+
+[fabric."1.21.1"]
+deps.fabric_loader = "0.18.4"
+deps.fabric_api = "0.116.17+1.21.1"
+mod.mc_compat = ">=1.21 <1.21.2"

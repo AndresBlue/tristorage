@@ -150,9 +150,12 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
 
         @Override
         public boolean supportsRecipe(EmiRecipe recipe) {
-            return recipe.getCategory() == VanillaEmiRecipeCategories.CRAFTING
-                    && recipe.getId() != null
-                    && recipe.getBackingRecipe() instanceof CraftingRecipe crafting
+            if (recipe.getCategory() != VanillaEmiRecipeCategories.CRAFTING
+                    || recipe.getId() == null) {
+                return false;
+            }
+            CraftingRecipe crafting = craftingRecipe(recipe);
+            return crafting != null
                     && crafting.canCraftInDimensions(3, 3)
                     && crafting.getIngredients().stream()
                     .anyMatch(ingredient -> !ingredient.isEmpty());
@@ -200,7 +203,7 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
             if (availability == null) {
                 return;
             }
-            CraftingRecipe crafting = (CraftingRecipe) recipe.getBackingRecipe();
+            CraftingRecipe crafting = craftingRecipe(recipe);
             Map<EmiIngredient, Boolean> inputAvailability = new IdentityHashMap<>();
             List<EmiIngredient> inputs = recipe.getInputs();
             for (int index = 0; index < inputs.size(); index++) {
@@ -224,6 +227,16 @@ public final class TriStorageEmiPlugin implements EmiPlugin {
                         bounds.x() + bounds.width(), bounds.y() + bounds.height(),
                         0x44FF0000);
             }
+        }
+
+        private static CraftingRecipe craftingRecipe(EmiRecipe recipe) {
+            //? if >=1.20.2 {
+            /*return recipe.getBackingRecipe() != null
+                    && recipe.getBackingRecipe().value() instanceof CraftingRecipe crafting
+                    ? crafting : null;
+            *///?} else {
+            return recipe.getBackingRecipe() instanceof CraftingRecipe crafting ? crafting : null;
+            //?}
         }
 
         private boolean isAvailable(CraftingRecipe recipe, int emiInputIndex,

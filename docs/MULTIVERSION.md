@@ -74,6 +74,36 @@ publicable durante todo el proceso.
 La serialización de `ItemStack` cambia en 1.20.5 (componentes y registros), así
 que las entradas guardadas deben convertirse al formato de cada versión.
 
+### Cómo se migra entre versiones de Minecraft
+
+- Cada stack que TriStorage guarda fuera de los slots de vanilla (repositorio,
+  `Entries` del block entity, datos del Core portátil) va con el
+  `DataVersion` del juego que lo escribió. Al leerlo, `SavedStacks` lo pasa
+  por los data fixers de vanilla. Los datos anteriores a 2.0 no tienen
+  versión: si el stack aún usa `Count` se toma como 1.20.1 (3465).
+- El fixer de 1.20.5 mueve `BlockEntityTag` al componente
+  `block_entity_data`, que exige un `id`. Los Cores soltados por la loot table
+  de 1.20.1 antes de 2.0 no lo tenían y 1.21 descartaría el ítem con todo su
+  contenido. `ItemStackDataMixin` agrega el `id` antes de ese fixer, y la loot
+  table de 1.20.1 ahora copia `id` y `TriStorageDataVersion`.
+
+## Diferencias entre versiones en el código
+
+- `version/`: `Stacks` (NBT o componentes), `SavedStacks` (data fixers),
+  `Ids`, `NbtFiles` y `Recipes`. El código común llama a estos helpers en vez
+  de usar la API de una versión.
+- `recipe/WrappedShapedRecipe`: base de las recetas propias; oculta el cambio
+  de serializador (JSON y `FriendlyByteBuf` hasta 1.20.4, `MapCodec` y
+  `StreamCodec` desde 1.21).
+- Red: los paquetes siguen escribiéndose como bytes. Desde 1.20.5 cada
+  dirección usa un único payload tipado con el canal y esos bytes
+  (`FabricPayload`).
+- Datos: el data pack se escribe una vez, en formato 1.20.1. `buildSrc`
+  (`upgradeDataPack`) lo convierte al empaquetar: carpetas en singular desde
+  1.21, `result.id` en recetas y `copy_components` en la loot table del Core
+  desde 1.20.5. Los mixins que solo existen desde cierta versión se quitan de
+  la configuración con `filterVersionedMixins`.
+
 ## Aportes de otros puertos a conservar
 
 - Test de minado de NeoForge (`BlockMiningResourcesTest`) y tags en
@@ -97,7 +127,11 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   Fabric. Ambos clientes llegan al menú, cargan un mundo de desarrollo de
   Fabric y se apagan sin errores. Falta probar en el juego abrir terminales y
   la tableta en Forge.
-- [ ] Fase 3
+- [ ] Fase 3: nodo `1.21.1-fabric` listo. Los 71 tests pasan en 1.20.1 y en
+  1.21.1. El cliente 1.21.1 abre un mundo de 1.20.1 con un Core de 80 tipos
+  y 941 ítems y lo guarda en el formato nuevo sin perder nada. Falta el nodo
+  NeoForge y migrar los formatos de `fabric-1.21.1` 1.0 y `neoforge-1.21.1`
+  1.1.
 - [ ] Fase 4
 - [ ] Fase 5
 - [ ] Fase 6

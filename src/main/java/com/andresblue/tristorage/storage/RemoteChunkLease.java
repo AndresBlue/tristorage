@@ -5,7 +5,11 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
+//? if >=1.20.5 {
+/*import net.minecraft.world.level.chunk.status.ChunkStatus;
+*///?} else {
 import net.minecraft.world.level.chunk.ChunkStatus;
+//?}
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -64,7 +68,11 @@ public final class RemoteChunkLease {
                 load = world.getChunkSource()
                         .getChunkFuture(
                                 chunkPos.x, chunkPos.z, ChunkStatus.FULL, true)
+                        //? if >=1.20.5 {
+                        /*.thenApply(result -> result.isSuccess());
+                        *///?} else {
                         .thenApply(result -> result.left().isPresent());
+                        //?}
             }
             load.whenComplete((loaded, error) -> {
                 StorageMetrics.stopTimer("remote.chunk_load", loadStarted);

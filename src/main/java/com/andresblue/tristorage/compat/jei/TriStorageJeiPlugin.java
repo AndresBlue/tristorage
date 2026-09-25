@@ -20,6 +20,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.CraftingRecipe;
+//? if >=1.20.2 {
+/*import net.minecraft.world.item.crafting.RecipeHolder;
+*///?}
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -40,8 +43,13 @@ public final class TriStorageJeiPlugin implements IModPlugin {
                 new CraftingHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
     }
 
+    //? if >=1.20.2 {
+    /*private static final class CraftingHandler implements
+            IRecipeTransferHandler<CraftingTerminalScreenHandler, RecipeHolder<CraftingRecipe>> {
+    *///?} else {
     private static final class CraftingHandler implements
             IRecipeTransferHandler<CraftingTerminalScreenHandler, CraftingRecipe> {
+    //?}
         private final IRecipeTransferHandlerHelper transferHelper;
 
         private CraftingHandler(IRecipeTransferHandlerHelper transferHelper) {
@@ -58,6 +66,20 @@ public final class TriStorageJeiPlugin implements IModPlugin {
             return Optional.of(TriStorageMod.CRAFTING_TERMINAL_SCREEN_HANDLER);
         }
 
+        //? if >=1.20.2 {
+        /*@Override
+        public RecipeType<RecipeHolder<CraftingRecipe>> getRecipeType() {
+            return RecipeTypes.CRAFTING;
+        }
+
+        @Override
+        public IRecipeTransferError transferRecipe(
+                CraftingTerminalScreenHandler container, RecipeHolder<CraftingRecipe> holder,
+                IRecipeSlotsView recipeSlots, Player player,
+                boolean maxTransfer, boolean doTransfer) {
+            CraftingRecipe recipe = holder.value();
+            ResourceLocation recipeId = holder.id();
+        *///?} else {
         @Override
         public RecipeType<CraftingRecipe> getRecipeType() {
             return RecipeTypes.CRAFTING;
@@ -68,12 +90,14 @@ public final class TriStorageJeiPlugin implements IModPlugin {
                 CraftingTerminalScreenHandler container, CraftingRecipe recipe,
                 IRecipeSlotsView recipeSlots, Player player,
                 boolean maxTransfer, boolean doTransfer) {
+            ResourceLocation recipeId = recipe.getId();
+        //?}
             if (!recipe.canCraftInDimensions(3, 3) || recipe.getIngredients().stream()
                     .allMatch(ingredient -> ingredient.isEmpty())) {
                 return null;
             }
             TerminalClientNetworking.RecipeAvailability availability =
-                    TerminalClientNetworking.recipeAvailability(container, recipe.getId());
+                    TerminalClientNetworking.recipeAvailability(container, recipeId);
             if (availability == null) {
                 return transferHelper.createUserErrorWithTooltip(Component.translatable(
                         "message.tristorage.recipe_availability_checking"));
@@ -102,7 +126,7 @@ public final class TriStorageJeiPlugin implements IModPlugin {
             }
             if (doTransfer) {
                 TerminalClientNetworking.sendRecipeFill(container.containerId,
-                        recipe.getId(), maxTransfer
+                        recipeId, maxTransfer
                                 ? RecipeTransferPlanner.MAX_TRANSFER : 1);
             }
             return null;

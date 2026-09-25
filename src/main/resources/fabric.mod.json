@@ -15,12 +15,13 @@
     "jei_mod_plugin": ["com.andresblue.tristorage.compat.jei.TriStorageJeiPlugin"]
   },
   "mixins": [
+    "tristorage.mixins.json",
     "tristorage.client.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.22",
     "minecraft": "${minecraft}",
-    "java": ">=17",
+    "java": ">=${java}",
     "fabric-api": "*"
   }
 }

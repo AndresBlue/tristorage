@@ -52,7 +52,10 @@ public final class LinkerScreen extends AbstractContainerScreen<LinkerScreenHand
 
     @Override
     public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        // From 1.20.2 on, super.render draws the background itself.
+        //? if <1.20.2 {
         renderBackground(context);
+        //?}
         super.render(context, mouseX, mouseY, delta);
         renderTooltip(context, mouseX, mouseY);
     }

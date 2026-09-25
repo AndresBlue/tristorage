@@ -61,7 +61,13 @@ class PropertyWordsTest {
 
     private static int roundTrip(int value) {
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        //? if >=1.20.5 {
+        /*ClientboundContainerSetDataPacket.STREAM_CODEC.encode(buffer,
+                new ClientboundContainerSetDataPacket(1, 0, value));
+        return ClientboundContainerSetDataPacket.STREAM_CODEC.decode(buffer).getValue();
+        *///?} else {
         new ClientboundContainerSetDataPacket(1, 0, value).write(buffer);
         return new ClientboundContainerSetDataPacket(buffer).getValue();
+        //?}
     }
 }

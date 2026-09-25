@@ -20,7 +20,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTab;
 
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -41,6 +43,29 @@ public final class FabricPlatformHooks implements PlatformHooks {
         return FabricItemGroup.builder();
     }
 
+    //? if >=1.20.5 {
+    /*private final Map<ResourceLocation, ServerReceiver> receivers = new ConcurrentHashMap<>();
+
+    public FabricPlatformHooks() {
+        FabricPayload.registerTypes();
+        ServerPlayNetworking.registerGlobalReceiver(FabricPayload.TO_SERVER, (payload, context) -> {
+            ServerReceiver receiver = receivers.get(payload.channel());
+            if (receiver != null) {
+                receiver.receive(context.server(), context.player(), payload.buffer());
+            }
+        });
+    }
+
+    @Override
+    public void registerServerReceiver(ResourceLocation id, ServerReceiver receiver) {
+        receivers.put(id, receiver);
+    }
+
+    @Override
+    public void sendToPlayer(ServerPlayer player, ResourceLocation id, FriendlyByteBuf buffer) {
+        ServerPlayNetworking.send(player, FabricPayload.wrap(FabricPayload.TO_CLIENT, id, buffer));
+    }
+    *///?} else {
     @Override
     public void registerServerReceiver(ResourceLocation id, ServerReceiver receiver) {
         ServerPlayNetworking.registerGlobalReceiver(id,
@@ -51,6 +76,7 @@ public final class FabricPlatformHooks implements PlatformHooks {
     public void sendToPlayer(ServerPlayer player, ResourceLocation id, FriendlyByteBuf buffer) {
         ServerPlayNetworking.send(player, id, buffer);
     }
+    //?}
 
     @Override
     public void onServerStarted(Consumer<MinecraftServer> listener) {

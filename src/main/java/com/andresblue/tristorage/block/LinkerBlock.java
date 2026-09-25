@@ -22,6 +22,10 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
+//? if >=1.20.5 {
+/*import com.mojang.serialization.MapCodec;
+import net.minecraft.world.ItemInteractionResult;
+*///?}
 
 public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
     public static final EnumProperty<AntennaMount> ANTENNA =
@@ -55,14 +59,41 @@ public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
         StorageNetwork.markTopologyChanged(world);
     }
 
+    //? if >=1.20.5 {
+    /*// A tablet in hand links instead of opening the Linker screen.
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack held, BlockState state, Level world,
+                                              BlockPos pos, Player player, InteractionHand hand,
+                                              BlockHitResult hit) {
+        getOrCreateLinkerEntity(world, pos, state);
+        if (!(held.getItem() instanceof RemoteTabletItem tablet)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        tablet.linkTo(world, pos, player, held);
+        return world.isClientSide ? ItemInteractionResult.SUCCESS : ItemInteractionResult.CONSUME;
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos,
+                                               Player player, BlockHitResult hit) {
+        getOrCreateLinkerEntity(world, pos, state);
+        return openScreen(state, world, pos, player);
+    }
+    *///?} else {
     @Override
     public InteractionResult use(BlockState state, Level world, BlockPos pos, Player player,
-                              InteractionHand hand, BlockHitResult hit) {
+                                 InteractionHand hand, BlockHitResult hit) {
         getOrCreateLinkerEntity(world, pos, state);
         ItemStack held = player.getItemInHand(hand);
         if (held.getItem() instanceof RemoteTabletItem tablet) {
             return tablet.linkTo(world, pos, player, held);
         }
+        return openScreen(state, world, pos, player);
+    }
+    //?}
+
+    private static InteractionResult openScreen(BlockState state, Level world, BlockPos pos,
+                                                Player player) {
         if (!world.isClientSide) {
             MenuProvider factory = state.getMenuProvider(world, pos);
             if (factory != null) {
@@ -71,6 +102,13 @@ public final class LinkerBlock extends BaseEntityBlock implements NetworkBlock {
         }
         return InteractionResult.SUCCESS;
     }
+
+    //? if >=1.20.5 {
+    /*@Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return MapCodec.unit(this);
+    }
+    *///?}
 
     @Override
     public void neighborChanged(BlockState state, Level world, BlockPos pos,

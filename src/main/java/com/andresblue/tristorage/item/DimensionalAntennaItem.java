@@ -15,9 +15,15 @@ public final class DimensionalAntennaItem extends Item {
         super(settings);
     }
 
+    //? if >=1.20.5 {
+    /*@Override
+    public void appendHoverText(ItemStack stack, TooltipContext world,
+                                List<Component> tooltip, TooltipFlag context) {
+    *///?} else {
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level world,
-                              List<Component> tooltip, TooltipFlag context) {
+                                List<Component> tooltip, TooltipFlag context) {
+    //?}
         tooltip.add(Component.translatable("tooltip.tristorage.antenna_install")
                 .withStyle(ChatFormatting.AQUA));
         tooltip.add(Component.translatable("tooltip.tristorage.antenna_air")

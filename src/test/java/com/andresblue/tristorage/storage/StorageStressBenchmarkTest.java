@@ -1,6 +1,9 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.TestStacks;
+import com.andresblue.tristorage.version.Stacks;
 import com.google.gson.GsonBuilder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -227,7 +230,7 @@ class StorageStressBenchmarkTest {
         assertEquals(types, snapshot.size());
         long expectedTotal = 0;
         for (int index = 0; index < types; index++) {
-            assertEquals(index, snapshot.get(index).stack().getTag()
+            assertEquals(index, TestStacks.data(snapshot.get(index).stack())
                     .getInt("TriStorageStressVariant"));
             assertEquals(expected[index], snapshot.get(index).count());
             expectedTotal += expected[index];
@@ -247,6 +250,7 @@ class StorageStressBenchmarkTest {
         StorageMetrics.reset();
         Path directory = Files.createTempDirectory("tristorage-journal-stress-");
         Path journal = directory.resolve("stress.journal");
+        HolderLookup.Provider registries = TestStacks.registries();
         Method append = StorageRepository.class.getDeclaredMethod(
                 "appendFrame", Path.class, CompoundTag.class, boolean.class);
         Method read = StorageRepository.class.getDeclaredMethod("readFrames", Path.class);
@@ -259,7 +263,7 @@ class StorageStressBenchmarkTest {
             ListTag operations = new ListTag();
             CompoundTag operation = new CompoundTag();
             operation.putLong("EntryId", index + 1L);
-            operation.put("Stack", variant(index).save(new CompoundTag()));
+            operation.put("Stack", Stacks.save(variant(index), registries));
             operation.putLong("Count", 64);
             operations.add(operation);
             frame.put("Operations", operations);
@@ -278,13 +282,13 @@ class StorageStressBenchmarkTest {
 
     private static ItemStack variant(int index) {
         ItemStack stack = new ItemStack(Items.PAPER);
-        stack.getOrCreateTag().putInt("TriStorageStressVariant", index);
+        TestStacks.edit(stack, tag -> tag.putInt("TriStorageStressVariant", index));
         return stack;
     }
 
     private static ItemStack heavyVariant(int index) {
         ItemStack stack = new ItemStack(Items.SHULKER_BOX);
-        CompoundTag root = stack.getOrCreateTag();
+        CompoundTag root = new CompoundTag();
         root.putInt("TriStorageStressVariant", index);
         CompoundTag blockEntity = new CompoundTag();
         ListTag items = new ListTag();
@@ -298,6 +302,7 @@ class StorageStressBenchmarkTest {
         }
         blockEntity.put("Items", items);
         root.put("BlockEntityTag", blockEntity);
+        Stacks.setCustomData(stack, root);
         return stack;
     }
 

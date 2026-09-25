@@ -5,6 +5,7 @@ import com.andresblue.tristorage.block.AntennaMount;
 import com.andresblue.tristorage.block.LinkerBlock;
 import com.andresblue.tristorage.screen.LinkerScreenHandler;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -125,6 +126,20 @@ public final class LinkerBlockEntity extends BlockEntity
         refreshAntennaMount();
     }
 
+    //? if >=1.20.5 {
+    /*@Override
+    protected void saveAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
+        super.saveAdditional(nbt, registries);
+        ContainerHelper.saveAllItems(nbt, stacks, registries);
+    }
+
+    @Override
+    protected void loadAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
+        super.loadAdditional(nbt, registries);
+        stacks.clear();
+        ContainerHelper.loadAllItems(nbt, stacks, registries);
+    }
+    *///?} else {
     @Override
     protected void saveAdditional(CompoundTag nbt) {
         super.saveAdditional(nbt);
@@ -137,6 +152,7 @@ public final class LinkerBlockEntity extends BlockEntity
         stacks.clear();
         ContainerHelper.loadAllItems(nbt, stacks);
     }
+    //?}
 
     @Override
     public Component getDisplayName() {

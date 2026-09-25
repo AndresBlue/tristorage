@@ -17,9 +17,15 @@ public final class StorageCoreBlockItem extends BlockItem {
         super(block, settings.stacksTo(1));
     }
 
+    //? if >=1.20.5 {
+    /*@Override
+    public void appendHoverText(ItemStack stack, TooltipContext world,
+                                List<Component> tooltip, TooltipFlag context) {
+    *///?} else {
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level world, List<Component> tooltip,
-                              TooltipFlag context) {
+    public void appendHoverText(ItemStack stack, @Nullable Level world,
+                                List<Component> tooltip, TooltipFlag context) {
+    //?}
         super.appendHoverText(stack, world, tooltip, context);
         int chests = PortableCoreData.installedChests(stack);
         int types = PortableCoreData.storedTypes(stack);

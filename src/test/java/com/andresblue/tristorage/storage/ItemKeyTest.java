@@ -1,7 +1,8 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.TestStacks;
+import com.andresblue.tristorage.version.Stacks;
 import net.minecraft.SharedConstants;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -21,16 +22,14 @@ class ItemKeyTest {
     @Test
     void equalityMatchesCanCombineIdentityAndNbt() {
         ItemStack first = new ItemStack(Items.DIAMOND_SWORD);
-        CompoundTag tag = new CompoundTag();
-        tag.putString("Custom", "alpha");
-        first.setTag(tag);
+        TestStacks.edit(first, tag -> tag.putString("Custom", "alpha"));
         ItemStack same = first.copy();
         ItemStack different = first.copy();
-        different.getOrCreateTag().putString("Custom", "beta");
+        TestStacks.edit(different, tag -> tag.putString("Custom", "beta"));
 
-        assertEquals(ItemStack.isSameItemSameTags(first, same),
+        assertEquals(Stacks.sameItemSameData(first, same),
                 ItemKey.frozen(first).equals(ItemKey.probe(same)));
-        assertEquals(ItemStack.isSameItemSameTags(first, different),
+        assertEquals(Stacks.sameItemSameData(first, different),
                 ItemKey.frozen(first).equals(ItemKey.probe(different)));
         assertNotEquals(ItemKey.frozen(first), ItemKey.frozen(new ItemStack(Items.STONE)));
     }
@@ -38,12 +37,12 @@ class ItemKeyTest {
     @Test
     void frozenKeyDoesNotObserveLaterStackMutation() {
         ItemStack stack = new ItemStack(Items.SHULKER_BOX);
-        stack.getOrCreateTag().putInt("Payload", 1);
+        TestStacks.edit(stack, tag -> tag.putInt("Payload", 1));
         ItemKey frozen = ItemKey.frozen(stack);
-        stack.getOrCreateTag().putInt("Payload", 2);
+        TestStacks.edit(stack, tag -> tag.putInt("Payload", 2));
 
         ItemStack original = new ItemStack(Items.SHULKER_BOX);
-        original.getOrCreateTag().putInt("Payload", 1);
+        TestStacks.edit(original, tag -> tag.putInt("Payload", 1));
         assertEquals(frozen, ItemKey.probe(original));
     }
 }

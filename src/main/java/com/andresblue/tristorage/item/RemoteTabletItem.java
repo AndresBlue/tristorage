@@ -3,6 +3,7 @@ package com.andresblue.tristorage.item;
 import com.andresblue.tristorage.storage.RemoteAccessManager;
 import com.andresblue.tristorage.storage.RemoteTerminalMode;
 import com.andresblue.tristorage.storage.StorageNetwork;
+import com.andresblue.tristorage.version.Stacks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -57,10 +58,11 @@ public final class RemoteTabletItem extends Item {
                     "message.tristorage.remote_requires_antenna"), true);
             return InteractionResult.CONSUME;
         }
-        CompoundTag nbt = tablet.getOrCreateTag();
+        CompoundTag nbt = Stacks.customData(tablet);
         nbt.putString(DIMENSION_KEY, world.dimension().location().toString());
         nbt.putLong(POSITION_KEY, linkerPos.asLong());
         nbt.putLong(CORE_POSITION_KEY, core.getBlockPos().asLong());
+        Stacks.setCustomData(tablet, nbt);
         player.displayClientMessage(Component.translatable("message.tristorage.tablet_linked"), true);
         return InteractionResult.CONSUME;
     }
@@ -71,8 +73,8 @@ public final class RemoteTabletItem extends Item {
         if (world.isClientSide) {
             return InteractionResultHolder.success(tablet);
         }
-        CompoundTag nbt = tablet.getTag();
-        if (nbt == null || !nbt.contains(DIMENSION_KEY) || !nbt.contains(POSITION_KEY)) {
+        CompoundTag nbt = Stacks.customData(tablet);
+        if (!nbt.contains(DIMENSION_KEY) || !nbt.contains(POSITION_KEY)) {
             player.displayClientMessage(Component.translatable("message.tristorage.tablet_unlinked"), true);
             return InteractionResultHolder.fail(tablet);
         }
@@ -110,25 +112,25 @@ public final class RemoteTabletItem extends Item {
         if (requiredMode != null && tablet.mode != requiredMode) {
             return false;
         }
-        CompoundTag nbt = stack.getTag();
-        return nbt != null
-                && hasValidLink(nbt)
+        CompoundTag nbt = Stacks.customData(stack);
+        return hasValidLink(nbt)
                 && dimension.location().toString().equals(nbt.getString(DIMENSION_KEY))
                 && linkerPos.asLong() == nbt.getLong(POSITION_KEY);
     }
 
     /** Copies only a structurally valid TriStorage link, never arbitrary item NBT. */
     public static boolean copyValidatedLink(ItemStack source, ItemStack target) {
-        CompoundTag sourceNbt = source.getTag();
-        if (sourceNbt == null || !hasValidLink(sourceNbt)) {
+        CompoundTag sourceNbt = Stacks.customData(source);
+        if (!hasValidLink(sourceNbt)) {
             return false;
         }
-        CompoundTag targetNbt = target.getOrCreateTag();
+        CompoundTag targetNbt = Stacks.customData(target);
         targetNbt.putString(DIMENSION_KEY, sourceNbt.getString(DIMENSION_KEY));
         targetNbt.putLong(POSITION_KEY, sourceNbt.getLong(POSITION_KEY));
         if (sourceNbt.contains(CORE_POSITION_KEY, Tag.TAG_LONG)) {
             targetNbt.putLong(CORE_POSITION_KEY, sourceNbt.getLong(CORE_POSITION_KEY));
         }
+        Stacks.setCustomData(target, targetNbt);
         return true;
     }
 
@@ -142,7 +144,6 @@ public final class RemoteTabletItem extends Item {
 
     @Override
     public boolean isFoil(ItemStack stack) {
-        CompoundTag nbt = stack.getTag();
-        return nbt != null && hasValidLink(nbt);
+        return Stacks.hasCustomData(stack) && hasValidLink(Stacks.customData(stack));
     }
 }

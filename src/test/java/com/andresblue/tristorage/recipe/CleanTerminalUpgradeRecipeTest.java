@@ -10,10 +10,10 @@ import net.minecraft.nbt.CompoundTag;
 class CleanTerminalUpgradeRecipeTest {
     @Test
     void acceptsOnlyNbtFreeIngredient() {
-        assertTrue(TerminalUpgradeSafety.isClean(null));
+        assertTrue(TerminalUpgradeSafety.isCleanData(null));
 
         CompoundTag carryingData = new CompoundTag();
         carryingData.putString("TriStorageData", "must-not-be-consumed");
-        assertFalse(TerminalUpgradeSafety.isClean(carryingData));
+        assertFalse(TerminalUpgradeSafety.isCleanData(carryingData));
     }
 }

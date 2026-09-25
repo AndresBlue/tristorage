@@ -1,5 +1,7 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.TestStacks;
+
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
@@ -111,7 +113,7 @@ class StorageRuntimeTest {
     void exactVariantExtractionSupportsCraftingGridRefill() {
         StorageRuntime runtime = new StorageRuntime(StorageId.random());
         ItemStack named = new ItemStack(Items.OAK_PLANKS);
-        named.getOrCreateTag().putString("TriStorageTest", "named");
+        TestStacks.edit(named, tag -> tag.putString("TriStorageTest", "named"));
         ItemStack ordinary = new ItemStack(Items.OAK_PLANKS);
         runtime.insert(named, 4, 100, 1_000);
         runtime.insert(ordinary, 4, 100, 1_000);
@@ -119,7 +121,7 @@ class StorageRuntimeTest {
         ItemStack extracted = runtime.extractMatching(named, 1);
 
         assertEquals(1, extracted.getCount());
-        assertEquals("named", extracted.getTag().getString("TriStorageTest"));
+        assertEquals("named", TestStacks.data(extracted).getString("TriStorageTest"));
         assertEquals(7, runtime.totalItems());
     }
 

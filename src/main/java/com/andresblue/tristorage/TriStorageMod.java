@@ -1,5 +1,6 @@
 package com.andresblue.tristorage;
 
+import com.andresblue.tristorage.version.Ids;
 import com.andresblue.tristorage.block.LinkerBlock;
 import com.andresblue.tristorage.block.CraftingTerminalBlock;
 import com.andresblue.tristorage.block.StorageCoreBlock;
@@ -101,25 +102,25 @@ public final class TriStorageMod {
 
     public static void registerBlocks(Registrar<Block> registrar) {
         IRON_CORE = registrar.register("iron_storage_core", new StorageCoreBlock(StorageTier.IRON,
-                BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK)
+                copyOf(Blocks.IRON_BLOCK)
                         .strength(3.5f, CORE_BLAST_RESISTANCE)));
         DIAMOND_CORE = registrar.register("diamond_storage_core", new StorageCoreBlock(
-                StorageTier.DIAMOND, BlockBehaviour.Properties.copy(Blocks.DIAMOND_BLOCK)
+                StorageTier.DIAMOND, copyOf(Blocks.DIAMOND_BLOCK)
                         .strength(4.5f, CORE_BLAST_RESISTANCE)));
         BLAZE_CORE = registrar.register("blaze_storage_core", new StorageCoreBlock(StorageTier.BLAZE,
-                BlockBehaviour.Properties.copy(Blocks.OBSIDIAN)
+                copyOf(Blocks.OBSIDIAN)
                         .strength(12.0f, CORE_BLAST_RESISTANCE).lightLevel(state -> 4)));
         COSMIC_CORE = registrar.register("cosmic_storage_core", new StorageCoreBlock(
-                StorageTier.COSMIC, BlockBehaviour.Properties.copy(Blocks.OBSIDIAN)
+                StorageTier.COSMIC, copyOf(Blocks.OBSIDIAN)
                         .strength(18.0f, CORE_BLAST_RESISTANCE).lightLevel(state -> 7)));
         TERMINAL = registrar.register("storage_terminal", new TerminalBlock(
-                BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).strength(3.5f)
+                copyOf(Blocks.IRON_BLOCK).strength(3.5f)
                         .lightLevel(state -> 5)));
         CRAFTING_TERMINAL = registrar.register("crafting_terminal", new CraftingTerminalBlock(
-                BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).strength(3.5f)
+                copyOf(Blocks.IRON_BLOCK).strength(3.5f)
                         .lightLevel(state -> 5)));
         LINKER = registrar.register("storage_linker", new LinkerBlock(
-                BlockBehaviour.Properties.copy(Blocks.COPPER_BLOCK).strength(3.0f)
+                copyOf(Blocks.COPPER_BLOCK).strength(3.0f)
                         .lightLevel(state -> 3)));
     }
 
@@ -230,6 +231,14 @@ public final class TriStorageMod {
         registrar.register(path, item);
     }
 
+    private static BlockBehaviour.Properties copyOf(Block block) {
+        //? if >=1.20.5 {
+        /*return BlockBehaviour.Properties.ofFullCopy(block);
+        *///?} else {
+        return BlockBehaviour.Properties.copy(block);
+        //?}
+    }
+
     private static SimpleParticleType simpleParticle() {
         // The constructor is protected; an empty subclass is how loaders create one.
         return new SimpleParticleType(false) {
@@ -237,6 +246,6 @@ public final class TriStorageMod {
     }
 
     public static ResourceLocation id(String path) {
-        return new ResourceLocation(MOD_ID, path);
+        return Ids.of(MOD_ID, path);
     }
 }

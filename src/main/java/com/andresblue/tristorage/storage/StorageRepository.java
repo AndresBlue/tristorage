@@ -1,7 +1,11 @@
 package com.andresblue.tristorage.storage;
 
 import com.andresblue.tristorage.TriStorageMod;
+import com.andresblue.tristorage.version.NbtFiles;
+import com.andresblue.tristorage.version.SavedStacks;
+import com.andresblue.tristorage.version.Stacks;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
@@ -455,7 +459,8 @@ public final class StorageRepository {
         record.loading = true;
         submitIo(() -> {
             Prepared prepared = readPrepared(record.runtime.id());
-            server.execute(() -> publications.add(new Publication(record.runtime, prepared)));
+            server.execute(() -> publications.add(
+                    new Publication(record.runtime, prepared, server.registryAccess())));
         });
     }
 
@@ -541,6 +546,7 @@ public final class StorageRepository {
                 long serializeStarted = StorageMetrics.startTimer();
                 CompoundTag frame = new CompoundTag();
                 frame.putInt("FormatVersion", FORMAT);
+                frame.putInt(SavedStacks.DATA_VERSION_KEY, SavedStacks.currentVersion());
                 frame.putLong("Sequence", sequence);
                 frame.putLong("Revision", revision);
                 frame.putInt("InstalledChests", installedChests);
@@ -551,7 +557,7 @@ public final class StorageRepository {
                     if (captured.removed()) {
                         operation.putBoolean("Removed", true);
                     } else {
-                        operation.put("Stack", captured.stack().save(new CompoundTag()));
+                        operation.put("Stack", Stacks.save(captured.stack(), server.registryAccess()));
                         operation.putLong("Count", captured.count());
                     }
                     serialized.add(operation);
@@ -629,7 +635,7 @@ public final class StorageRepository {
         if (!Files.exists(manifestPath)) {
             return;
         }
-        CompoundTag root = NbtIo.readCompressed(manifestPath.toFile());
+        CompoundTag root = NbtFiles.readCompressed(manifestPath);
         ListTag list = root.getList("Storages", Tag.TAG_COMPOUND);
         for (int index = 0; index < list.size(); index++) {
             CompoundTag stored = list.getCompound(index);
@@ -661,7 +667,7 @@ public final class StorageRepository {
         root.put("Storages", list);
         Path temporary = tempPath.resolve("manifest.tmp");
         try {
-            NbtIo.writeCompressed(root, temporary.toFile());
+            NbtFiles.writeCompressed(root, temporary);
             try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
                 channel.force(true);
             }
@@ -693,7 +699,7 @@ public final class StorageRepository {
     private Prepared readPrepared(StorageId id) throws IOException {
         Path snapshot = snapshotPath(id);
         CompoundTag snapshotRoot = Files.exists(snapshot)
-                ? NbtIo.readCompressed(snapshot.toFile()) : null;
+                ? NbtFiles.readCompressed(snapshot) : null;
         List<CompoundTag> frames = new ArrayList<>();
         frames.addAll(readFrames(sealedJournalPath(id)));
         frames.addAll(readFrames(journalPath(id)));
@@ -716,10 +722,11 @@ public final class StorageRepository {
             chests = Math.max(0, snapshotRoot.getInt("InstalledChests"));
             revision = Math.max(0, snapshotRoot.getLong("Revision"));
             snapshotRevision = revision;
+            int dataVersion = snapshotRoot.getInt(SavedStacks.DATA_VERSION_KEY);
             ListTag list = snapshotRoot.getList("Entries", Tag.TAG_COMPOUND);
             for (int index = 0; index < list.size(); index++) {
                 CompoundTag entry = list.getCompound(index);
-                entries.put(entry.getLong("EntryId"), entry.copy());
+                entries.put(entry.getLong("EntryId"), withDataVersion(entry, dataVersion));
             }
         }
         int staleFrames = 0;
@@ -731,6 +738,7 @@ public final class StorageRepository {
             }
             chests = Math.max(0, frame.getInt("InstalledChests"));
             revision = Math.max(revision, frameRevision);
+            int dataVersion = frame.getInt(SavedStacks.DATA_VERSION_KEY);
             ListTag operations = frame.getList("Operations", Tag.TAG_COMPOUND);
             for (int index = 0; index < operations.size(); index++) {
                 CompoundTag operation = operations.getCompound(index);
@@ -738,7 +746,7 @@ public final class StorageRepository {
                 if (operation.getBoolean("Removed")) {
                     entries.remove(entryId);
                 } else {
-                    entries.put(entryId, operation.copy());
+                    entries.put(entryId, withDataVersion(operation, dataVersion));
                 }
             }
         }
@@ -746,6 +754,18 @@ public final class StorageRepository {
             StorageMetrics.add("repository.stale_frames_skipped", staleFrames);
         }
         return new Prepared(chests, revision, new ArrayList<>(entries.values()));
+    }
+
+    /**
+     * Copies an entry and records on it the data version of the file it came
+     * from, so a compacted snapshot keeps entries written by several versions.
+     */
+    private static CompoundTag withDataVersion(CompoundTag entry, int fileDataVersion) {
+        CompoundTag copy = entry.copy();
+        if (!copy.contains(SavedStacks.DATA_VERSION_KEY, Tag.TAG_INT)) {
+            copy.putInt(SavedStacks.DATA_VERSION_KEY, fileDataVersion);
+        }
+        return copy;
     }
 
     private void compactIfNeeded(StorageId id) throws IOException {
@@ -791,6 +811,7 @@ public final class StorageRepository {
                                int chests, long revision) throws IOException {
         CompoundTag root = new CompoundTag();
         root.putInt("FormatVersion", FORMAT);
+        root.putInt(SavedStacks.DATA_VERSION_KEY, SavedStacks.currentVersion());
         root.putString("StorageId", id.toString());
         root.putLong("Revision", revision);
         root.putInt("InstalledChests", chests);
@@ -798,7 +819,7 @@ public final class StorageRepository {
         for (StorageRuntime.SnapshotEntry entry : entries) {
             CompoundTag stored = new CompoundTag();
             stored.putLong("EntryId", entry.id());
-            stored.put("Stack", entry.stack().save(new CompoundTag()));
+            stored.put("Stack", Stacks.save(entry.stack(), server.registryAccess()));
             stored.putLong("Count", entry.count());
             list.add(stored);
         }
@@ -809,7 +830,7 @@ public final class StorageRepository {
 
     private void writeSnapshotRoot(StorageId id, CompoundTag root) throws IOException {
         Path temporary = tempPath.resolve(id + ".snapshot.tmp");
-        NbtIo.writeCompressed(root, temporary.toFile());
+        NbtFiles.writeCompressed(root, temporary);
         try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
             channel.force(true);
         }
@@ -995,11 +1016,14 @@ public final class StorageRepository {
     private static final class Publication {
         private final StorageRuntime runtime;
         private final Prepared prepared;
+        private final HolderLookup.Provider registries;
         private int index;
 
-        private Publication(StorageRuntime runtime, Prepared prepared) {
+        private Publication(StorageRuntime runtime, Prepared prepared,
+                            HolderLookup.Provider registries) {
             this.runtime = runtime;
             this.prepared = prepared;
+            this.registries = registries;
             runtime.loadInstalledChests(prepared.chests);
         }
 
@@ -1008,7 +1032,8 @@ public final class StorageRepository {
             int end = Math.min(prepared.entries.size(), index + budget);
             while (index < end) {
                 CompoundTag stored = prepared.entries.get(index++);
-                ItemStack stack = ItemStack.of(stored.getCompound("Stack"));
+                ItemStack stack = SavedStacks.parse(stored.getCompound("Stack"),
+                        stored.getInt(SavedStacks.DATA_VERSION_KEY), registries);
                 runtime.loadEntry(stored.getLong("EntryId"), stack,
                         Math.max(0, stored.getLong("Count")));
             }

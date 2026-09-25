@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.screen;
 
+import com.andresblue.tristorage.version.Stacks;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import com.andresblue.tristorage.storage.ItemKey;
@@ -30,6 +31,10 @@ import net.minecraft.world.inventory.TransientCraftingContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeType;
+//? if >=1.21 {
+/*import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.RecipeHolder;
+*///?}
 
 public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(
@@ -87,8 +92,8 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
      * virtual entries currently projected into the terminal screen. JEI and
      * EMI call this through a small server-authoritative recipe-id packet.
      */
-    public boolean fillRecipe(ServerPlayer requester, CraftingRecipe recipe,
-                              int requestedCrafts) {
+    public boolean fillRecipe(ServerPlayer requester, ResourceLocation recipeId,
+                              CraftingRecipe recipe, int requestedCrafts) {
         if (requester != player || requester.containerMenu != this
                 || !coreIsAttached() || !stillValid(requester)
                 || recipe == null || !recipe.canCraftInDimensions(3, 3)
@@ -121,7 +126,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
         if (plan == null) {
             LOGGER.warn("Could not plan recipe transfer for {} with {} candidate variants "
                             + "in storage {} (requested={})",
-                    recipe.getId(), available.storageEntries.size(),
+                    recipeId, available.storageEntries.size(),
                     core.storageId(), requestedCrafts);
             requester.displayClientMessage(Component.translatable(
                     "message.tristorage.recipe_transfer_missing"), true);
@@ -134,7 +139,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
                 requester, finalPlan, finalAvailable.storageEntries));
         if (!success) {
             LOGGER.warn("Recipe transfer extraction changed unexpectedly for {} in storage {}",
-                    recipe.getId(), core.storageId());
+                    recipeId, core.storageId());
             requester.displayClientMessage(Component.translatable(
                     "message.tristorage.recipe_transfer_missing"), true);
             return false;
@@ -171,15 +176,16 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
     private static long fingerprintStack(long hash, ItemStack stack) {
         hash = (hash ^ BuiltInRegistries.ITEM.getId(stack.getItem())) * 0x100000001B3L;
         hash = (hash ^ stack.getCount()) * 0x100000001B3L;
-        return (hash ^ java.util.Objects.hashCode(stack.getTag())) * 0x100000001B3L;
+        return (hash ^ Stacks.stableDataHash(stack)) * 0x100000001B3L;
     }
 
     /** Server-authoritative preflight used by optional recipe viewers. */
-    public RecipeTransferPlanner.Availability recipeAvailability(CraftingRecipe recipe) {
+    public RecipeTransferPlanner.Availability recipeAvailability(ResourceLocation recipeId,
+                                                                  CraftingRecipe recipe) {
         if (recipe == null || !recipe.canCraftInDimensions(3, 3) || !coreIsAttached()) {
             return new RecipeTransferPlanner.Availability(0, 0);
         }
-        RecipeAvailabilityKey key = new RecipeAvailabilityKey(recipe.getId(),
+        RecipeAvailabilityKey key = new RecipeAvailabilityKey(recipeId,
                 core.stateEpoch(), recipeTransferClientFingerprint());
         if (key.equals(cachedAvailabilityKey) && cachedAvailability != null) {
             StorageMetrics.increment("recipe_availability_cache_hits");
@@ -374,6 +380,16 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
         }
 
         ItemStack output = ItemStack.EMPTY;
+        //? if >=1.21 {
+        /*CraftingInput input = craftingInput.asCraftInput();
+        Optional<RecipeHolder<CraftingRecipe>> match = serverPlayer.getServer()
+                .getRecipeManager()
+                .getRecipeFor(RecipeType.CRAFTING, input, player.level());
+        if (match.isPresent()) {
+            CraftingRecipe recipe = match.get().value();
+            if (craftingResult.setRecipeUsed(player.level(), serverPlayer, match.get())) {
+                ItemStack crafted = recipe.assemble(input, player.level().registryAccess());
+        *///?} else {
         Optional<CraftingRecipe> match = serverPlayer.getServer()
                 .getRecipeManager()
                 .getRecipeFor(RecipeType.CRAFTING, craftingInput, player.level());
@@ -382,6 +398,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
             if (craftingResult.setRecipeUsed(player.level(), serverPlayer, recipe)) {
                 ItemStack crafted = recipe.assemble(craftingInput,
                         player.level().registryAccess());
+        //?}
                 if (crafted.isItemEnabled(player.level().enabledFeatures())) {
                     output = crafted;
                 }
@@ -406,7 +423,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
             while (produced < outputLimit && !expected.isEmpty()) {
                 ItemStack current = slots.get(RESULT_SLOT).getItem();
                 int batch = current.getCount();
-                if (current.isEmpty() || !ItemStack.isSameItemSameTags(expected, current)
+                if (current.isEmpty() || !Stacks.sameItemSameData(expected, current)
                         || batch > outputLimit - produced
                         || quickMoveStack(player, RESULT_SLOT).isEmpty()) {
                     break;
@@ -501,7 +518,7 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
                         && cursor.getCount() < cursor.getMaxStackSize(); index++) {
                     Slot slot = slots.get(index);
                     ItemStack candidate = slot.getItem();
-                    if (candidate.isEmpty() || !ItemStack.isSameItemSameTags(cursor, candidate)
+                    if (candidate.isEmpty() || !Stacks.sameItemSameData(cursor, candidate)
                             || !slot.mayPickup(player)
                             || (pass == 0 && candidate.getCount() == candidate.getMaxStackSize())) {
                         continue;
