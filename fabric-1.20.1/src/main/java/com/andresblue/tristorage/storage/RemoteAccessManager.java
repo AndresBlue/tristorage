@@ -184,9 +184,7 @@ public final class RemoteAccessManager {
 
     private static void retainCoreAndOpen(SharedSession session,
                                           StorageCoreBlockEntity core) {
-        ChunkPos linkerChunk = new ChunkPos(session.key().linkerPos());
-        ChunkPos coreChunk = new ChunkPos(core.getBlockPos());
-        loadChunks(session, Set.of(linkerChunk, coreChunk), () -> {
+        loadChunks(session, anchorChunks(session.key().linkerPos(), core.getBlockPos()), () -> {
             if (!isActive(session) || !isValidCore(session, core)) {
                 failSession(session, "message.tristorage.remote_unavailable");
                 return;
@@ -201,6 +199,19 @@ public final class RemoteAccessManager {
             session.touch(session.server().getTickCount());
             openWaitingPlayers(session, core);
         });
+    }
+
+    /**
+     * Chunks that must stay loaded for a remote session. A Linker usually sits
+     * next to its Core, so both often share a chunk; {@code Set.of} rejected
+     * that duplicate and every tablet open failed.
+     */
+    static List<ChunkPos> anchorChunks(BlockPos linkerPos, BlockPos corePos) {
+        ChunkPos linkerChunk = new ChunkPos(linkerPos);
+        ChunkPos coreChunk = new ChunkPos(corePos);
+        return linkerChunk.equals(coreChunk)
+                ? List.of(linkerChunk)
+                : List.of(linkerChunk, coreChunk);
     }
 
     private static void openWaitingPlayers(SharedSession session,

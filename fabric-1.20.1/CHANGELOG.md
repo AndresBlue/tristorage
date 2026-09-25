@@ -2,6 +2,9 @@
 
 ## Unreleased — Minecraft 1.20.1 Fabric
 
+- Fixed Remote Access Tablets and Wireless Crafting Terminals failing to open
+  when the Linker and its Core share a chunk, the usual layout. The 1.12.1 fast
+  path for loaded networks rejected the duplicate chunk and dropped the request.
 - Fixed item counts, type counts and Core capacities above 32,767 showing
   corrupted values on dedicated and LAN servers. Screen properties now travel
   as 16-bit words, which is what the vanilla property packet carries.
