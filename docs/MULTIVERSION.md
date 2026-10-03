@@ -240,5 +240,10 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   NeoForge. No hay mundos de prueba de `fabric-1.21.1` ni de `neoforge-1.21.1`
   con Cores; esos formatos solo están cubiertos por tests.
 - [x] Aportes de otros puertos: test de minado y fuente de GUI.
+- [x] Servidores dedicados de los diez nodos: los nueve desde 1.20.1 abren
+  una copia del mundo de 1.20.1 y dejan el Core listo con 27 cofres, 80 tipos
+  y 941 ítems; el de 1.18.2 arranca con el mundo de su puerto 1.0, que no
+  tiene Cores. Ningún cliente 2.0 se ha probado jugando: pantallas, render del
+  Linker, partículas, JEI y EMI siguen sin verificar en el juego.
 - [ ] Fase 7
 - [ ] Fase 8
