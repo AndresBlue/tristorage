@@ -17,16 +17,20 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-//? if >=1.21.9 {
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;
+*///?} elif >=1.21.9 {
 /*import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.input.KeyEvent;
+*///?}
+//? if >=1.21.9 {
+/*import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 *///?}
 
@@ -66,9 +70,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
 
     protected AbstractTerminalScreen(H handler, Inventory inventory, Component title,
                                      int backgroundWidth) {
-        super(handler, inventory, title);
-        this.imageWidth = backgroundWidth;
-        imageHeight = 222;
+        super(handler, inventory, title, backgroundWidth, 222);
         titleLabelX = 8;
         titleLabelY = 6;
         inventoryLabelX = 8;
@@ -533,9 +535,15 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             this.selected = selected;
         }
 
-        //? if >=1.21.9 {
-        /*// The tab is the button frame alone; its item is drawn on top later.
-        @Override
+        // The tab is the button frame alone; its item is drawn on top later.
+        //? if >=26.1 {
+        /*@Override
+        protected void extractContents(GuiGraphicsExtractor target, int mouseX, int mouseY,
+                                       float delta) {
+            extractDefaultSprite(target);
+        }
+        *///?} elif >=1.21.9 {
+        /*@Override
         protected void renderContents(GuiGraphics context, int mouseX, int mouseY, float delta) {
             renderDefaultSprite(context);
         }
@@ -624,7 +632,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     //?}
 
     private boolean pressTerminalKey(int keyCode, boolean inventoryKey) {
-        if (settingsOpen && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (settingsOpen && keyCode == InputConstants.KEY_ESCAPE) {
             toggleSettings();
             return true;
         }

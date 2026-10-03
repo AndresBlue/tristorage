@@ -3,8 +3,6 @@ package com.andresblue.tristorage.storage;
 import com.andresblue.tristorage.version.Nbt;
 
 import com.andresblue.tristorage.TestStacks;
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,8 +21,7 @@ import net.minecraft.nbt.ListTag;
 class PortableCoreDataTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
+        TestStacks.bootstrap();
     }
 
     @Test

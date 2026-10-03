@@ -10,7 +10,7 @@ builds every Minecraft version and loader through Stonecutter.
 | `src/` | The only source tree. Mojang mappings. |
 | `src/main/java/.../platform/` | `PlatformHooks`, `ClientPlatformHooks`, `Registrar`: the loader seam. |
 | `src/main/java/.../platform/fabric/`, `platform/forge/`, `platform/neoforge/` | Loader code, wrapped in `//? if fabric {`, `//? if forge {` or `//? if neoforge {` blocks. |
-| `src/main/java/.../version/` | Helpers for APIs that changed between Minecraft versions (`Stacks`, `SavedStacks`, `Nbt`, `ValueTags`, `Players`, `Ids`, `NbtFiles`, `Recipes`, `GameRegistries`, `CreativeTabs`, `Menus`). Common code calls these. |
+| `src/main/java/.../version/` | Helpers for APIs that changed between Minecraft versions (`Stacks`, `SavedStacks`, `Nbt`, `ValueTags`, `Players`, `Ids`, `NbtFiles`, `Recipes`, `GameRegistries`, `CreativeTabs`, `Menus`, `Chunks`). Common code calls these. |
 | `src/main/java/.../client/Canvas.java`, `CanvasScreen.java`, `Widgets.java` | GUI drawing and widgets over each version's API. Screens extend `CanvasScreen` and draw through `Canvas`; they hold no version conditionals for drawing. |
 | `buildSrc/` | Build logic shared by the loader scripts: data pack upgrade per version, versioned mixins. |
 | `stonecutter.properties.toml` | Mod and dependency versions per Minecraft version and loader. |
@@ -35,7 +35,9 @@ Run Gradle from this folder. The daemon runs on Java 25 (auto-provisioned from
 .\gradlew.bat :1.20.1-forge:runClient
 ```
 
-Shared tests in `src/test` run on the Fabric nodes only.
+Shared tests in `src/test` run on the Fabric nodes only. Each node's `runServer`
+starts a dedicated server without a window that reads console commands; it is
+the way to check world loading without opening the game.
 
 The data pack in `src/main/resources/data/` is written in the 1.20.1 format;
 the build converts it for newer versions. Do not add version-specific copies.
@@ -57,6 +59,8 @@ Nodes before 1.19 get `TextComponent`/`TranslatableComponent` in place of
 `Component.literal`/`Component.translatable`/`Component.empty()`, and nodes
 before 1.19.3 get `RegistryAccess` in place of `HolderLookup.Provider`, the
 same way. Always write the names on the left of those pairs.
+Minecraft 26.1 renames (`ClickType`, `LightTexture`, Fabric's `ServerWorldEvents`
+and `ParticleFactoryRegistry`) are replacements too: write the old names.
 GUI text colors need an alpha byte (`0xFF404040`), or 1.21.6+ draws nothing.
 
 Published JARs: GitHub releases on `AndresBlue/tristorage`. `dist/` is a local,

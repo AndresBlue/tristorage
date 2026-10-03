@@ -1,7 +1,6 @@
 package com.andresblue.tristorage.screen;
 
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
+import com.andresblue.tristorage.TestStacks;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
@@ -14,8 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CraftingRefillPlannerTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
+        TestStacks.bootstrap();
     }
 
     @Test

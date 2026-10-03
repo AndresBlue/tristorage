@@ -3,6 +3,7 @@ package com.andresblue.tristorage.platform.neoforge;
 //? if neoforge {
 /*import com.andresblue.tristorage.platform.ChannelPayload;
 import com.andresblue.tristorage.platform.PlatformHooks;
+import com.andresblue.tristorage.version.Players;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.FriendlyByteBuf;
@@ -58,7 +59,7 @@ public final class NeoForgePlatformHooks implements PlatformHooks {
                 ChannelPayload.codec(ChannelPayload.TO_SERVER), (payload, context) -> {
                     ServerReceiver receiver = serverReceivers.get(payload.channel());
                     if (receiver != null && context.player() instanceof ServerPlayer player) {
-                        receiver.receive(player.getServer(), player, payload.buffer());
+                        receiver.receive(Players.server(player), player, payload.buffer());
                     }
                 });
         registrar.playToClient(ChannelPayload.TO_CLIENT,
@@ -89,7 +90,11 @@ public final class NeoForgePlatformHooks implements PlatformHooks {
     @Override
     public <T extends BlockEntity> BlockEntityType<T> blockEntityType(
             BiFunction<BlockPos, BlockState, T> factory, Block... blocks) {
-        return BlockEntityType.Builder.of(factory::apply, blocks).build(null);
+        //? if >=1.21.2 {
+        return new BlockEntityType<>(factory::apply, blocks);
+        //?} else {
+        /^return BlockEntityType.Builder.of(factory::apply, blocks).build(null);
+        ^///?}
     }
 
     @Override

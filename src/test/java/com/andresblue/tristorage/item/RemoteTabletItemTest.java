@@ -5,14 +5,13 @@ import com.andresblue.tristorage.version.Nbt;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.platform.Registrar;
 import com.andresblue.tristorage.storage.RemoteTerminalMode;
-import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import com.andresblue.tristorage.TestStacks;
 import com.andresblue.tristorage.version.Ids;
 import com.andresblue.tristorage.version.Stacks;
-import net.minecraft.server.Bootstrap;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.junit.jupiter.api.BeforeAll;
@@ -32,8 +31,7 @@ class RemoteTabletItemTest {
 
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
+        TestStacks.bootstrap();
         if (TriStorageMod.REMOTE_TABLET == null) {
             // Creates the content objects without a loader registering them.
             TriStorageMod.registerBlocks(unregistered());
@@ -45,6 +43,9 @@ class RemoteTabletItemTest {
         return new Registrar<>() {
             @Override
             public <V extends T> V register(String path, V value) {
+                if (value instanceof Item item) {
+                    TestStacks.bind(item);
+                }
                 return value;
             }
         };

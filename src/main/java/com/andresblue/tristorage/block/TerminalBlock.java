@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.block;
 
+import com.andresblue.tristorage.version.Players;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import com.andresblue.tristorage.storage.StorageNetwork;
@@ -66,17 +67,17 @@ public final class TerminalBlock extends Block implements NetworkBlock {
         }
         StorageCoreBlockEntity core = StorageNetwork.findCore(world, pos);
         if (core == null) {
-            player.displayClientMessage(Component.translatable("message.tristorage.no_core"), true);
+            Players.actionBar(player, Component.translatable("message.tristorage.no_core"));
             return InteractionResult.CONSUME;
         }
         if (core.isRecoveryRequired()) {
-            player.displayClientMessage(Component.translatable(
-                    "message.tristorage.core_recovery_required"), true);
+            Players.actionBar(player, Component.translatable(
+                    "message.tristorage.core_recovery_required"));
             return InteractionResult.CONSUME;
         }
         if (!core.runtime().isReady()) {
-            player.displayClientMessage(Component.translatable(
-                    "message.tristorage.core_not_ready"), true);
+            Players.actionBar(player, Component.translatable(
+                    "message.tristorage.core_not_ready"));
             return InteractionResult.CONSUME;
         }
         player.openMenu(new SimpleMenuProvider(

@@ -102,8 +102,8 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
         if (requester != player || requester.containerMenu != this
                 || !coreIsAttached() || !stillValid(requester)
                 || recipe == null || !Recipes.fitsGrid(recipe)) {
-            requester.displayClientMessage(Component.translatable(
-                    "message.tristorage.recipe_transfer_unsupported"), true);
+            Players.actionBar(requester, Component.translatable(
+                    "message.tristorage.recipe_transfer_unsupported"));
             return false;
         }
         long serverTick = Players.level(requester).getGameTime();
@@ -132,8 +132,8 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
                             + "in storage {} (requested={})",
                     recipeId, available.storageEntries.size(),
                     core.storageId(), requestedCrafts);
-            requester.displayClientMessage(Component.translatable(
-                    "message.tristorage.recipe_transfer_missing"), true);
+            Players.actionBar(requester, Component.translatable(
+                    "message.tristorage.recipe_transfer_missing"));
             return false;
         }
 
@@ -144,8 +144,8 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
         if (!success) {
             LOGGER.warn("Recipe transfer extraction changed unexpectedly for {} in storage {}",
                     recipeId, core.storageId());
-            requester.displayClientMessage(Component.translatable(
-                    "message.tristorage.recipe_transfer_missing"), true);
+            Players.actionBar(requester, Component.translatable(
+                    "message.tristorage.recipe_transfer_missing"));
             return false;
         }
         requestStorageRefresh();
@@ -398,7 +398,11 @@ public final class CraftingTerminalScreenHandler extends TerminalScreenHandler {
             boolean used = craftingResult.setRecipeUsed(Players.level(player), serverPlayer, match.get());
             //?}
             if (used) {
+                //? if >=26.1 {
+                /^ItemStack crafted = recipe.assemble(input);
+                ^///?} else {
                 ItemStack crafted = recipe.assemble(input, Players.level(player).registryAccess());
+                //?}
         *///?} else {
         Optional<CraftingRecipe> match = Players.server(serverPlayer)
                 .getRecipeManager()

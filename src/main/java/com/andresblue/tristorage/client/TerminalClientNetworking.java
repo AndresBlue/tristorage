@@ -159,7 +159,7 @@ public final class TerminalClientNetworking {
 
     private static AbstractTerminalScreen<?> terminalScreen(
             net.minecraft.client.Minecraft client, int syncId) {
-        if (client.screen instanceof AbstractTerminalScreen<?> current
+        if (Widgets.currentScreen(client) instanceof AbstractTerminalScreen<?> current
                 && current.getMenu().containerId == syncId) {
             return current;
         }
@@ -279,8 +279,8 @@ public final class TerminalClientNetworking {
 
     private static void scheduleRecipeViewerRefresh(
             net.minecraft.client.Minecraft client) {
-        if (client.screen == null
-                || !client.screen.getClass().getName()
+        if (Widgets.currentScreen(client) == null
+                || !Widgets.currentScreen(client).getClass().getName()
                 .equals("dev.emi.emi.screen.RecipeScreen")) {
             return;
         }
@@ -297,8 +297,8 @@ public final class TerminalClientNetworking {
     private static void refreshRecipeViewerButtons(
             net.minecraft.client.Minecraft client,
             ResourceLocation recipeId) {
-        if (client.screen == null
-                || !client.screen.getClass().getName()
+        if (Widgets.currentScreen(client) == null
+                || !Widgets.currentScreen(client).getClass().getName()
                 .equals("dev.emi.emi.screen.RecipeScreen")
                 || emiRefreshLookupFailed) {
             return;

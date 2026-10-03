@@ -1,9 +1,7 @@
 package com.andresblue.tristorage.version;
 
 import com.andresblue.tristorage.TestStacks;
-import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,8 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SavedStacksTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
+        TestStacks.bootstrap();
     }
 
     /** A damaged, named sword as TriStorage for Minecraft 1.20.1 saved it. */

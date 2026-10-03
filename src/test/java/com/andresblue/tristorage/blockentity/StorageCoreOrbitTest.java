@@ -2,8 +2,6 @@ package com.andresblue.tristorage.blockentity;
 
 import com.andresblue.tristorage.TestStacks;
 import com.andresblue.tristorage.version.Stacks;
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,8 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StorageCoreOrbitTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
+        TestStacks.bootstrap();
     }
 
     @Test

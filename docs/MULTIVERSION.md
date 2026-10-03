@@ -9,7 +9,7 @@ estética y comportamiento, construidas desde un solo código basado en
 | Tema | Decisión |
 | --- | --- |
 | Base | `fabric-1.20.1` con los arreglos de la rama `fix/known-bugs-1.20.1` |
-| Matriz | 8 builds (tabla siguiente) |
+| Matriz | 10 builds (tabla siguiente) |
 | 1.16.5 | Congelada en `fabric-1.16.5-v1.0`. Java 8 no puede compartir el código |
 | Numeración | Un único número para todas las builds, empezando en 2.0.0 |
 | JAR | `tristorage-<versión>+mc<minecraft>-<loader>.jar` |
@@ -22,7 +22,11 @@ estética y comportamiento, construidas desde un solo código basado en
 | 1.20.1 | Fabric, Forge | 17 |
 | 1.21.1 | Fabric, NeoForge | 21 |
 | 1.21.11 | Fabric | 21 |
-| 26.x | Fabric, NeoForge | 25 |
+| 26.1.2 | Fabric, NeoForge | 25 |
+| 26.2 | Fabric, NeoForge | 25 |
+
+26.3 queda fuera por ahora: NeoForge solo tiene betas para esa versión y el
+juego cambió más cosas (soltar ítems, matrices de render, teclado).
 
 ## Arquitectura
 
@@ -42,6 +46,18 @@ estética y comportamiento, construidas desde un solo código basado en
 
 Cada fase termina con los tests en verde y un JAR probado. 1.20.1 sigue siendo
 publicable durante todo el proceso.
+
+Para probar un nodo sin abrir el juego, su servidor de desarrollo corre sin
+ventana y acepta comandos por la consola de Gradle:
+
+```powershell
+.\gradlew.bat :26.2-fabric:runServer
+```
+
+`/forceload add <x> <z>` carga el chunk de un Core y `/tristorage inspect <x>
+<y> <z>` muestra si quedó listo y cuánto guarda. Desde 1.21.2 un servidor vacío
+se pausa al minuto (`pause-when-empty-seconds`), y un Core no termina de cargar
+en pausa.
 
 1. **1.20.1 a Gradle 9 y Mojang Mappings.** Loom `fabric-loom-remap` 1.17.17,
    `migrateMappings`, revisión manual de mixins y del puente de JEI.
@@ -119,6 +135,21 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   en los nodos anteriores.
 - Pestaña creativa: desde 1.20 se registra; antes se crea al inicio y cada
   ítem la nombra (`TriStorageMod.createCreativeTab`).
+- Minecraft 26.1 renombró clases y métodos sin cambiar su uso (`ClickType` →
+  `ContainerInput`, `LightTexture` → `LightCoordsUtil`, y en Fabric API
+  `ServerWorldEvents` → `ServerLevelEvents`, `ParticleFactoryRegistry` →
+  `ParticleProviderRegistry`): también son reemplazos de
+  `stonecutter.gradle.kts`. Lo que cambió de forma (dibujo `extract*` con
+  `GuiGraphicsExtractor`, tamaño de pantalla fijo en el constructor, mensajes
+  sobre la barra, `ChunkPos` como record) pasa por `Canvas`, `CanvasScreen`,
+  `Players.actionBar` y `version/Chunks`.
+- Recetas en 26.1: el serializador es un record con los dos codecs y el de una
+  receta con forma debe estar tipado como `ShapedRecipe`;
+  `WrappedShapedRecipe.serializer` lo construye así. El resultado se guarda
+  como `ItemStackTemplate` porque las recetas cargan antes de que los ítems
+  tengan componentes.
+- Tests: `TestStacks.bootstrap()` inicia el juego una vez; desde 26.1 además
+  aplica los componentes de los ítems, que el juego ya no asigna al crearlos.
 - Pantallas: `TriStorageClient.registerScreens` recibe el registro del
   loader (`MenuScreens::register` en Fabric y Forge,
   `RegisterMenuScreensEvent` en NeoForge, donde ese método es privado).
@@ -173,6 +204,12 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   `/tristorage`. Los Cores de ese puerto usan `InstalledChests` y `Entries`
   y entran por la carga legacy. Falta probar el cliente en el juego: pantallas,
   render del Linker y partículas.
-- [ ] Fase 6
+- [x] Fase 6: nodos `26.1.2-fabric`, `26.1.2-neoforge`, `26.2-fabric` y
+  `26.2-neoforge` (Fabric API 0.155.3 y 0.161.0, NeoForge 26.1.2.114 y
+  26.2.0.88, JEI 29 y 30; sin EMI). Los 75 tests pasan en los seis nodos
+  Fabric. Un servidor dedicado de cada nodo 26.x, y el de 1.21.11, abre una
+  copia del mundo de 1.20.1 y deja el Core con sus 27 cofres, 80 tipos y 941
+  ítems, reescrito con el `DataVersion` nuevo. Falta probar el cliente en el
+  juego en todas las versiones 26.x.
 - [ ] Fase 7
 - [ ] Fase 8

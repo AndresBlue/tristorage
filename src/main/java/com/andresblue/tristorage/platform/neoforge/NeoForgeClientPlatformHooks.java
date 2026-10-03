@@ -9,7 +9,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
+//? if >=26.1 {
+/^import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+^///?} else {
 import net.neoforged.neoforge.network.PacketDistributor;
+//?}
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,7 +38,12 @@ public final class NeoForgeClientPlatformHooks implements ClientPlatformHooks {
 
     @Override
     public void sendToServer(ResourceLocation id, FriendlyByteBuf buffer) {
+        //? if >=26.1 {
+        /^ClientPacketDistributor.sendToServer(
+                ChannelPayload.wrap(ChannelPayload.TO_SERVER, id, buffer));
+        ^///?} else {
         PacketDistributor.sendToServer(ChannelPayload.wrap(ChannelPayload.TO_SERVER, id, buffer));
+        //?}
     }
 
     @Override

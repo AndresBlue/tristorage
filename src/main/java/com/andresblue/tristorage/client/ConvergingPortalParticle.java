@@ -54,7 +54,7 @@ public final class ConvergingPortalParticle extends TextureSheetParticle {
                 : new Vec3(1.0, 0.0, 0.0);
         Vec3 baseTangent = this.radialDirection.cross(helper).normalize();
         Vec3 baseBitangent = this.radialDirection.cross(baseTangent).normalize();
-        double tangentPhase = world.random.nextDouble() * Math.PI * 2.0;
+        double tangentPhase = world.getRandom().nextDouble() * Math.PI * 2.0;
         this.tangentDirection = baseTangent.scale(Math.cos(tangentPhase))
                 .add(baseBitangent.scale(Math.sin(tangentPhase))).normalize();
         this.orbitNormal = this.radialDirection.cross(this.tangentDirection)
@@ -62,17 +62,17 @@ public final class ConvergingPortalParticle extends TextureSheetParticle {
 
         // Long enough to read each mote as one persistent object, while the
         // renderer controls a small, fixed population around the singularity.
-        this.travelAge = 116 + world.random.nextInt(33);
+        this.travelAge = 116 + world.getRandom().nextInt(33);
         this.lifetime = this.travelAge;
-        double turns = 0.45 + world.random.nextDouble() * 0.25;
+        double turns = 0.45 + world.getRandom().nextDouble() * 0.25;
         this.turnRadians = Math.PI * 2.0 * turns
-                * (world.random.nextBoolean() ? 1.0 : -1.0);
+                * (world.getRandom().nextBoolean() ? 1.0 : -1.0);
         this.gravity = 0.0f;
         this.friction = 1.0f;
-        this.baseScale = 0.075f + world.random.nextFloat() * 0.040f;
+        this.baseScale = 0.075f + world.getRandom().nextFloat() * 0.040f;
         this.baseAlpha = endPortal
-                ? 0.52f + world.random.nextFloat() * 0.16f
-                : 0.46f + world.random.nextFloat() * 0.18f;
+                ? 0.52f + world.getRandom().nextFloat() * 0.16f
+                : 0.46f + world.getRandom().nextFloat() * 0.18f;
         this.quadSize = this.baseScale;
         this.alpha = this.baseAlpha;
         if (endPortal) {

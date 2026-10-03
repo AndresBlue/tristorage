@@ -6,10 +6,8 @@ import com.andresblue.tristorage.TestStacks;
 import com.andresblue.tristorage.version.Stacks;
 import com.google.gson.GsonBuilder;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
@@ -41,8 +39,7 @@ class StorageStressBenchmarkTest {
 
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
+        TestStacks.bootstrap();
     }
 
     @Test

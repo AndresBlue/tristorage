@@ -52,7 +52,7 @@ public final class RemoteTabletItem extends Item {
         }
         StorageCoreBlockEntity core = StorageNetwork.findCore(world, linkerPos);
         if (core == null) {
-            player.displayClientMessage(Component.translatable("message.tristorage.linker_offline"), true);
+            Players.actionBar(player, Component.translatable("message.tristorage.linker_offline"));
             return InteractionResult.CONSUME;
         }
         LinkerBlockEntity linker = LinkerBlock.getOrCreateLinkerEntity(
@@ -60,8 +60,8 @@ public final class RemoteTabletItem extends Item {
         if (!world.dimension().equals(Level.OVERWORLD)
                 && (linker == null
                 || !linker.isAntennaActive())) {
-            player.displayClientMessage(Component.translatable(
-                    "message.tristorage.remote_requires_antenna"), true);
+            Players.actionBar(player, Component.translatable(
+                    "message.tristorage.remote_requires_antenna"));
             return InteractionResult.CONSUME;
         }
         CompoundTag nbt = Stacks.customData(tablet);
@@ -69,7 +69,7 @@ public final class RemoteTabletItem extends Item {
         nbt.putLong(POSITION_KEY, linkerPos.asLong());
         nbt.putLong(CORE_POSITION_KEY, core.getBlockPos().asLong());
         Stacks.setCustomData(tablet, nbt);
-        player.displayClientMessage(Component.translatable("message.tristorage.tablet_linked"), true);
+        Players.actionBar(player, Component.translatable("message.tristorage.tablet_linked"));
         return InteractionResult.CONSUME;
     }
 
@@ -93,7 +93,7 @@ public final class RemoteTabletItem extends Item {
         }
         CompoundTag nbt = Stacks.customData(tablet);
         if (!nbt.contains(DIMENSION_KEY) || !nbt.contains(POSITION_KEY)) {
-            player.displayClientMessage(Component.translatable("message.tristorage.tablet_unlinked"), true);
+            Players.actionBar(player, Component.translatable("message.tristorage.tablet_unlinked"));
             return InteractionResult.FAIL;
         }
 
@@ -105,7 +105,7 @@ public final class RemoteTabletItem extends Item {
         ServerLevel targetWorld = Players.server(serverPlayer).getLevel(dimension);
         BlockPos linkerPos = BlockPos.of(Nbt.getLong(nbt, POSITION_KEY));
         if (targetWorld == null) {
-            player.displayClientMessage(Component.translatable("message.tristorage.remote_unavailable"), true);
+            Players.actionBar(player, Component.translatable("message.tristorage.remote_unavailable"));
             return InteractionResult.FAIL;
         }
 

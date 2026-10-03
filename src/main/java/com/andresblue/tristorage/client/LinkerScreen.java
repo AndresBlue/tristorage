@@ -6,9 +6,7 @@ import net.minecraft.world.entity.player.Inventory;
 
 public final class LinkerScreen extends CanvasScreen<LinkerScreenHandler> {
     public LinkerScreen(LinkerScreenHandler handler, Inventory inventory, Component title) {
-        super(handler, inventory, title);
-        imageWidth = 176;
-        imageHeight = 166;
+        super(handler, inventory, title, 176, 166);
         titleLabelX = 8;
         titleLabelY = 6;
         inventoryLabelX = 8;

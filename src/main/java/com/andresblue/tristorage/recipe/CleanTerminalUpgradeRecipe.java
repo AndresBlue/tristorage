@@ -4,11 +4,10 @@ import com.andresblue.tristorage.TriStorageMod;
 import java.util.List;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.item.crafting.ShapedRecipe;
 
 /** Shaped terminal upgrade that refuses to consume a terminal carrying any data. */
 public final class CleanTerminalUpgradeRecipe extends WrappedShapedRecipe {
-    private CleanTerminalUpgradeRecipe(Parts parts) {
+    public CleanTerminalUpgradeRecipe(Parts parts) {
         super(parts);
     }
 
@@ -23,14 +22,7 @@ public final class CleanTerminalUpgradeRecipe extends WrappedShapedRecipe {
     }
 
     @Override
-    public RecipeSerializer<? extends ShapedRecipe> getSerializer() {
+    protected RecipeSerializer<?> serializer() {
         return TriStorageMod.CRAFTING_TERMINAL_RECIPE_SERIALIZER;
-    }
-
-    public static final class Serializer
-            extends WrappedShapedRecipe.Serializer<CleanTerminalUpgradeRecipe> {
-        public Serializer() {
-            super(CleanTerminalUpgradeRecipe::new);
-        }
     }
 }

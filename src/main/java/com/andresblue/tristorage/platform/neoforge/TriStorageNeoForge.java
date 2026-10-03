@@ -13,7 +13,11 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
+//? if >=26.1 {
+/^import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
+^///?} else {
 import net.neoforged.neoforge.event.level.BlockEvent;
+//?}
 import net.neoforged.neoforge.registries.RegisterEvent;
 
 @Mod(TriStorageMod.MOD_ID)
@@ -24,9 +28,15 @@ public final class TriStorageNeoForge {
                 TriStorageNeoForge::register);
         TriStorageMod.initialize();
         // Runs last so another mod's refusal is known before a Core turns portable.
+        //? if >=26.1 {
+        /^NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, false,
+                BreakBlockEvent.class, TriStorageNeoForge::onBlockBreak);
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
+        ^///?} else {
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, false,
                 BlockEvent.BreakEvent.class, TriStorageNeoForge::onBlockBreak);
         if (FMLEnvironment.dist == Dist.CLIENT) {
+        //?}
             TriStorageNeoForgeClient.initialize(modBus);
         }
     }
@@ -45,6 +55,10 @@ public final class TriStorageNeoForge {
                 helper -> TriStorageMod.registerBlockEntities(registrar(helper)));
         event.register(Registries.MENU,
                 helper -> TriStorageMod.registerMenus(registrar(helper)));
+        //? if >=1.21.5 {
+        event.register(Registries.TICKET_TYPE,
+                helper -> TriStorageMod.registerTicketTypes(registrar(helper)));
+        //?}
         event.register(Registries.CREATIVE_MODE_TAB,
                 helper -> TriStorageMod.registerCreativeTabs(registrar(helper)));
     }
@@ -59,7 +73,11 @@ public final class TriStorageNeoForge {
         };
     }
 
+    //? if >=26.1 {
+    /^private static void onBlockBreak(BreakBlockEvent event) {
+    ^///?} else {
     private static void onBlockBreak(BlockEvent.BreakEvent event) {
+    //?}
         if (!(event.getLevel() instanceof Level level)) {
             return;
         }

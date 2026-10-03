@@ -14,7 +14,7 @@ public final class TerminalScrollGuard {
     }
 
     public static void begin() {
-        if (Minecraft.getInstance().screen instanceof TerminalScreenMarker) {
+        if (Widgets.currentScreen(Minecraft.getInstance()) instanceof TerminalScreenMarker) {
             depth++;
         }
     }
@@ -27,6 +27,6 @@ public final class TerminalScrollGuard {
 
     public static boolean blocksInventoryClicks() {
         return depth > 0
-                && Minecraft.getInstance().screen instanceof TerminalScreenMarker;
+                && Widgets.currentScreen(Minecraft.getInstance()) instanceof TerminalScreenMarker;
     }
 }

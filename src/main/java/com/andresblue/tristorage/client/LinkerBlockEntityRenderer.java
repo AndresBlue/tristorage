@@ -43,7 +43,11 @@ import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+//? if >=26.1 {
+/^import net.minecraft.client.renderer.state.level.CameraRenderState;
+^///?} else {
 import net.minecraft.client.renderer.state.CameraRenderState;
+//?}
 import org.jetbrains.annotations.Nullable;
 *///?} else {
 import net.minecraft.client.Minecraft;
@@ -70,8 +74,14 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
             TriStorageMod.MOD_ID,
             "textures/block/dimensional_singularity_billboard_animated.png");
     //? if >=1.21.9 {
-    /*private static final RenderType SINGULARITY_LAYER =
+    /*// Since 26.1 the plain entity cutout draws both faces.
+    //? if >=26.1 {
+    /^private static final RenderType SINGULARITY_LAYER =
+            RenderTypes.entityCutout(SINGULARITY_TEXTURE);
+    ^///?} else {
+    private static final RenderType SINGULARITY_LAYER =
             RenderTypes.entityCutoutNoCull(SINGULARITY_TEXTURE);
+    //?}
     // Since 1.21.4 item models, the GUI transform falls back to oversized icons
     // in the world; FIXED keeps real models, which then need a larger scale.
     private static final ItemDisplayContext ORBIT_DISPLAY = ItemDisplayContext.FIXED;

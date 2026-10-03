@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.block;
 
+import com.andresblue.tristorage.version.Players;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import com.andresblue.tristorage.storage.StorageTier;
 import net.minecraft.core.BlockPos;
@@ -116,14 +117,14 @@ public final class StorageCoreBlock extends BaseEntityBlock implements NetworkBl
         if (!world.isClientSide()) {
             if (world.getBlockEntity(pos) instanceof StorageCoreBlockEntity core
                     && core.isRecoveryRequired()) {
-                player.displayClientMessage(Component.translatable(
-                        "message.tristorage.core_recovery_required"), true);
+                Players.actionBar(player, Component.translatable(
+                        "message.tristorage.core_recovery_required"));
                 return InteractionResult.CONSUME;
             }
             if (world.getBlockEntity(pos) instanceof StorageCoreBlockEntity core
                     && !core.runtime().isReady()) {
-                player.displayClientMessage(Component.translatable(
-                        "message.tristorage.core_not_ready"), true);
+                Players.actionBar(player, Component.translatable(
+                        "message.tristorage.core_not_ready"));
                 return InteractionResult.CONSUME;
             }
             MenuProvider factory = state.getMenuProvider(world, pos);

@@ -1,6 +1,7 @@
 package com.andresblue.tristorage.version;
 
 import net.minecraft.core.NonNullList;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -33,6 +34,15 @@ public final class Players {
 
     public static MinecraftServer server(ServerPlayer player) {
         return level(player).getServer();
+    }
+
+    /** Shows a message above the hotbar. */
+    public static void actionBar(Player player, Component message) {
+        //? if >=26.1 {
+        /*player.sendOverlayMessage(message);
+        *///?} else {
+        player.displayClientMessage(message, true);
+        //?}
     }
 
     /** The 36 main inventory slots, hotbar included; not armor or offhand. */

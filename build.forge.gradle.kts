@@ -42,6 +42,8 @@ legacyForge {
         }
         register("server") {
             server()
+            // The server console is enough; no window.
+            programArgument("--nogui")
             gameDirectory = rootProject.file("run/$minecraft-forge")
         }
     }
@@ -72,6 +74,11 @@ java {
 }
 
 tasks {
+    // The dev server reads console commands typed into Gradle.
+    matching { it.name == "runServer" }.configureEach {
+        (this as JavaExec).standardInput = System.`in`
+    }
+
     processResources {
         val props = mapOf(
             "version" to modVersion,

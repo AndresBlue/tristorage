@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.client;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -12,13 +13,22 @@ import net.minecraft.client.gui.components.Tooltip;
 import java.util.WeakHashMap;
 *///?}
 
-/** Widget calls that changed between Minecraft versions. */
+/** Widget and screen calls that changed between Minecraft versions. */
 final class Widgets {
     //? if <1.19.3 {
     /*private static final Map<AbstractWidget, Component> HINTS = new WeakHashMap<>();
     *///?}
 
     private Widgets() {
+    }
+
+    /** The screen being shown, or null. It moved from Minecraft to its Gui in 26.2. */
+    static Screen currentScreen(Minecraft minecraft) {
+        //? if >=26.2 {
+        /*return minecraft.gui.screen();
+        *///?} else {
+        return minecraft.screen;
+        //?}
     }
 
     static Button button(int x, int y, int width, int height, Component message,

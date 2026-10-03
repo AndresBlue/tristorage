@@ -22,6 +22,20 @@ stonecutter parameters {
         string(identifierNames) { replace(".location()", ".identifier()") }
     }
 
+    // Plain renames in Minecraft 26.1, and in Fabric API when it took Mojang's
+    // names with that version.
+    val names26 = current.parsed >= "26.1"
+    replacements {
+        string(names26) { replace("ClickType", "ContainerInput") }
+        string(names26) {
+            replace("net.minecraft.client.renderer.LightTexture", "net.minecraft.util.LightCoordsUtil")
+        }
+        string(names26) { replace("LightTexture.FULL_BRIGHT", "LightCoordsUtil.FULL_BRIGHT") }
+        string(names26) { replace("ServerWorldEvents", "ServerLevelEvents") }
+        string(names26) { replace("ParticleFactoryRegistry", "ParticleProviderRegistry") }
+        string(names26) { replace("handleInventoryMouseClick", "handleContainerInput") }
+    }
+
     // Text components were classes with constructors until 1.19. Sources call
     // the factories on Component; older nodes get the constructors, by full
     // name so no import has to change.

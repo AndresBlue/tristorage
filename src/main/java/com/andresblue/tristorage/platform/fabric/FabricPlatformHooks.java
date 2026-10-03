@@ -11,7 +11,9 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
-//? if >=1.20 {
+//? if >=26.1 {
+/*import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
+*///?} elif >=1.20 {
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 //?} else {
 /*import java.util.List;
@@ -64,7 +66,11 @@ public final class FabricPlatformHooks implements PlatformHooks {
     //? if >=1.20 {
     @Override
     public CreativeModeTab.Builder creativeTabBuilder() {
+        //? if >=26.1 {
+        /*return FabricCreativeModeTab.builder();
+        *///?} else {
         return FabricItemGroup.builder();
+        //?}
     }
     //?} else {
     /*@Override
@@ -86,10 +92,18 @@ public final class FabricPlatformHooks implements PlatformHooks {
     /*private final Map<ResourceLocation, ServerReceiver> receivers = new ConcurrentHashMap<>();
 
     public FabricPlatformHooks() {
+        // Fabric API took Mojang's names for the two directions in 26.1.
+        //? if >=26.1 {
+        /^PayloadTypeRegistry.serverboundPlay().register(ChannelPayload.TO_SERVER,
+                ChannelPayload.codec(ChannelPayload.TO_SERVER));
+        PayloadTypeRegistry.clientboundPlay().register(ChannelPayload.TO_CLIENT,
+                ChannelPayload.codec(ChannelPayload.TO_CLIENT));
+        ^///?} else {
         PayloadTypeRegistry.playC2S().register(ChannelPayload.TO_SERVER,
                 ChannelPayload.codec(ChannelPayload.TO_SERVER));
         PayloadTypeRegistry.playS2C().register(ChannelPayload.TO_CLIENT,
                 ChannelPayload.codec(ChannelPayload.TO_CLIENT));
+        //?}
         ServerPlayNetworking.registerGlobalReceiver(ChannelPayload.TO_SERVER, (payload, context) -> {
             ServerReceiver receiver = receivers.get(payload.channel());
             if (receiver != null) {

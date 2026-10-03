@@ -1,10 +1,9 @@
 package com.andresblue.tristorage.screen;
 
+import com.andresblue.tristorage.TestStacks;
 import io.netty.buffer.Unpooled;
-import net.minecraft.SharedConstants;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundContainerSetDataPacket;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.world.inventory.SimpleContainerData;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -20,8 +19,7 @@ class PropertyWordsTest {
 
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
+        TestStacks.bootstrap();
     }
 
     @Test

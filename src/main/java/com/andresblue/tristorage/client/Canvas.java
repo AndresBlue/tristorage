@@ -6,7 +6,9 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-//? if >=1.20 {
+//? if >=26.1 {
+/*import net.minecraft.client.gui.GuiGraphicsExtractor;
+*///?} elif >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
 //?} else {
 /*import com.mojang.blaze3d.systems.RenderSystem;
@@ -22,14 +24,21 @@ import net.minecraft.client.renderer.GameRenderer;
 /**
  * The GUI drawing TriStorage does, over the API of the running Minecraft
  * version: a bare {@code PoseStack} before 1.20, {@code GuiGraphics} since,
- * and 2D matrices with deferred item rendering from 1.21.6.
+ * 2D matrices with deferred item rendering from 1.21.6, and the renamed
+ * {@code GuiGraphicsExtractor} from 26.1.
  */
 final class Canvas {
     /** Above item icons and their vanilla count labels. */
     private static final float LABEL_Z = 325.0f;
     private static final float OVERLAY_Z = 500.0f;
 
-    //? if >=1.20 {
+    //? if >=26.1 {
+    /*private final GuiGraphicsExtractor target;
+
+    Canvas(GuiGraphicsExtractor target) {
+        this.target = target;
+    }
+    *///?} elif >=1.20 {
     private final GuiGraphics target;
 
     Canvas(GuiGraphics target) {
@@ -45,7 +54,9 @@ final class Canvas {
 
     /** Text without a shadow. The color needs its alpha byte: 1.21.6 draws nothing without. */
     void text(Font font, Component text, int x, int y, int color) {
-        //? if >=1.20 {
+        //? if >=26.1 {
+        /*target.text(font, text, x, y, color, false);
+        *///?} elif >=1.20 {
         target.drawString(font, text, x, y, color, false);
         //?} else {
         /*font.draw(target, text, x, y, color);
@@ -53,7 +64,9 @@ final class Canvas {
     }
 
     void text(Font font, String text, int x, int y, int color) {
-        //? if >=1.20 {
+        //? if >=26.1 {
+        /*target.text(font, text, x, y, color, false);
+        *///?} elif >=1.20 {
         target.drawString(font, text, x, y, color, false);
         //?} else {
         /*font.draw(target, text, x, y, color);
@@ -66,7 +79,13 @@ final class Canvas {
      */
     void countLabel(Font font, String label, float right, float y, float scale) {
         int width = font.width(label);
-        //? if >=1.21.6 {
+        //? if >=26.1 {
+        /*target.pose().pushMatrix();
+        target.pose().translate(right, y);
+        target.pose().scale(scale, scale);
+        target.text(font, label, -width, 0, 0xFFFFFFFF, true);
+        target.pose().popMatrix();
+        *///?} elif >=1.21.6 {
         /*target.pose().pushMatrix();
         target.pose().translate(right, y);
         target.pose().scale(scale, scale);
@@ -110,7 +129,9 @@ final class Canvas {
     }
 
     void item(ItemStack stack, int x, int y) {
-        //? if >=1.20 {
+        //? if >=26.1 {
+        /*target.item(stack, x, y);
+        *///?} elif >=1.20 {
         target.renderItem(stack, x, y);
         //?} else {
         /*Minecraft.getInstance().getItemRenderer().renderAndDecorateItem(stack, x, y);
@@ -118,7 +139,11 @@ final class Canvas {
     }
 
     void widget(AbstractWidget widget, int mouseX, int mouseY, float delta) {
+        //? if >=26.1 {
+        /*widget.extractRenderState(target, mouseX, mouseY, delta);
+        *///?} else {
         widget.render(target, mouseX, mouseY, delta);
+        //?}
     }
 
     //? if <1.19.3 {

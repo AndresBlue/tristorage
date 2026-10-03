@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Chunks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -57,7 +58,7 @@ public final class RemoteChunkLease {
      * ServerWorld#getChunk, which waits synchronously on the server thread.
      */
     public CompletableFuture<Boolean> includeAsync(BlockPos target) {
-        return includeAsync(new ChunkPos(target));
+        return includeAsync(Chunks.of(target));
     }
 
     public CompletableFuture<Boolean> includeAsync(ChunkPos chunkPos) {
@@ -73,13 +74,13 @@ public final class RemoteChunkLease {
         addTicket(chunkPos);
         try {
             CompletableFuture<Boolean> load;
-            if (world.getChunkSource().hasChunk(chunkPos.x, chunkPos.z)) {
+            if (world.getChunkSource().hasChunk(Chunks.x(chunkPos), Chunks.z(chunkPos))) {
                 load = CompletableFuture.completedFuture(true);
                 StorageMetrics.increment("remote.chunks_already_loaded");
             } else {
                 load = world.getChunkSource()
                         .getChunkFuture(
-                                chunkPos.x, chunkPos.z, ChunkStatus.FULL, true)
+                                Chunks.x(chunkPos), Chunks.z(chunkPos), ChunkStatus.FULL, true)
                         //? if >=1.20.5 {
                         /*.thenApply(result -> result.isSuccess());
                         *///?} else {

@@ -1,5 +1,6 @@
 package com.andresblue.tristorage;
 
+import com.andresblue.tristorage.version.Players;
 import com.andresblue.tristorage.version.Ids;
 import com.andresblue.tristorage.block.LinkerBlock;
 import com.andresblue.tristorage.block.CraftingTerminalBlock;
@@ -16,6 +17,7 @@ import com.andresblue.tristorage.platform.Registrar;
 import com.andresblue.tristorage.recipe.PortableCoreUpgradeRecipe;
 import com.andresblue.tristorage.recipe.CleanTerminalUpgradeRecipe;
 import com.andresblue.tristorage.recipe.WirelessCraftingTerminalUpgradeRecipe;
+import com.andresblue.tristorage.recipe.WrappedShapedRecipe;
 import com.andresblue.tristorage.screen.CraftingTerminalScreenHandler;
 import com.andresblue.tristorage.screen.CoreScreenHandler;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
@@ -90,10 +92,9 @@ public final class TriStorageMod {
     public static MenuType<CraftingTerminalScreenHandler> CRAFTING_TERMINAL_SCREEN_HANDLER;
     public static MenuType<LinkerScreenHandler> LINKER_SCREEN_HANDLER;
     public static CreativeModeTab TRISTORAGE_ITEM_GROUP;
-    public static RecipeSerializer<PortableCoreUpgradeRecipe> CORE_UPGRADE_RECIPE_SERIALIZER;
-    public static RecipeSerializer<CleanTerminalUpgradeRecipe> CRAFTING_TERMINAL_RECIPE_SERIALIZER;
-    public static RecipeSerializer<WirelessCraftingTerminalUpgradeRecipe>
-            WIRELESS_CRAFTING_TERMINAL_RECIPE_SERIALIZER;
+    public static RecipeSerializer<?> CORE_UPGRADE_RECIPE_SERIALIZER;
+    public static RecipeSerializer<?> CRAFTING_TERMINAL_RECIPE_SERIALIZER;
+    public static RecipeSerializer<?> WIRELESS_CRAFTING_TERMINAL_RECIPE_SERIALIZER;
     public static SimpleParticleType CONVERGING_PORTAL_PARTICLE;
     public static SimpleParticleType CONVERGING_END_PARTICLE;
 
@@ -137,7 +138,7 @@ public final class TriStorageMod {
                 copyOf("crafting_terminal", Blocks.IRON_BLOCK).strength(3.5f)
                         .lightLevel(state -> 5)));
         LINKER = registrar.register("storage_linker", new LinkerBlock(
-                copyOf("storage_linker", Blocks.COPPER_BLOCK).strength(3.0f)
+                copyOf("storage_linker", copperBlock()).strength(3.0f)
                         .lightLevel(state -> 3)));
     }
 
@@ -160,12 +161,12 @@ public final class TriStorageMod {
 
     public static void registerRecipeSerializers(Registrar<RecipeSerializer<?>> registrar) {
         CORE_UPGRADE_RECIPE_SERIALIZER = registrar.register("core_upgrade",
-                new PortableCoreUpgradeRecipe.Serializer());
+                WrappedShapedRecipe.serializer(PortableCoreUpgradeRecipe::new));
         CRAFTING_TERMINAL_RECIPE_SERIALIZER = registrar.register("clean_terminal_upgrade",
-                new CleanTerminalUpgradeRecipe.Serializer());
+                WrappedShapedRecipe.serializer(CleanTerminalUpgradeRecipe::new));
         WIRELESS_CRAFTING_TERMINAL_RECIPE_SERIALIZER = registrar.register(
                 "wireless_crafting_terminal_upgrade",
-                new WirelessCraftingTerminalUpgradeRecipe.Serializer());
+                WrappedShapedRecipe.serializer(WirelessCraftingTerminalUpgradeRecipe::new));
     }
 
     public static void registerBlockEntities(Registrar<BlockEntityType<?>> registrar) {
@@ -239,16 +240,16 @@ public final class TriStorageMod {
         }
         if (!StorageCoreBlock.canBreakSafely(player, state)) {
             if (!level.isClientSide()) {
-                player.displayClientMessage(Component.translatable(
-                        "message.tristorage.core_needs_tool"), true);
+                Players.actionBar(player, Component.translatable(
+                        "message.tristorage.core_needs_tool"));
             }
             return false;
         }
         boolean prepared = core.preparePortable();
         if (!prepared && !level.isClientSide()) {
-            player.displayClientMessage(Component.translatable(core.isRecoveryRequired()
+            Players.actionBar(player, Component.translatable(core.isRecoveryRequired()
                     ? "message.tristorage.core_recovery_required"
-                    : "message.tristorage.core_not_ready"), true);
+                    : "message.tristorage.core_not_ready"));
         }
         return prepared;
     }
@@ -267,6 +268,15 @@ public final class TriStorageMod {
                 ? new TerminalBlockItem(block, blockItemProperties(path))
                 : new BlockItem(block, blockItemProperties(path));
         registrar.register(path, item);
+    }
+
+    /** The plain copper block; copper blocks became one weathering collection in 26.2. */
+    private static Block copperBlock() {
+        //? if >=26.2 {
+        /*return Blocks.COPPER_BLOCK.weathering().unaffected();
+        *///?} else {
+        return Blocks.COPPER_BLOCK;
+        //?}
     }
 
     /** The base block's properties for the block registered under {@code path}. */

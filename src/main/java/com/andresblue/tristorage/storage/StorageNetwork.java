@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Chunks;
 import com.andresblue.tristorage.block.NetworkBlock;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import java.util.ArrayDeque;
@@ -78,8 +79,8 @@ public final class StorageNetwork {
             if (!visited.add(current)) {
                 continue;
             }
-            ChunkPos currentChunk = new ChunkPos(current);
-            if (!world.getChunkSource().hasChunk(currentChunk.x, currentChunk.z)) {
+            ChunkPos currentChunk = Chunks.of(current);
+            if (!world.getChunkSource().hasChunk(Chunks.x(currentChunk), Chunks.z(currentChunk))) {
                 missingChunks.add(currentChunk);
                 continue;
             }
@@ -96,8 +97,8 @@ public final class StorageNetwork {
                 if (visited.contains(neighbor)) {
                     continue;
                 }
-                ChunkPos neighborChunk = new ChunkPos(neighbor);
-                if (!world.getChunkSource().hasChunk(neighborChunk.x, neighborChunk.z)) {
+                ChunkPos neighborChunk = Chunks.of(neighbor);
+                if (!world.getChunkSource().hasChunk(Chunks.x(neighborChunk), Chunks.z(neighborChunk))) {
                     missingChunks.add(neighborChunk);
                 } else if (world.getBlockState(neighbor).getBlock() instanceof NetworkBlock) {
                     open.add(neighbor.immutable());

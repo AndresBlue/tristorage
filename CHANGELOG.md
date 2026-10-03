@@ -2,9 +2,9 @@
 
 ## 2.0.0 (unreleased) — every supported Minecraft version
 
-- One codebase builds Fabric 1.18.2, Fabric 1.20.1, Forge 1.20.1, Fabric
-  1.21.1, NeoForge 1.21.1 and Fabric 1.21.11, with the features and look of
-  1.20.1.
+- One codebase builds Fabric 1.18.2, Fabric and Forge 1.20.1, Fabric and
+  NeoForge 1.21.1, Fabric 1.21.11, and Fabric and NeoForge 26.1.2 and 26.2,
+  with the features and look of 1.20.1.
 - Worlds carry over between Minecraft versions: items saved inside storages
   record the game version that wrote them and are upgraded like vanilla items.
   Portable Cores dropped before 2.0 survive the move to 1.21.

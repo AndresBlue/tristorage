@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.Chunks;
 import com.andresblue.tristorage.version.Players;
 
 import com.andresblue.tristorage.block.LinkerBlock;
@@ -69,7 +70,7 @@ public final class RemoteAccessManager {
         if (current != null && current.matches(key, hand, mode)) {
             current.session().touch(Players.server(player).getTickCount());
             StorageMetrics.increment("remote.inflight_request_hits");
-            player.displayClientMessage(Component.translatable("message.tristorage.remote_loading"), true);
+            Players.actionBar(player, Component.translatable("message.tristorage.remote_loading"));
             return;
         }
         cancelPending(playerId);
@@ -119,17 +120,17 @@ public final class RemoteAccessManager {
         if (!session.loading()) {
             session.setLoading(true);
             Set<ChunkPos> initialChunks = new HashSet<>();
-            initialChunks.add(new ChunkPos(linkerPos));
+            initialChunks.add(Chunks.of(linkerPos));
             if (coreHint != null) {
-                initialChunks.add(new ChunkPos(coreHint));
+                initialChunks.add(Chunks.of(coreHint));
             }
             loadChunks(session, initialChunks, () -> scanNetwork(session));
         }
         // A fully loaded linker/core path completes synchronously above. Only
         // show the loading notice when the request genuinely remains pending.
         if (PENDING.get(playerId) == pending) {
-            player.displayClientMessage(Component.translatable(
-                    "message.tristorage.remote_loading"), true);
+            Players.actionBar(player, Component.translatable(
+                    "message.tristorage.remote_loading"));
         }
     }
 
@@ -207,8 +208,8 @@ public final class RemoteAccessManager {
      * that duplicate and every tablet open failed.
      */
     static List<ChunkPos> anchorChunks(BlockPos linkerPos, BlockPos corePos) {
-        ChunkPos linkerChunk = new ChunkPos(linkerPos);
-        ChunkPos coreChunk = new ChunkPos(corePos);
+        ChunkPos linkerChunk = Chunks.of(linkerPos);
+        ChunkPos coreChunk = Chunks.of(corePos);
         return linkerChunk.equals(coreChunk)
                 ? List.of(linkerChunk)
                 : List.of(linkerChunk, coreChunk);
@@ -233,8 +234,8 @@ public final class RemoteAccessManager {
         }
         if (!hasDimensionalAccess(player, pending.session())) {
             cancelPending(pending.playerId());
-            player.displayClientMessage(Component.translatable(
-                    "message.tristorage.remote_requires_antenna"), true);
+            Players.actionBar(player, Component.translatable(
+                    "message.tristorage.remote_requires_antenna"));
             return;
         }
         if (!PENDING.remove(pending.playerId(), pending)) {
@@ -265,7 +266,7 @@ public final class RemoteAccessManager {
             handle.close();
             finishPending(pending, "remote.failed_open");
             StorageMetrics.increment("remote.open_failures");
-            player.displayClientMessage(Component.translatable("message.tristorage.remote_unavailable"), true);
+            Players.actionBar(player, Component.translatable("message.tristorage.remote_unavailable"));
             LOGGER.error("Could not open remote storage for {}",
                     player.getScoreboardName(), exception);
         }
@@ -400,8 +401,8 @@ public final class RemoteAccessManager {
                 ServerPlayer player = pending.server().getPlayerList()
                         .getPlayer(pending.playerId());
                 if (player != null) {
-                    player.displayClientMessage(Component.translatable(
-                            "message.tristorage.remote_requires_antenna"), true);
+                    Players.actionBar(player, Component.translatable(
+                            "message.tristorage.remote_requires_antenna"));
                 }
             }
         }
@@ -493,8 +494,8 @@ public final class RemoteAccessManager {
                 ServerPlayer player = server.getPlayerList()
                         .getPlayer(pending.playerId());
                 if (player != null) {
-                    player.displayClientMessage(Component.translatable(
-                            "message.tristorage.remote_timeout"), true);
+                    Players.actionBar(player, Component.translatable(
+                            "message.tristorage.remote_timeout"));
                 }
             }
         }
@@ -529,7 +530,7 @@ public final class RemoteAccessManager {
                 ServerPlayer player = pending.server().getPlayerList()
                         .getPlayer(pending.playerId());
                 if (player != null) {
-                    player.displayClientMessage(Component.translatable(translationKey), true);
+                    Players.actionBar(player, Component.translatable(translationKey));
                 }
             }
         }

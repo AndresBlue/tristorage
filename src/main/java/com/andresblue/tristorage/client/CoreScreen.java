@@ -9,9 +9,7 @@ public final class CoreScreen extends CanvasScreen<CoreScreenHandler> {
     private Button withdrawButton;
 
     public CoreScreen(CoreScreenHandler handler, Inventory inventory, Component title) {
-        super(handler, inventory, title);
-        imageWidth = 176;
-        imageHeight = 204;
+        super(handler, inventory, title, 176, 204);
         titleLabelX = 8;
         titleLabelY = 7;
         inventoryLabelX = 8;

@@ -15,7 +15,10 @@ import net.minecraft.core.RegistryAccess;
 //? if >=1.19.3 {
 import net.minecraft.core.registries.BuiltInRegistries;
 //?}
+import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 //? if >=1.19.3 {
 import net.minecraft.world.item.crafting.CraftingBookCategory;
@@ -23,6 +26,14 @@ import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapedRecipe;
+//? if >=26.1 {
+/*import net.minecraft.core.component.DataComponentInitializers;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.data.registries.VanillaRegistries;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.Recipe;
+*///?}
 //? if >=1.21 {
 /*import com.mojang.serialization.JsonOps;
 import java.util.Optional;
@@ -34,6 +45,33 @@ import com.andresblue.tristorage.version.Ids;
 /** Builds stacks and recipes the same way on every Minecraft version under test. */
 public final class TestStacks {
     private TestStacks() {
+    }
+
+    private static boolean started;
+
+    /** Starts the game's registries once, the way every test needs them. */
+    public static synchronized void bootstrap() {
+        if (started) {
+            return;
+        }
+        started = true;
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        //? if >=26.1 {
+        /*// Since 26.1 items get their default components when data is loaded,
+        // not when they are created.
+        BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(VanillaRegistries.createLookup())
+                .forEach(DataComponentInitializers.PendingComponents::apply);
+        *///?}
+    }
+
+    /** Gives items made outside the registries the components data loading would. */
+    public static void bind(Item... items) {
+        //? if >=26.1 {
+        /*for (Item item : items) {
+            item.builtInRegistryHolder().bindComponents(DataComponentMap.EMPTY);
+        }
+        *///?}
     }
 
     /** Changes the stack's custom data in place. */
@@ -75,7 +113,11 @@ public final class TestStacks {
         }
         ^///?}
         // Ingredients resolve items through the registries, as the game does.
+        //? if >=26.1 {
+        /^return ShapedRecipe.MAP_CODEC.codec()
+        ^///?} else {
         return RecipeSerializer.SHAPED_RECIPE.codec().codec()
+        //?}
                 .parse(registries().createSerializationContext(JsonOps.INSTANCE), object)
                 .getOrThrow();
         *///?} else {
@@ -91,8 +133,15 @@ public final class TestStacks {
         for (int index = 0; index < width * height; index++) {
             pattern.add(Optional.ofNullable(index < ingredients.size() ? ingredients.get(index) : null));
         }
+        //? if >=26.1 {
+        /^return new ShapedRecipe(new Recipe.CommonInfo(true),
+                new CraftingRecipe.CraftingBookInfo(CraftingBookCategory.MISC, ""),
+                new ShapedRecipePattern(width, height, pattern, Optional.empty()),
+                ItemStackTemplate.fromNonEmptyStack(result));
+        ^///?} else {
         return new ShapedRecipe("", CraftingBookCategory.MISC,
                 new ShapedRecipePattern(width, height, pattern, Optional.empty()), result, true);
+        //?}
         *///?} elif >=1.21 {
         /*return new ShapedRecipe("", CraftingBookCategory.MISC, new ShapedRecipePattern(
                 width, height, grid(width, height, ingredients), Optional.empty()), result, true);
