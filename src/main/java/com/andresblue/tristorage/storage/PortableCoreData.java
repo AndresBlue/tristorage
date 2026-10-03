@@ -2,9 +2,14 @@ package com.andresblue.tristorage.storage;
 
 import com.andresblue.tristorage.version.Nbt;
 import com.andresblue.tristorage.TriStorageMod;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
+import com.andresblue.tristorage.version.SavedStacks;
 import com.andresblue.tristorage.version.Stacks;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+//? if >=1.21.11 {
+/*import net.minecraft.world.item.component.CustomData;
+*///?}
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,9 +38,10 @@ public final class PortableCoreData {
     }
 
     /**
-     * The storage an item carries: its block entity data, or where the NeoForge
-     * 1.21.1 port (TriStorage 1.x) kept it, in custom data directly or under
-     * {@code TriStorageCore}.
+     * The storage an item carries: its block entity data, or where a TriStorage
+     * 1.x port kept it. The NeoForge 1.21.1 port used custom data, directly or
+     * under {@code TriStorageCore}; the Fabric 1.21.11 port used an item
+     * component of its own.
      */
     @Nullable
     private static CompoundTag carried(ItemStack stack) {
@@ -44,6 +50,12 @@ public final class PortableCoreData {
             return Nbt.hasCompound(data, NEOFORGE_PORT_PAYLOAD)
                     ? Nbt.getCompound(data, NEOFORGE_PORT_PAYLOAD) : data;
         }
+        //? if >=1.21.11 {
+        /*CustomData fabricPort = stack.get(TriStorageMod.LEGACY_CORE_STORAGE);
+        if (fabricPort != null) {
+            return fromFabricPortComponent(fabricPort.copyTag());
+        }
+        *///?}
         CompoundTag custom = Stacks.customData(stack);
         if (Nbt.hasCompound(custom, NEOFORGE_PORT_PAYLOAD)) {
             return Nbt.getCompound(custom, NEOFORGE_PORT_PAYLOAD);
@@ -53,8 +65,30 @@ public final class PortableCoreData {
     }
 
     /**
-     * Moves storage kept in a NeoForge port layout into the block entity data
-     * a Core is placed from. Other custom data stays where it is.
+     * Rewrites the Fabric 1.21.11 port's component, {@code installed_chests}
+     * and {@code entries} of {@code stack} and {@code count}, with this
+     * mod's keys. That port only ever ran on 1.21.11.
+     */
+    static CompoundTag fromFabricPortComponent(CompoundTag component) {
+        CompoundTag carried = new CompoundTag();
+        carried.putInt(CHESTS_KEY, Math.max(0, Nbt.getInt(component, "installed_chests")));
+        ListTag entries = new ListTag();
+        ListTag stored = Nbt.getCompoundList(component, "entries");
+        for (int index = 0; index < stored.size(); index++) {
+            CompoundTag source = Nbt.getCompound(stored, index);
+            CompoundTag entry = new CompoundTag();
+            entry.put("Stack", Nbt.getCompound(source, "stack").copy());
+            entry.putLong("Count", Nbt.getLong(source, "count"));
+            entries.add(entry);
+        }
+        carried.put(ENTRIES_KEY, entries);
+        carried.putInt(DATA_VERSION_KEY, SavedStacks.FABRIC_1_21_11_PORT);
+        return carried;
+    }
+
+    /**
+     * Moves storage kept in a 1.x port's layout into the block entity data a
+     * Core is placed from. Other custom data stays where it is.
      */
     public static void adoptPortLayout(ItemStack stack) {
         CompoundTag blockEntityData = Stacks.blockEntityData(stack);
@@ -70,6 +104,9 @@ public final class PortableCoreData {
         custom.remove(CHESTS_KEY);
         custom.remove(ENTRIES_KEY);
         Stacks.setCustomData(stack, custom);
+        //? if >=1.21.11 {
+        /*stack.remove(TriStorageMod.LEGACY_CORE_STORAGE);
+        *///?}
         applyTo(stack, carried);
     }
 

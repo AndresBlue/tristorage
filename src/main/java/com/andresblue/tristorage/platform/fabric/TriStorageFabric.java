@@ -28,6 +28,9 @@ public final class TriStorageFabric implements ModInitializer {
         //? if >=1.21.5 {
         /*TriStorageMod.registerTicketTypes(registrar(BuiltInRegistries.TICKET_TYPE));
         *///?}
+        //? if >=1.21.11 {
+        /*TriStorageMod.registerDataComponents(registrar(BuiltInRegistries.DATA_COMPONENT_TYPE));
+        *///?}
         //? if >=1.20 {
         TriStorageMod.registerCreativeTabs(registrar(BuiltInRegistries.CREATIVE_MODE_TAB));
         //?}

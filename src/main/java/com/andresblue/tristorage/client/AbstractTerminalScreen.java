@@ -450,12 +450,12 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             String categoryPosition = (categoryIds.indexOf(selectedCategory) + 1)
                     + "/" + categoryIds.size();
             canvas.text(font, categoryPosition,
-                    89 - font.width(categoryPosition) / 2, -35, 0xFFFFFFFF);
+                    89 - canvas.width(font, categoryPosition) / 2, -35, 0xFFFFFFFF);
         }
         canvas.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0xFF404040);
         String pageText = (menu.page() + 1) + " / " + menu.pageCount();
         canvas.text(font, pageText,
-                layout.pageCenterX() - font.width(pageText) / 2, layout.pageY(), 0xFF404040);
+                layout.pageCenterX() - canvas.width(font, pageText) / 2, layout.pageY(), 0xFF404040);
         canvas.text(font,
                 Component.translatable("screen.tristorage.types_short", menu.storedTypes()),
                 layout.statsX(), layout.typesY(), 0xFF404040);
@@ -694,7 +694,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             }
             String label = compact(count);
             Slot slot = menu.slots.get(index);
-            int labelWidth = font.width(label);
+            int labelWidth = canvas.width(font, label);
             float baseScale = count > 99 ? 0.75f : 1.0f;
             float widthScale = MAX_COUNT_WIDTH / (labelWidth + 1.0f);
             float scale = Math.min(baseScale, widthScale);

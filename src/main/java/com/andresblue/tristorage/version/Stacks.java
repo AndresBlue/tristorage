@@ -119,6 +119,21 @@ public final class Stacks {
         //?}
     }
 
+    /** Reads a saved stack, or returns null unless every part of it is valid in this game. */
+    @Nullable
+    public static ItemStack parseStrict(CompoundTag tag, HolderLookup.Provider registries) {
+        //? if >=1.20.5 {
+        /*if (tag.isEmpty()) {
+            return null;
+        }
+        return ItemStack.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), tag)
+                .result().orElse(null);
+        *///?} else {
+        ItemStack stack = ItemStack.of(tag);
+        return stack.isEmpty() ? null : stack;
+        //?}
+    }
+
     /** A copy of the stack's custom data; empty when it has none. */
     public static CompoundTag customData(ItemStack stack) {
         //? if >=1.20.5 {

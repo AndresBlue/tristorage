@@ -40,6 +40,6 @@ public final class LinkerScreen extends CanvasScreen<LinkerScreenHandler> {
                 ? Component.translatable("screen.tristorage.antenna_active")
                 : Component.translatable("screen.tristorage.antenna_blocked");
         int color = menu.antennaActive() ? 0xFF247A34 : 0xFF8A3C24;
-        canvas.text(font, status, (imageWidth - font.width(status)) / 2, 48, color);
+        canvas.text(font, status, (imageWidth - canvas.width(font, status)) / 2, 48, color);
     }
 }

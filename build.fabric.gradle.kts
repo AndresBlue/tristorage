@@ -82,6 +82,10 @@ tasks {
         }
         upgradeDataPack(minecraft)
         filterVersionedMixins(minecraft)
+        // The GUI font points at the default font, which fonts cannot do before 1.20.
+        if (sc.current.parsed < "1.20") {
+            exclude("assets/*/font/**")
+        }
         // Fabric remaps mixins without a refmap; the entry is only for Forge.
         filesMatching("*.mixins.json") {
             filter { line -> if (line.contains("\"refmap\"")) "" else line }

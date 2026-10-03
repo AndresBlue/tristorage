@@ -83,9 +83,16 @@ en pausa.
 | Origen | Formato del Core |
 | --- | --- |
 | `fabric-1.20.1` ≥ 1.9 | Repositorio del mundo (`data/tristorage/`), manifiesto y journal |
-| `fabric-1.20.1` < 1.9, `fabric-1.16.5`, `fabric-1.18.2`, `fabric-1.21.1` 1.0 | `InstalledChests` y `Entries` en el block entity |
-| `fabric-1.21.11` 1.1 | Componente `tristorage:core_storage` en ítem y block entity |
-| `neoforge-1.21.1` 1.1 | `CoreStorageData`; ya migra los datos de Neo 1.0 |
+| Todos los demás puertos, Core colocado | `InstalledChests` y `Entries` en el block entity |
+| `neoforge-1.21.1` 1.x, Core como ítem | `custom_data`, directo o bajo `TriStorageCore` |
+| `fabric-1.21.11` 1.x, Core como ítem | Componente propio `tristorage:core_storage` |
+
+Todos se leen. El Core colocado entra por la carga legacy del block entity y
+pasa al repositorio. El ítem se lee donde esté y se reescribe como
+`block_entity_data` al colocarlo; el componente `tristorage:core_storage` sigue
+registrado desde 1.21.11 solo para que esos ítems carguen. Las tabletas de todos
+los puertos usan las mismas claves, y un Linker del puerto 1.21.11 guardado como
+ítem con su antena la recupera al colocarlo.
 
 La serialización de `ItemStack` cambia en 1.20.5 (componentes y registros), así
 que las entradas guardadas deben convertirse al formato de cada versión.
@@ -95,8 +102,17 @@ que las entradas guardadas deben convertirse al formato de cada versión.
 - Cada stack que TriStorage guarda fuera de los slots de vanilla (repositorio,
   `Entries` del block entity, datos del Core portátil) va con el
   `DataVersion` del juego que lo escribió. Al leerlo, `SavedStacks` lo pasa
-  por los data fixers de vanilla. Los datos anteriores a 2.0 no tienen
-  versión: si el stack aún usa `Count` se toma como 1.20.1 (3465).
+  por los data fixers de vanilla.
+- Los datos anteriores a 2.0 no tienen versión, y nada dice qué juego los
+  escribió. `SavedStacks` prueba las versiones de los puertos publicados, de
+  la más nueva a la más vieja (1.20.1, 1.18.2 y 1.16.5 para el formato con
+  `Count`; 1.21.11 y 1.21.1 para el de componentes), y se queda con la primera
+  cuyo resultado el juego acepta completo. Aplicar fixers a datos que ya son
+  nuevos borra encantamientos y nombres; no aplicarlos a datos viejos pierde
+  ítems renombrados. Un nombre o lore guardado como JSON en una cadena delata
+  el formato anterior a 1.21.5.
+- El ítem de Core del puerto 1.21.11 se sabe escrito por 1.21.11 y lleva esa
+  versión al convertirse.
 - El fixer de 1.20.5 mueve `BlockEntityTag` al componente
   `block_entity_data`, que exige un `id`. Los Cores soltados por la loot table
   de 1.20.1 antes de 2.0 no lo tenían y 1.21 descartaría el ítem con todo su
@@ -159,15 +175,21 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   desde 1.20.5. Los mixins que solo existen desde cierta versión se quitan de
   la configuración con `filterVersionedMixins`.
 
-## Aportes de otros puertos a conservar
+## Aportes de otros puertos
 
-- Test de minado de NeoForge (`BlockMiningResourcesTest`) y tags en
-  `tags/block/` desde 1.21. Los puertos Fabric 1.21.1 y 1.21.11 publicados
-  tienen `mineable/pickaxe` en `tags/blocks/`, que 1.21 ya no lee.
-- Fuente de GUI aislada (`font/gui.json`) de 1.21.11 y NeoForge.
-- Etiquetas "Inventory", "Stored Items" y "Dimensional Antenna" de NeoForge.
-- Arte alternativo (tableta v1.9, hojas `_side`, singularidad): solo si se decide
-  usarlo; la base es el arte de 1.20.1.
+- Test de minado de NeoForge: `BlockMiningResourcesTest` corre en todos los
+  nodos Fabric sobre el data pack ya convertido, con los tags en `tags/block/`
+  desde 1.21. Los puertos Fabric 1.21.1 y 1.21.11 publicados tienen
+  `mineable/pickaxe` en `tags/blocks/`, que 1.21 ya no lee.
+- Fuente de GUI aislada de 1.21.11 y NeoForge: `assets/tristorage/font/gui.json`
+  apunta a la fuente por defecto y `Canvas` dibuja todo su texto con ella, así
+  un resource pack puede cambiar solo la tipografía de TriStorage. Desde 1.20;
+  1.18.2 no permite que una fuente refiera a otra y usa la de siempre.
+- Etiquetas "Inventory", "Stored Items" y "Dimensional Antenna" de NeoForge:
+  estaban en el archivo de idioma de ese puerto, pero ninguna pantalla las
+  mostraba. No hay nada que traer.
+- Arte alternativo (tableta v1.9, hojas `_side`, singularidad): no se adoptó;
+  la base es el arte de 1.20.1.
 
 ## Estado
 
@@ -211,5 +233,12 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   copia del mundo de 1.20.1 y deja el Core con sus 27 cofres, 80 tipos y 941
   ítems, reescrito con el `DataVersion` nuevo. Falta probar el cliente en el
   juego en todas las versiones 26.x.
+- [x] Migración de los puertos 1.x: el mundo del puerto `fabric-1.21.11` (dos
+  Cores, 46 y 13 tipos) abre en 1.21.11 y directo en 26.2 sin errores ni
+  ítems descartados. Tests para el ítem con `tristorage:core_storage`, para
+  stacks sin versión de 1.21.1 y de 1.21.11, y para el formato del puerto
+  NeoForge. No hay mundos de prueba de `fabric-1.21.1` ni de `neoforge-1.21.1`
+  con Cores; esos formatos solo están cubiertos por tests.
+- [x] Aportes de otros puertos: test de minado y fuente de GUI.
 - [ ] Fase 7
 - [ ] Fase 8

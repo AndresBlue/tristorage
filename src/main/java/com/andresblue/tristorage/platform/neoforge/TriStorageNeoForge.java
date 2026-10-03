@@ -59,6 +59,10 @@ public final class TriStorageNeoForge {
         event.register(Registries.TICKET_TYPE,
                 helper -> TriStorageMod.registerTicketTypes(registrar(helper)));
         //?}
+        //? if >=1.21.11 {
+        event.register(Registries.DATA_COMPONENT_TYPE,
+                helper -> TriStorageMod.registerDataComponents(registrar(helper)));
+        //?}
         event.register(Registries.CREATIVE_MODE_TAB,
                 helper -> TriStorageMod.registerCreativeTabs(registrar(helper)));
     }

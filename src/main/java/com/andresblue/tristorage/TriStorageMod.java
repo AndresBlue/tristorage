@@ -41,6 +41,10 @@ import net.minecraft.resources.ResourceKey;
 //? if >=1.21.5 {
 /*import net.minecraft.server.level.TicketType;
 *///?}
+//? if >=1.21.11 {
+/*import net.minecraft.core.component.DataComponentType;
+import net.minecraft.world.item.component.CustomData;
+*///?}
 import net.minecraft.world.entity.player.Player;
 //? if >=1.19.3 {
 import net.minecraft.world.flag.FeatureFlags;
@@ -176,6 +180,19 @@ public final class TriStorageMod {
         LINKER_BLOCK_ENTITY = registrar.register("storage_linker",
                 Platform.get().blockEntityType(LinkerBlockEntity::new, LINKER));
     }
+
+    //? if >=1.21.11 {
+    /*// The item component the Fabric 1.21.11 port (TriStorage 1.x) kept a Core's
+    // storage in. It stays registered so those items still load; placing the
+    // Core moves the storage to its block entity data.
+    public static DataComponentType<CustomData> LEGACY_CORE_STORAGE;
+
+    public static void registerDataComponents(Registrar<DataComponentType<?>> registrar) {
+        LEGACY_CORE_STORAGE = registrar.register("core_storage",
+                DataComponentType.<CustomData>builder().persistent(CustomData.CODEC)
+                        .networkSynchronized(CustomData.STREAM_CODEC).build());
+    }
+    *///?}
 
     //? if >=1.21.5 {
     /*// Since 1.21.5 chunk ticket types are registered.

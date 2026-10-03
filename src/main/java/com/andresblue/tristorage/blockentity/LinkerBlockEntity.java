@@ -20,6 +20,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+//? if >=1.21.11 {
+/*import net.minecraft.core.component.DataComponentGetter;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemContainerContents;
+*///?}
 //? if >=1.21.6 {
 /*import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -140,6 +145,16 @@ public final class LinkerBlockEntity extends BlockEntity
         setChanged();
         refreshAntennaMount();
     }
+
+    //? if >=1.21.11 {
+    /*// A Linker item from the Fabric 1.21.11 port carries its antenna as a container.
+    @Override
+    protected void applyImplicitComponents(DataComponentGetter components) {
+        super.applyImplicitComponents(components);
+        components.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY)
+                .copyInto(stacks);
+    }
+    *///?}
 
     //? if >=1.21.6 {
     /*@Override

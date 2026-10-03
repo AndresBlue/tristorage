@@ -17,6 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+//? if >=1.21.11 {
+/*import com.andresblue.tristorage.TriStorageMod;
+import com.andresblue.tristorage.platform.Registrar;
+import com.andresblue.tristorage.version.Stacks;
+import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.registries.BuiltInRegistries;
+*///?}
 
 class PortableCoreDataTest {
     @BeforeAll
@@ -44,6 +52,30 @@ class PortableCoreDataTest {
         assertFalse(portable.contains("id"));
         assertFalse(portable.contains("x"));
         assertNotSame(entries, portable.get(PortableCoreData.ENTRIES_KEY));
+    }
+
+    @Test
+    void fabricPortComponentIsRewrittenWithItsDataVersion() {
+        CompoundTag stone = new CompoundTag();
+        stone.putString("id", "minecraft:stone");
+        stone.putInt("count", 1);
+        CompoundTag stored = new CompoundTag();
+        stored.put("stack", stone);
+        stored.putLong("count", 640L);
+        ListTag stacks = new ListTag();
+        stacks.add(stored);
+        CompoundTag component = new CompoundTag();
+        component.putInt("installed_chests", 5);
+        component.put("entries", stacks);
+
+        CompoundTag carried = PortableCoreData.fromFabricPortComponent(component);
+
+        assertEquals(5, Nbt.getInt(carried, PortableCoreData.CHESTS_KEY));
+        CompoundTag first = Nbt.getCompound(
+                Nbt.getCompoundList(carried, PortableCoreData.ENTRIES_KEY), 0);
+        assertEquals(640L, Nbt.getLong(first, "Count"));
+        assertEquals("minecraft:stone", Nbt.getString(Nbt.getCompound(first, "Stack"), "id"));
+        assertEquals(4671, Nbt.getInt(carried, PortableCoreData.DATA_VERSION_KEY));
     }
 
     @Test
@@ -102,6 +134,46 @@ class PortableCoreDataTest {
         assertEquals(1, PortableCoreData.installedChests(core));
         assertEquals(7, PortableCoreData.totalItems(core));
     }
+
+    //? if >=1.21.11 {
+    /*// TriStorage 1.x for Fabric 1.21.11 kept the storage in a component of its own.
+    @Test
+    void readsCoresFromTheFabricPortComponent() {
+        if (TriStorageMod.LEGACY_CORE_STORAGE == null) {
+            TriStorageMod.registerDataComponents(new Registrar<>() {
+                @Override
+                public <V extends DataComponentType<?>> V register(String path, V value) {
+                    return Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE,
+                            TriStorageMod.id(path), value);
+                }
+            });
+        }
+        CompoundTag stone = new CompoundTag();
+        stone.putString("id", "minecraft:stone");
+        stone.putInt("count", 1);
+        CompoundTag stored = new CompoundTag();
+        stored.put("stack", stone);
+        stored.putLong("count", 640L);
+        ListTag stacks = new ListTag();
+        stacks.add(stored);
+        CompoundTag component = new CompoundTag();
+        component.putInt("installed_chests", 5);
+        component.put("entries", stacks);
+        CompoundTag components = new CompoundTag();
+        components.put("tristorage:core_storage", component);
+        CompoundTag saved = new CompoundTag();
+        saved.putString("id", "minecraft:iron_block");
+        saved.putInt("count", 1);
+        saved.put("components", components);
+
+        ItemStack core = Stacks.parseStrict(saved, TestStacks.registries());
+
+        assertNotNull(core);
+        assertEquals(5, PortableCoreData.installedChests(core));
+        assertEquals(1, PortableCoreData.storedTypes(core));
+        assertEquals(640L, PortableCoreData.totalItems(core));
+    }
+    *///?}
 
     @Test
     void unrelatedCustomDataCarriesNoStorage() {

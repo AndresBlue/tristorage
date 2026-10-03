@@ -8,8 +8,13 @@
 - Worlds carry over between Minecraft versions: items saved inside storages
   record the game version that wrote them and are upgraded like vanilla items.
   Portable Cores dropped before 2.0 survive the move to 1.21.
-- Worlds from the Fabric 1.21.1 and NeoForge 1.21.1 ports load their Cores,
-  including NeoForge portable Cores.
+- Worlds from every 1.x port load their Cores: Fabric 1.18.2, 1.21.1 and
+  1.21.11 and NeoForge 1.21.1, including portable Cores from the NeoForge and
+  Fabric 1.21.11 ports. Items stored by those ports keep their enchantments
+  and names.
+- TriStorage screens draw their text in the font `tristorage:gui`, which
+  points at the default font, so a resource pack can restyle them alone
+  (Minecraft 1.20 and later).
 - Fixed remote sessions loading a radius of 33 chunks around every Linker and
   Core they used. Only those chunks and their neighbours stay loaded now.
 - Fixed the terminal's category tabs and settings buttons being duplicated

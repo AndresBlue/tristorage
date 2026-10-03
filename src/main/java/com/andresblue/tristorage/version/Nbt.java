@@ -7,6 +7,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 
 /**
  * Reads NBT the same way on every version. Since Minecraft 1.21.5 the typed
@@ -39,6 +40,15 @@ public final class Nbt {
         /*return tag.getStringOr(key, "");
         *///?} else {
         return tag.getString(key);
+        //?}
+    }
+
+    /** The text of a string tag. */
+    public static String string(Tag tag) {
+        //? if >=1.21.5 {
+        /*return tag.asString().orElse("");
+        *///?} else {
+        return tag.getAsString();
         //?}
     }
 

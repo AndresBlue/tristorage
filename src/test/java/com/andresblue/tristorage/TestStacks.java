@@ -29,13 +29,13 @@ import net.minecraft.world.item.crafting.ShapedRecipe;
 //? if >=26.1 {
 /*import net.minecraft.core.component.DataComponentInitializers;
 import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Recipe;
 *///?}
 //? if >=1.21 {
-/*import com.mojang.serialization.JsonOps;
+/*import net.minecraft.data.registries.VanillaRegistries;
+import com.mojang.serialization.JsonOps;
 import java.util.Optional;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
 *///?} else {
@@ -93,6 +93,13 @@ public final class TestStacks {
         /*return RegistryAccess.BUILTIN.get();
         *///?}
     }
+
+    //? if >=1.21 {
+    /*// Every registry a vanilla data pack fills, enchantments included.
+    public static HolderLookup.Provider dataRegistries() {
+        return VanillaRegistries.createLookup();
+    }
+    *///?}
 
     /**
      * Parses a crafting_shaped recipe written in the 1.20.1 data pack format,
