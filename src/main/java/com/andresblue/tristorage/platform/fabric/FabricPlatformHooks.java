@@ -3,11 +3,23 @@ package com.andresblue.tristorage.platform.fabric;
 //? if fabric {
 import com.andresblue.tristorage.platform.PlatformHooks;
 import com.mojang.brigadier.CommandDispatcher;
+//? if >=1.19 {
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+//?} else {
+/*import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
+*///?}
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
+//? if >=1.20 {
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
+//?} else {
+/*import java.util.List;
+import java.util.function.Supplier;
+import net.fabricmc.fabric.api.client.itemgroup.FabricItemGroupBuilder;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ItemLike;
+*///?}
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -49,10 +61,20 @@ public final class FabricPlatformHooks implements PlatformHooks {
                 .map(container -> container.getMetadata().getName());
     }
 
+    //? if >=1.20 {
     @Override
     public CreativeModeTab.Builder creativeTabBuilder() {
         return FabricItemGroup.builder();
     }
+    //?} else {
+    /*@Override
+    public CreativeModeTab creativeTab(ResourceLocation id, Supplier<ItemStack> icon,
+                                       Supplier<List<ItemLike>> items) {
+        return FabricItemGroupBuilder.create(id).icon(icon)
+                .appendItems(stacks -> items.get().forEach(item -> stacks.add(new ItemStack(item))))
+                .build();
+    }
+    *///?}
 
     @Override
     public <T extends BlockEntity> BlockEntityType<T> blockEntityType(
@@ -135,8 +157,13 @@ public final class FabricPlatformHooks implements PlatformHooks {
 
     @Override
     public void onRegisterCommands(Consumer<CommandDispatcher<CommandSourceStack>> listener) {
+        //? if >=1.19 {
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, registryAccess, environment) -> listener.accept(dispatcher));
+        //?} else {
+        /*CommandRegistrationCallback.EVENT.register(
+                (dispatcher, dedicated) -> listener.accept(dispatcher));
+        *///?}
     }
 }
 //?}

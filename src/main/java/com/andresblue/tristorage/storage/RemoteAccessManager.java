@@ -438,7 +438,7 @@ public final class RemoteAccessManager {
                                                 SharedSession session,
                                                 LinkerBlockEntity linker) {
         return RemoteDimensionPolicy.canAccess(
-                player.level().dimension().equals(Level.OVERWORLD),
+                Players.level(player).dimension().equals(Level.OVERWORLD),
                 session.key().world().dimension().equals(Level.OVERWORLD),
                 linker.isAntennaActive());
     }

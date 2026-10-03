@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.recipe;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import net.minecraft.world.item.ItemStack;
@@ -37,13 +38,18 @@ public abstract class WrappedShapedRecipe extends ShapedRecipe {
         //? if >=1.21 {
         /*super(parts.group(), parts.category(), parts.pattern(), parts.result(),
                 parts.showNotification());
-        *///?} else {
+        *///?} elif >=1.20 {
         super(parts.base().getId(), parts.base().getGroup(), parts.base().category(),
                 parts.base().getWidth(), parts.base().getHeight(),
                 parts.base().getIngredients(),
                 parts.base().getResultItem(RegistryAccess.EMPTY).copy(),
                 parts.base().showNotification());
-        //?}
+        //?} else {
+        /*// Before 1.19.3 a shaped recipe has no category or notification flag.
+        super(parts.base().getId(), parts.base().getGroup(),
+                parts.base().getWidth(), parts.base().getHeight(),
+                parts.base().getIngredients(), parts.base().getResultItem().copy());
+        *///?}
         this.parts = parts;
     }
 
@@ -75,14 +81,27 @@ public abstract class WrappedShapedRecipe extends ShapedRecipe {
     *///?} else {
     @Override
     public boolean matches(CraftingContainer input, Level world) {
-        return super.matches(input, world) && accepts(input.getItems());
+        return super.matches(input, world) && accepts(items(input));
     }
 
     @Override
+    //? if >=1.19.4 {
     public ItemStack assemble(CraftingContainer input, RegistryAccess registries) {
         ItemStack result = super.assemble(input, registries);
-        finish(result, input.getItems());
+    //?} else {
+    /*public ItemStack assemble(CraftingContainer input) {
+        ItemStack result = super.assemble(input);
+    *///?}
+        finish(result, items(input));
         return result;
+    }
+
+    private static List<ItemStack> items(CraftingContainer input) {
+        List<ItemStack> items = new ArrayList<>(input.getContainerSize());
+        for (int slot = 0; slot < input.getContainerSize(); slot++) {
+            items.add(input.getItem(slot));
+        }
+        return items;
     }
     //?}
 

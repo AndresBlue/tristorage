@@ -12,6 +12,7 @@ unificación están en [`docs/MULTIVERSION.md`](docs/MULTIVERSION.md).
 
 | Minecraft | Loader | Requisitos | Java |
 | --- | --- | --- | --- |
+| 1.18.2 | Fabric | Fabric Loader 0.14.22+, Fabric API 0.77.0+1.18.2 | 17 |
 | 1.20.1 | Fabric | Fabric Loader 0.14.22+, Fabric API 0.92.11+1.20.1 | 17 |
 | 1.20.1 | Forge | Forge 47+ | 17 |
 | 1.21.1 | Fabric | Fabric Loader 0.14.22+, Fabric API 0.116.17+1.21.1 | 21 |

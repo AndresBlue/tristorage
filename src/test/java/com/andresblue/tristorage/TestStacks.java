@@ -12,10 +12,14 @@ import java.util.function.Consumer;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
+//? if >=1.19.3 {
 import net.minecraft.core.registries.BuiltInRegistries;
+//?}
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+//? if >=1.19.3 {
 import net.minecraft.world.item.crafting.CraftingBookCategory;
+//?}
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapedRecipe;
@@ -45,7 +49,11 @@ public final class TestStacks {
 
     /** The built-in registries, enough to save stacks without a server. */
     public static HolderLookup.Provider registries() {
+        //? if >=1.19.3 {
         return RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY);
+        //?} else {
+        /*return RegistryAccess.BUILTIN.get();
+        *///?}
     }
 
     /**
@@ -88,11 +96,14 @@ public final class TestStacks {
         *///?} elif >=1.21 {
         /*return new ShapedRecipe("", CraftingBookCategory.MISC, new ShapedRecipePattern(
                 width, height, grid(width, height, ingredients), Optional.empty()), result, true);
-        *///?} else {
+        *///?} elif >=1.20 {
         return new ShapedRecipe(Ids.of("tristorage", "planner_test"), "",
                 CraftingBookCategory.MISC, width, height, grid(width, height, ingredients),
                 result, true);
-        //?}
+        //?} else {
+        /*return new ShapedRecipe(Ids.of("tristorage", "planner_test"), "",
+                width, height, grid(width, height, ingredients), result);
+        *///?}
     }
 
     //? if <1.21.2 {

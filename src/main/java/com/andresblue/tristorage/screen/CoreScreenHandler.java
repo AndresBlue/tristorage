@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.screen;
 
+import com.andresblue.tristorage.version.Menus;
 import com.andresblue.tristorage.TriStorageMod;
 import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import net.minecraft.world.Container;
@@ -84,7 +85,7 @@ public final class CoreScreenHandler extends AbstractContainerMenu {
             return ItemStack.EMPTY;
         }
         if (source.isEmpty()) {
-            slot.setByPlayer(ItemStack.EMPTY);
+            Menus.setByPlayer(slot, ItemStack.EMPTY);
         } else {
             slot.setChanged();
         }

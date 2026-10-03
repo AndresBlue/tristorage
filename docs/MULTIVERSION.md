@@ -91,7 +91,9 @@ que las entradas guardadas deben convertirse al formato de cada versión.
 
 - `version/`: `Stacks` (NBT o componentes), `SavedStacks` (data fixers),
   `Ids`, `NbtFiles` y `Recipes`. El código común llama a estos helpers en vez
-  de usar la API de una versión.
+  de usar la API de una versión. `GameRegistries` (registros antes y
+  después de 1.19.3), `CreativeTabs` (pestañas creativas como categorías) y
+  `Menus` (rejilla de crafteo y ranuras) cubren lo que cambió antes de 1.20.
 - `recipe/WrappedShapedRecipe`: base de las recetas propias; oculta el cambio
   de serializador (JSON y `FriendlyByteBuf` hasta 1.20.4, `MapCodec` y
   `StreamCodec` desde 1.21).
@@ -106,6 +108,17 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   jugador y servidor (`Players`) y recetas sin `getIngredients` (`Recipes`)
   pasan por helpers de `version/`. Los colores de texto de la GUI llevan alfa
   (`0xFF…`), que 1.21.6 exige y las versiones anteriores aceptan.
+- Dibujo de la GUI: las pantallas extienden `client/CanvasScreen` y dibujan
+  con `client/Canvas`, que usa `PoseStack` antes de 1.20, `GuiGraphics`
+  después y las matrices 2D de 1.21.6. `client/Widgets` crea botones y
+  tooltips como los pide cada versión. Las pantallas no tienen condicionales
+  de dibujo.
+- Textos y registros previos a 1.19: el código usa `Component.literal`,
+  `Component.translatable` y `HolderLookup.Provider`; `stonecutter.gradle.kts`
+  los reemplaza por `TextComponent`, `TranslatableComponent` y `RegistryAccess`
+  en los nodos anteriores.
+- Pestaña creativa: desde 1.20 se registra; antes se crea al inicio y cada
+  ítem la nombra (`TriStorageMod.createCreativeTab`).
 - Pantallas: `TriStorageClient.registerScreens` recibe el registro del
   loader (`MenuScreens::register` en Fabric y Forge,
   `RegisterMenuScreensEvent` en NeoForge, donde ese método es privado).
@@ -153,7 +166,13 @@ que las entradas guardadas deben convertirse al formato de cada versión.
   tests pasan en los tres nodos Fabric. El cliente carga sin errores; falta
   abrir un mundo y probar la interfaz en el juego. Arreglado de paso: las
   sesiones remotas cargaban un radio de 33 chunks por Linker y Core.
-- [ ] Fase 5
+- [x] Fase 5: nodo `1.18.2-fabric` (Fabric API 0.77.0, JEI 10.2.1; EMI solo publicó
+  versiones 0.1 para 1.18.2 y su puente queda fuera). Los 75 tests pasan en
+  los cuatro nodos Fabric. Un servidor dedicado de 1.18.2 arranca con el mundo
+  del puerto `fabric-1.18.2` 1.0, carga las recetas y responde a
+  `/tristorage`. Los Cores de ese puerto usan `InstalledChests` y `Entries`
+  y entran por la carga legacy. Falta probar el cliente en el juego: pantallas,
+  render del Linker y partículas.
 - [ ] Fase 6
 - [ ] Fase 7
 - [ ] Fase 8

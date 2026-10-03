@@ -1,17 +1,20 @@
 package com.andresblue.tristorage.storage;
 
+import com.andresblue.tristorage.version.CreativeTabs;
 import com.andresblue.tristorage.version.Players;
 
 import com.andresblue.tristorage.platform.Platform;
-import net.minecraft.core.registries.BuiltInRegistries;
+import com.andresblue.tristorage.version.GameRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.CreativeModeTab;
+//? if >=1.20 {
 import net.minecraft.world.item.CreativeModeTabs;
+//?}
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,7 +48,7 @@ public final class TerminalFilter {
     }
 
     public static String searchText(ItemStack stack) {
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        ResourceLocation id = GameRegistries.ITEM.getKey(stack.getItem());
         String modName = Platform.get().modName(id.getNamespace())
                 .orElse(id.getNamespace());
         return normalize(String.join(" ",
@@ -59,7 +62,7 @@ public final class TerminalFilter {
     }
 
     public static String modCategory(ItemStack stack) {
-        return BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
+        return GameRegistries.ITEM.getKey(stack.getItem()).getNamespace();
     }
 
     public static void prepareCreativeGroups(ServerPlayer player) {
@@ -73,6 +76,13 @@ public final class TerminalFilter {
      * screen handler and every reopen only creates visible stalls.
      */
     public static void prepareCreativeGroups(net.minecraft.server.level.ServerLevel world) {
+        //? if <1.20 {
+        /*// Before 1.20 every item names its tab; nothing depends on the world.
+        if (!creativeContextPrepared) {
+            rebuildCreativeCategoryIndex();
+            creativeContextPrepared = true;
+        }
+        *///?} else {
         Object registryManager = world.registryAccess();
         Object enabledFeatures = world.enabledFeatures();
         if (creativeContextPrepared
@@ -91,6 +101,7 @@ public final class TerminalFilter {
         preparedEnabledFeatures = enabledFeatures;
         creativeContextPrepared = true;
         StorageMetrics.stopTimer("creative_groups.prepare", started);
+        //?}
     }
 
     /** Resource/data-pack reloads may alter tags and creative tab contents. */
@@ -111,18 +122,11 @@ public final class TerminalFilter {
     private static void rebuildCreativeCategoryIndex() {
         Map<Item, LinkedHashSet<String>> mutableIndex = new IdentityHashMap<>();
         List<String> ordered = new ArrayList<>();
-        for (CreativeModeTab group : CreativeModeTabs.tabs()) {
-            if (group.getType() != CreativeModeTab.Type.CATEGORY || !group.hasAnyItems()) {
-                continue;
-            }
-            ResourceLocation id = BuiltInRegistries.CREATIVE_MODE_TAB.getKey(group);
-            if (id == null) {
-                continue;
-            }
-            String category = id.toString();
+        for (Map.Entry<String, Collection<Item>> tab : CreativeTabs.itemsByCategory().entrySet()) {
+            String category = tab.getKey();
             ordered.add(category);
-            for (ItemStack displayed : group.getDisplayItems()) {
-                mutableIndex.computeIfAbsent(displayed.getItem(), ignored -> new LinkedHashSet<>())
+            for (Item item : tab.getValue()) {
+                mutableIndex.computeIfAbsent(item, ignored -> new LinkedHashSet<>())
                         .add(category);
             }
         }

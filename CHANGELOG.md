@@ -2,8 +2,9 @@
 
 ## 2.0.0 (unreleased) — every supported Minecraft version
 
-- One codebase builds Fabric 1.20.1, Forge 1.20.1, Fabric 1.21.1, NeoForge
-  1.21.1 and Fabric 1.21.11, with the features and look of 1.20.1.
+- One codebase builds Fabric 1.18.2, Fabric 1.20.1, Forge 1.20.1, Fabric
+  1.21.1, NeoForge 1.21.1 and Fabric 1.21.11, with the features and look of
+  1.20.1.
 - Worlds carry over between Minecraft versions: items saved inside storages
   record the game version that wrote them and are upgraded like vanilla items.
   Portable Cores dropped before 2.0 survive the move to 1.21.
@@ -11,6 +12,8 @@
   including NeoForge portable Cores.
 - Fixed remote sessions loading a radius of 33 chunks around every Linker and
   Core they used. Only those chunks and their neighbours stay loaded now.
+- Fixed the terminal's category tabs and settings buttons being duplicated
+  after resizing the game window with a terminal open.
 
 ## 1.12.2 — Minecraft 1.20.1 Fabric
 

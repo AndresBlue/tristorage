@@ -8,7 +8,11 @@ import com.andresblue.tristorage.blockentity.StorageCoreBlockEntity;
 import com.andresblue.tristorage.storage.StorageNetwork;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+//? if >=1.19.3 {
 import com.mojang.math.Axis;
+//?} else {
+/*import com.mojang.math.Vector3f;
+*///?}
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -22,11 +26,15 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
+//? if >=1.19.4 {
 import net.minecraft.world.item.ItemDisplayContext;
+//?} else {
+/*import net.minecraft.client.renderer.block.model.ItemTransforms;
+*///?}
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Quaternionf;
+import java.util.function.Consumer;
 //? if >=1.21.9 {
 /*import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
@@ -72,7 +80,6 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
     *///?} else {
     private static final RenderType SINGULARITY_LAYER =
             RenderType.entityCutoutNoCull(SINGULARITY_TEXTURE);
-    private static final ItemDisplayContext ORBIT_DISPLAY = ItemDisplayContext.GUI;
     private static final double ORBIT_SCALE = 0.078;
     private static final double ABSORBED_SCALE = 0.095;
     //?}
@@ -107,9 +114,11 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
     public LinkerBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
         //? if >=1.21.9 {
         /*itemModelResolver = context.itemModelResolver();
-        *///?} else {
+        *///?} elif >=1.19.4 {
         itemRenderer = context.getItemRenderer();
-        //?}
+        //?} else {
+        /*itemRenderer = Minecraft.getInstance().getItemRenderer();
+        *///?}
     }
 
     //? if >=1.21.9 {
@@ -159,14 +168,16 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
         }
         Vec3 center = singularityCenter(state.direction);
         matrices.pushPose();
-        orientSingularity(matrices, center, state.time, camera.orientation);
+        orientSingularity(matrices, center, state.time,
+                pose -> pose.mulPose(camera.orientation));
         collector.submitCustomGeometry(matrices, SINGULARITY_LAYER,
                 (entry, vertices) -> drawSingularity(vertices, entry, state.time));
         matrices.popPose();
         for (int index = 0; index < state.orbitItems.size(); index++) {
             matrices.pushPose();
             orientOrbitItem(matrices, state.direction, center, index,
-                    state.orbitItems.size(), state.time, camera.orientation);
+                    state.orbitItems.size(), state.time,
+                    pose -> pose.mulPose(camera.orientation));
             state.orbitItems.get(index).submit(matrices, collector, LightTexture.FULL_BRIGHT,
                     OverlayTexture.NO_OVERLAY, 0);
             matrices.popPose();
@@ -190,8 +201,9 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
         }
         Vec3 center = singularityCenter(direction);
         double time = world.getGameTime() + tickDelta;
-        Quaternionf camera = Minecraft.getInstance().getEntityRenderDispatcher()
+        var orientation = Minecraft.getInstance().getEntityRenderDispatcher()
                 .cameraOrientation();
+        Consumer<PoseStack> camera = pose -> pose.mulPose(orientation);
         matrices.pushPose();
         orientSingularity(matrices, center, time, camera);
         drawSingularity(vertexConsumers.getBuffer(SINGULARITY_LAYER), matrices.last(), time);
@@ -204,10 +216,16 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
             matrices.pushPose();
             orientOrbitItem(matrices, direction, center, index, orbitItems.size(), time,
                     camera);
-            itemRenderer.renderStatic(orbitItems.get(index), ORBIT_DISPLAY,
+            int seed = linker.getBlockPos().hashCode() + index;
+            //? if >=1.19.4 {
+            itemRenderer.renderStatic(orbitItems.get(index), ItemDisplayContext.GUI,
                     LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
-                    matrices, vertexConsumers, linker.getLevel(),
-                    linker.getBlockPos().hashCode() + index);
+                    matrices, vertexConsumers, linker.getLevel(), seed);
+            //?} else {
+            /*itemRenderer.renderStatic(orbitItems.get(index), ItemTransforms.TransformType.GUI,
+                    LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
+                    matrices, vertexConsumers, seed);
+            *///?}
             matrices.popPose();
         }
     }
@@ -232,7 +250,7 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
      */
     private static void orientOrbitItem(PoseStack matrices, Direction direction, Vec3 center,
                                         int index, int count, double time,
-                                        Quaternionf camera) {
+                                        Consumer<PoseStack> camera) {
         Vec3 axis = axisOf(direction);
         Vec3 reference = direction.getAxis().isVertical()
                 ? new Vec3(1.0, 0.0, 0.0)
@@ -264,8 +282,8 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
                 .add(bitangent.scale(Math.sin(angle) * radius))
                 .add(axis.scale(axialWobble));
         matrices.translate(position.x, position.y, position.z);
-        matrices.mulPose(camera);
-        matrices.mulPose(Axis.ZP.rotationDegrees((float) (time * 1.8 + index * 41.0)));
+        camera.accept(matrices);
+        rotate(matrices, false, (float) (time * 1.8 + index * 41.0));
         matrices.scale((float) scale, (float) scale, (float) scale);
     }
 
@@ -276,12 +294,21 @@ public final class LinkerBlockEntityRenderer implements BlockEntityRenderer<Link
 
     /** Turns the singularity's cutout toward the camera, pulsing slightly. */
     private static void orientSingularity(PoseStack matrices, Vec3 center, double time,
-                                          Quaternionf camera) {
+                                          Consumer<PoseStack> camera) {
         matrices.translate(center.x, center.y, center.z);
-        matrices.mulPose(camera);
-        matrices.mulPose(Axis.YP.rotationDegrees(180.0f));
+        camera.accept(matrices);
+        rotate(matrices, true, 180.0f);
         float pulse = 0.38f + (float) Math.sin(time * 0.16) * 0.008f;
         matrices.scale(pulse, pulse, pulse);
+    }
+
+    /** Turns around the Y axis, or else the Z axis. The axes moved to {@code Axis} in 1.19.3. */
+    private static void rotate(PoseStack matrices, boolean aroundY, float degrees) {
+        //? if >=1.19.3 {
+        matrices.mulPose((aroundY ? Axis.YP : Axis.ZP).rotationDegrees(degrees));
+        //?} else {
+        /*matrices.mulPose((aroundY ? Vector3f.YP : Vector3f.ZP).rotationDegrees(degrees));
+        *///?}
     }
 
     /** One animated frame of the singularity texture on a unit quad. */

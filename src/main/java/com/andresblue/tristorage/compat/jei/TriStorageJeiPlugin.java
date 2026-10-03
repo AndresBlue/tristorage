@@ -63,14 +63,16 @@ public final class TriStorageJeiPlugin implements IModPlugin {
         }
 
         @Override
-        public Class<? extends CraftingTerminalScreenHandler> getContainerClass() {
+        public Class<CraftingTerminalScreenHandler> getContainerClass() {
             return CraftingTerminalScreenHandler.class;
         }
 
+        //? if >=1.19 {
         @Override
         public Optional<MenuType<CraftingTerminalScreenHandler>> getMenuType() {
             return Optional.of(TriStorageMod.CRAFTING_TERMINAL_SCREEN_HANDLER);
         }
+        //?}
 
         //? if >=1.21.2 {
         /*@Override
@@ -97,10 +99,18 @@ public final class TriStorageJeiPlugin implements IModPlugin {
             ResourceLocation recipeId = holder.id();
             //?}
         *///?} else {
+        //? if >=1.19 {
         @Override
         public RecipeType<CraftingRecipe> getRecipeType() {
             return RecipeTypes.CRAFTING;
         }
+        //?} else {
+        /*// JEI for 1.18.2 identifies the handler by recipe class.
+        @Override
+        public Class<CraftingRecipe> getRecipeClass() {
+            return CraftingRecipe.class;
+        }
+        *///?}
 
         @Override
         public IRecipeTransferError transferRecipe(

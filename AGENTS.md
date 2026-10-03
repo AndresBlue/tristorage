@@ -10,7 +10,8 @@ builds every Minecraft version and loader through Stonecutter.
 | `src/` | The only source tree. Mojang mappings. |
 | `src/main/java/.../platform/` | `PlatformHooks`, `ClientPlatformHooks`, `Registrar`: the loader seam. |
 | `src/main/java/.../platform/fabric/`, `platform/forge/`, `platform/neoforge/` | Loader code, wrapped in `//? if fabric {`, `//? if forge {` or `//? if neoforge {` blocks. |
-| `src/main/java/.../version/` | Helpers for APIs that changed between Minecraft versions (`Stacks`, `SavedStacks`, `Nbt`, `ValueTags`, `Players`, `Ids`, `NbtFiles`, `Recipes`). Common code calls these. |
+| `src/main/java/.../version/` | Helpers for APIs that changed between Minecraft versions (`Stacks`, `SavedStacks`, `Nbt`, `ValueTags`, `Players`, `Ids`, `NbtFiles`, `Recipes`, `GameRegistries`, `CreativeTabs`, `Menus`). Common code calls these. |
+| `src/main/java/.../client/Canvas.java`, `CanvasScreen.java`, `Widgets.java` | GUI drawing and widgets over each version's API. Screens extend `CanvasScreen` and draw through `Canvas`; they hold no version conditionals for drawing. |
 | `buildSrc/` | Build logic shared by the loader scripts: data pack upgrade per version, versioned mixins. |
 | `stonecutter.properties.toml` | Mod and dependency versions per Minecraft version and loader. |
 | `build.fabric.gradle.kts`, `build.forge.gradle.kts`, `build.neoforge.gradle.kts` | One build script per loader. |
@@ -30,6 +31,7 @@ Run Gradle from this folder. The daemon runs on Java 25 (auto-provisioned from
 .\gradlew.bat build
 .\gradlew.bat :1.20.1-fabric:test
 .\gradlew.bat :1.21.1-fabric:test
+.\gradlew.bat :1.18.2-fabric:runServer
 .\gradlew.bat :1.20.1-forge:runClient
 ```
 
@@ -51,6 +53,10 @@ the sources switch to it; run `"Reset active project"` before committing.
 Sources use the pre-1.21.11 Mojang names (`ResourceLocation`, `net.minecraft.Util`,
 `ResourceKey.location()`); the replacements in `stonecutter.gradle.kts` rename them
 for newer nodes. While a 1.21.11+ node is active, files show the new names.
+Nodes before 1.19 get `TextComponent`/`TranslatableComponent` in place of
+`Component.literal`/`Component.translatable`/`Component.empty()`, and nodes
+before 1.19.3 get `RegistryAccess` in place of `HolderLookup.Provider`, the
+same way. Always write the names on the left of those pairs.
 GUI text colors need an alpha byte (`0xFF404040`), or 1.21.6+ draws nothing.
 
 Published JARs: GitHub releases on `AndresBlue/tristorage`. `dist/` is a local,

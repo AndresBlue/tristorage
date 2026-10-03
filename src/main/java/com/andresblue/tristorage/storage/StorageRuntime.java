@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.TreeSet;
-import net.minecraft.core.registries.BuiltInRegistries;
+import com.andresblue.tristorage.version.GameRegistries;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -887,7 +887,7 @@ public final class StorageRuntime {
             this.id = id;
             this.key = key;
             this.template = template;
-            this.registryId = BuiltInRegistries.ITEM.getKey(template.getItem()).toString();
+            this.registryId = GameRegistries.ITEM.getKey(template.getItem()).toString();
             this.modCategory = TerminalFilter.modCategory(template);
             long metadataStarted = StorageMetrics.startTimer();
             this.searchText = TerminalFilter.searchText(template);

@@ -4,8 +4,10 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 /**
  * Player accessors that moved. ServerPlayer lost {@code serverLevel()} and
@@ -17,7 +19,16 @@ public final class Players {
     }
 
     public static ServerLevel level(ServerPlayer player) {
-        return (ServerLevel) player.level();
+        return (ServerLevel) level((Entity) player);
+    }
+
+    /** The level an entity is in: a field before Minecraft 1.20, an accessor since. */
+    public static Level level(Entity entity) {
+        //? if >=1.20 {
+        return entity.level();
+        //?} else {
+        /*return entity.level;
+        *///?}
     }
 
     public static MinecraftServer server(ServerPlayer player) {

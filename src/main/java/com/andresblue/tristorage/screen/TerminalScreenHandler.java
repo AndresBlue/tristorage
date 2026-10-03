@@ -265,7 +265,7 @@ public class TerminalScreenHandler extends AbstractContainerMenu {
             return remoteAccessHandle.isValid();
         }
         BlockPos anchor = accessPos != null ? accessPos : core.getBlockPos();
-        if (accessPos != null && !(player.level().getBlockState(accessPos).getBlock()
+        if (accessPos != null && !(Players.level(player).getBlockState(accessPos).getBlock()
                 instanceof NetworkBlock)) {
             return false;
         }

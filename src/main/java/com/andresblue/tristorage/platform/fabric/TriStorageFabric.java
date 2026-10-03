@@ -7,22 +7,30 @@ import com.andresblue.tristorage.platform.Registrar;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.Registry;
+import com.andresblue.tristorage.version.GameRegistries;
+//? if >=1.20 {
 import net.minecraft.core.registries.BuiltInRegistries;
+//?}
 
 public final class TriStorageFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         Platform.install(new FabricPlatformHooks());
-        TriStorageMod.registerParticles(registrar(BuiltInRegistries.PARTICLE_TYPE));
-        TriStorageMod.registerBlocks(registrar(BuiltInRegistries.BLOCK));
-        TriStorageMod.registerItems(registrar(BuiltInRegistries.ITEM));
-        TriStorageMod.registerRecipeSerializers(registrar(BuiltInRegistries.RECIPE_SERIALIZER));
-        TriStorageMod.registerBlockEntities(registrar(BuiltInRegistries.BLOCK_ENTITY_TYPE));
-        TriStorageMod.registerMenus(registrar(BuiltInRegistries.MENU));
+        TriStorageMod.registerParticles(registrar(GameRegistries.PARTICLE_TYPE));
+        TriStorageMod.registerBlocks(registrar(GameRegistries.BLOCK));
+        //? if <1.20 {
+        /*TriStorageMod.createCreativeTab();
+        *///?}
+        TriStorageMod.registerItems(registrar(GameRegistries.ITEM));
+        TriStorageMod.registerRecipeSerializers(registrar(GameRegistries.RECIPE_SERIALIZER));
+        TriStorageMod.registerBlockEntities(registrar(GameRegistries.BLOCK_ENTITY_TYPE));
+        TriStorageMod.registerMenus(registrar(GameRegistries.MENU));
         //? if >=1.21.5 {
         /*TriStorageMod.registerTicketTypes(registrar(BuiltInRegistries.TICKET_TYPE));
         *///?}
+        //? if >=1.20 {
         TriStorageMod.registerCreativeTabs(registrar(BuiltInRegistries.CREATIVE_MODE_TAB));
+        //?}
         TriStorageMod.initialize();
         PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) ->
                 TriStorageMod.beforeBlockBreak(level, player, state, blockEntity));

@@ -4,12 +4,10 @@ import com.andresblue.tristorage.version.Ids;
 import com.andresblue.tristorage.screen.TerminalScreenHandler;
 import com.andresblue.tristorage.storage.TerminalFilter;
 import com.andresblue.tristorage.platform.Platform;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.core.registries.BuiltInRegistries;
+import com.andresblue.tristorage.version.CreativeTabs;
+import com.andresblue.tristorage.version.GameRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
@@ -27,15 +25,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 //? if >=1.21.9 {
-/*import net.minecraft.client.input.KeyEvent;
+/*import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 *///?}
 
 abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
-        extends AbstractContainerScreen<H> implements TerminalScreenMarker {
+        extends CanvasScreen<H> implements TerminalScreenMarker {
     protected static final ResourceLocation VANILLA_CHEST_TEXTURE =
             Ids.of("minecraft", "textures/gui/container/generic_54.png");
-    private static final float STORED_COUNT_Z = 325.0f;
     private static final float MAX_COUNT_WIDTH = 16.0f;
     private static final int CATEGORY_TAB_COUNT = 7;
     private static final int SEARCH_DEBOUNCE_TICKS = 4;
@@ -43,6 +41,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     private final TerminalClientConfig config = TerminalClientConfig.get();
     private final List<CategoryTabButton> categoryButtons = new ArrayList<>();
     private final List<Button> configButtons = new ArrayList<>();
+    private final List<Button> hintedButtons = new ArrayList<>();
     private final Map<String, ItemStack> categoryIconCache = new HashMap<>();
     private final Map<String, ItemStack> modIconCache = new HashMap<>();
     private Button previousCategoryButton;
@@ -82,42 +81,37 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     protected void init() {
         super.init();
         TerminalClientNetworking.registerTerminalScreen(this);
+        // init runs again whenever the window is resized.
+        categoryButtons.clear();
+        configButtons.clear();
+        hintedButtons.clear();
         Layout layout = layout();
-        previousButton = addRenderableWidget(Button.builder(Component.literal("<"),
-                        button -> clickPageButton(0))
-                .bounds(leftPos + layout.previousX(), topPos + layout.navigationY(), 18, 16)
-                .build());
-        nextButton = addRenderableWidget(Button.builder(Component.literal(">"),
-                        button -> clickPageButton(1))
-                .bounds(leftPos + layout.nextX(), topPos + layout.navigationY(), 18, 16)
-                .build());
-        depositButton = addRenderableWidget(Button.builder(
-                        Component.translatable("button.tristorage.deposit_inventory"),
-                        button -> clickPageButton(2))
-                .bounds(leftPos + layout.actionX(), topPos + layout.depositY(),
-                        layout.actionWidth(), 16)
-                .build());
-        sortButton = addRenderableWidget(Button.builder(sortButtonText(),
-                        button -> clickPageButton(3))
-                .bounds(leftPos + layout.actionX(), topPos + layout.sortY(),
-                        layout.actionWidth(), 16)
-                .build());
-        settingsButton = addRenderableWidget(Button.builder(Component.literal("⚙"),
-                        button -> toggleSettings())
-                .bounds(leftPos + layout.settingsX(), topPos + layout.settingsY(), 16, 16)
-                .build());
-        previousCategoryButton = addRenderableWidget(Button.builder(Component.literal("<"),
-                        button -> cycleCategory(-1))
-                .bounds(leftPos - 18, topPos - 19, 16, 16)
-                .tooltip(Tooltip.create(Component.translatable(
-                        "button.tristorage.previous_category")))
-                .build());
-        nextCategoryButton = addRenderableWidget(Button.builder(Component.literal(">"),
-                        button -> cycleCategory(1))
-                .bounds(leftPos + 177, topPos - 19, 16, 16)
-                .tooltip(Tooltip.create(Component.translatable(
-                        "button.tristorage.next_category")))
-                .build());
+        previousButton = addRenderableWidget(Widgets.button(
+                leftPos + layout.previousX(), topPos + layout.navigationY(), 18, 16,
+                Component.literal("<"), button -> clickPageButton(0)));
+        nextButton = addRenderableWidget(Widgets.button(
+                leftPos + layout.nextX(), topPos + layout.navigationY(), 18, 16,
+                Component.literal(">"), button -> clickPageButton(1)));
+        depositButton = addRenderableWidget(Widgets.button(
+                leftPos + layout.actionX(), topPos + layout.depositY(), layout.actionWidth(), 16,
+                Component.translatable("button.tristorage.deposit_inventory"),
+                button -> clickPageButton(2)));
+        sortButton = addRenderableWidget(Widgets.button(
+                leftPos + layout.actionX(), topPos + layout.sortY(), layout.actionWidth(), 16,
+                sortButtonText(), button -> clickPageButton(3)));
+        settingsButton = addRenderableWidget(Widgets.button(
+                leftPos + layout.settingsX(), topPos + layout.settingsY(), 16, 16,
+                Component.literal("⚙"), button -> toggleSettings()));
+        previousCategoryButton = addRenderableWidget(Widgets.button(
+                leftPos - 18, topPos - 19, 16, 16,
+                Component.literal("<"), button -> cycleCategory(-1)));
+        Widgets.hint(previousCategoryButton,
+                Component.translatable("button.tristorage.previous_category"));
+        nextCategoryButton = addRenderableWidget(Widgets.button(
+                leftPos + 177, topPos - 19, 16, 16,
+                Component.literal(">"), button -> cycleCategory(1)));
+        Widgets.hint(nextCategoryButton,
+                Component.translatable("button.tristorage.next_category"));
 
         searchField = new EditBox(font,
                 leftPos + layout.searchX(), topPos + layout.searchY(),
@@ -141,6 +135,9 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
                     ignored -> selectVisibleCategory(buttonIndex)));
             categoryButtons.add(button);
         }
+        hintedButtons.addAll(categoryButtons);
+        hintedButtons.add(previousCategoryButton);
+        hintedButtons.add(nextCategoryButton);
         createConfigButtons();
         updateWidgetVisibility();
         updateCategoryButtons();
@@ -150,29 +147,25 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     private void createConfigButtons() {
         int left = leftPos + 11;
         int top = topPos + 34;
-        configButtons.add(Button.builder(Component.empty(), button -> {
-            config.toggleSearch();
-            applyConfigChange();
-        }).bounds(left, top, 154, 16).build());
-        configButtons.add(Button.builder(Component.empty(), button -> {
-            config.toggleCategories();
-            applyConfigChange();
-        }).bounds(left, top + 20, 154, 16).build());
-        configButtons.add(Button.builder(Component.empty(), button -> {
+        addConfigButton(left, top, () -> config.toggleSearch());
+        addConfigButton(left, top + 20, () -> config.toggleCategories());
+        addConfigButton(left, top + 40, () -> {
             config.cycleCategoryMode();
             selectedCategory = TerminalFilter.ALL;
-            applyConfigChange();
-        }).bounds(left, top + 40, 154, 16).build());
-        configButtons.add(Button.builder(Component.empty(), button -> {
-            config.toggleWheelPaging();
-            applyConfigChange();
-        }).bounds(left, top + 60, 154, 16).build());
-        configButtons.add(Button.builder(Component.empty(), button -> {
+        });
+        addConfigButton(left, top + 60, () -> config.toggleWheelPaging());
+        addConfigButton(left, top + 80, () -> {
             config.cycleThreshold();
             selectedCategory = TerminalFilter.ALL;
-            applyConfigChange();
-        }).bounds(left, top + 80, 154, 16).build());
+        });
         updateConfigButtonText();
+    }
+
+    private void addConfigButton(int x, int y, Runnable change) {
+        configButtons.add(Widgets.button(x, y, 154, 16, Component.empty(), button -> {
+            change.run();
+            applyConfigChange();
+        }));
     }
 
     @Override
@@ -308,7 +301,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             String category = categoryIds.get(categoryIndex);
             Component title = categoryTitle(category);
             button.setMessage(Component.empty());
-            button.setTooltip(Tooltip.create(title));
+            Widgets.hint(button, title);
             button.active = pendingFilterSequence < 0;
             if (iconModeChanged || !category.equals(button.categoryId())) {
                 button.setCategory(category, stableCategoryIcon(category),
@@ -342,7 +335,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             return Component.translatable("category.tristorage.uncategorized");
         }
         if (serverCategoryMode == TerminalFilter.CategoryMode.TYPE) {
-            CreativeModeTab group = creativeGroup(category);
+            CreativeModeTab group = CreativeTabs.byId(category);
             return group == null ? Component.literal(category) : group.getDisplayName();
         }
         return Component.literal(Platform.get().modName(category).orElse(category));
@@ -356,7 +349,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             return Items.BARRIER.getDefaultInstance();
         }
         if (serverCategoryMode == TerminalFilter.CategoryMode.TYPE) {
-            CreativeModeTab group = creativeGroup(category);
+            CreativeModeTab group = CreativeTabs.byId(category);
             if (group != null) {
                 return group.getIconItem();
             }
@@ -372,29 +365,21 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         if (!modIconCache.isEmpty()) {
             return;
         }
-        for (CreativeModeTab group : BuiltInRegistries.CREATIVE_MODE_TAB) {
-            ResourceLocation id = BuiltInRegistries.CREATIVE_MODE_TAB.getKey(group);
-            if (id != null && group.getType() == CreativeModeTab.Type.CATEGORY) {
-                ItemStack icon = group.getIconItem();
-                if (!icon.isEmpty()) {
-                    modIconCache.putIfAbsent(id.getNamespace(), icon.copy());
-                }
+        for (CreativeModeTab group : CreativeTabs.categoryTabs()) {
+            ItemStack icon = group.getIconItem();
+            if (!icon.isEmpty()) {
+                modIconCache.putIfAbsent(CreativeTabs.namespace(group), icon.copy());
             }
         }
         // One registry pass for every visible mod tab, instead of one complete
         // pass per icon whenever the category window moves.
-        for (Item item : BuiltInRegistries.ITEM) {
+        for (Item item : GameRegistries.ITEM) {
             if (item == Items.AIR) {
                 continue;
             }
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+            ResourceLocation id = GameRegistries.ITEM.getKey(item);
             modIconCache.putIfAbsent(id.getNamespace(), item.getDefaultInstance());
         }
-    }
-
-    private CreativeModeTab creativeGroup(String category) {
-        ResourceLocation id = ResourceLocation.tryParse(category);
-        return id == null ? null : BuiltInRegistries.CREATIVE_MODE_TAB.getOptional(id).orElse(null);
     }
 
     private boolean categoriesVisible() {
@@ -406,7 +391,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     private void toggleSettings() {
         settingsOpen = !settingsOpen;
         if (settingsOpen) {
-            searchField.setFocused(false);
+            Widgets.setFocused(searchField, false);
         }
         updateWidgetVisibility();
     }
@@ -455,108 +440,70 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     }
 
     @Override
-    protected void renderLabels(GuiGraphics context, int mouseX, int mouseY) {
+    protected void drawLabels(Canvas canvas, int mouseX, int mouseY) {
         Layout layout = layout();
         Component heading = categoriesVisible() ? categoryTitle(selectedCategory) : title;
-        context.drawString(font, heading, titleLabelX, titleLabelY, 0xFF404040, false);
+        canvas.text(font, heading, titleLabelX, titleLabelY, 0xFF404040);
         if (categoriesVisible()) {
             String categoryPosition = (categoryIds.indexOf(selectedCategory) + 1)
                     + "/" + categoryIds.size();
-            context.drawString(font, categoryPosition,
-                    89 - font.width(categoryPosition) / 2,
-                    -35, 0xFFFFFFFF, false);
+            canvas.text(font, categoryPosition,
+                    89 - font.width(categoryPosition) / 2, -35, 0xFFFFFFFF);
         }
-        context.drawString(font, playerInventoryTitle,
-                inventoryLabelX, inventoryLabelY, 0xFF404040, false);
+        canvas.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0xFF404040);
         String pageText = (menu.page() + 1) + " / " + menu.pageCount();
-        context.drawString(font, pageText,
-                layout.pageCenterX() - font.width(pageText) / 2,
-                layout.pageY(), 0xFF404040, false);
-        context.drawString(font,
+        canvas.text(font, pageText,
+                layout.pageCenterX() - font.width(pageText) / 2, layout.pageY(), 0xFF404040);
+        canvas.text(font,
                 Component.translatable("screen.tristorage.types_short", menu.storedTypes()),
-                layout.statsX(), layout.typesY(), 0xFF404040, false);
-        context.drawString(font,
+                layout.statsX(), layout.typesY(), 0xFF404040);
+        canvas.text(font,
                 Component.translatable("screen.tristorage.items_short", menu.totalItems()),
-                layout.statsX(), layout.itemsY(), 0xFF404040, false);
-        drawAdditionalForeground(context, mouseX, mouseY);
+                layout.statsX(), layout.itemsY(), 0xFF404040);
+        drawAdditionalForeground(canvas, mouseX, mouseY);
         if (!settingsOpen) {
-            drawStoredCounts(context);
+            drawStoredCounts(canvas);
         }
-        //? if <1.21.6 {
-        context.flush();
-        //?}
+        canvas.flush();
     }
 
-    protected void drawAdditionalForeground(GuiGraphics context, int mouseX, int mouseY) {
+    protected void drawAdditionalForeground(Canvas canvas, int mouseX, int mouseY) {
     }
 
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        // From 1.20.2 on, super.render draws the background itself.
-        //? if <1.20.2 {
-        renderBackground(context);
-        //?}
-        super.render(context, mouseX, mouseY, delta);
+    protected boolean drawForeground(Canvas canvas, int mouseX, int mouseY, float delta) {
         if (settingsOpen) {
-            drawSettingsOverlay(context, mouseX, mouseY, delta);
-        } else {
-            //? if >=1.21.6 {
-            /*// Since 1.21.6 items are recorded as render states and drawn
-            // later, so an item renderer can no longer disturb the matrices.
-            for (CategoryTabButton button : categoryButtons) {
-                if (button.visible) {
-                    button.renderIconOverlay(context);
-                }
-            }
-            *///?} else {
-            // Keep themed ButtonWidget frames in the normal screen pass, then
-            // isolate every modded item renderer behind its own MatrixStack and
-            // flush. Some pack items leave the supplied matrix unbalanced; a
-            // shared DrawContext allowed one such icon to deform every tab that
-            // followed it and produced an endless push/pop error stream.
-            context.flush();
-            for (CategoryTabButton button : categoryButtons) {
-                if (button.visible) {
-                    GuiGraphics isolated = new GuiGraphics(
-                            minecraft, context.bufferSource());
-                    // Disposable guard frames absorb a small number of rogue
-                    // pop() calls from third-party item renderers. They are not
-                    // balanced intentionally: the isolated context is thrown
-                    // away immediately after this icon.
-                    isolated.pose().pushPose();
-                    isolated.pose().pushPose();
-                    button.renderIconOverlay(isolated);
-                    isolated.flush();
-                }
-            }
-            //?}
-            renderTooltip(context, mouseX, mouseY);
+            drawSettingsOverlay(canvas, mouseX, mouseY, delta);
+            return false;
         }
+        // The themed button frames stay in the normal screen pass; each
+        // category icon is drawn afterwards on a canvas of its own.
+        canvas.flush();
+        for (CategoryTabButton button : categoryButtons) {
+            if (button.visible) {
+                Canvas isolated = canvas.isolated(minecraft);
+                button.drawIcon(isolated);
+                isolated.flush();
+            }
+        }
+        Widgets.drawHints(canvas, this, hintedButtons, mouseX, mouseY);
+        return true;
     }
 
-    private void drawSettingsOverlay(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        //? if >=1.21.6 {
-        /*// A new stratum draws above the slots and their items.
-        context.nextStratum();
-        *///?} else {
-        context.pose().pushPose();
-        context.pose().translate(0, 0, 500);
-        //?}
-        drawVanillaPanel(context, leftPos + 5, topPos + 16, leftPos + 171, topPos + 217);
-        context.drawString(font, Component.translatable("screen.tristorage.settings"),
-                leftPos + 11, topPos + 22, 0xFF404040, false);
+    private void drawSettingsOverlay(Canvas canvas, int mouseX, int mouseY, float delta) {
+        canvas.beginOverlay();
+        canvas.panel(leftPos + 5, topPos + 16, leftPos + 171, topPos + 217);
+        canvas.text(font, Component.translatable("screen.tristorage.settings"),
+                leftPos + 11, topPos + 22, 0xFF404040);
         for (Button button : configButtons) {
-            button.render(context, mouseX, mouseY, delta);
+            canvas.widget(button, mouseX, mouseY, delta);
         }
-        //? if <1.21.6 {
-        context.pose().popPose();
-        //?}
+        canvas.endOverlay();
     }
 
     /**
-     * Keeps the category frame and its item in the same widget render pass.
-     * Calling {@code super} is intentional: resource packs and GUI theming
-     * mods can skin the normal button before TriStorage adds the icon.
+     * A category tab: a plain button frame, which resource packs and GUI
+     * theming mods can skin, with the category's item drawn over it.
      */
     private static final class CategoryTabButton extends Button {
         private ItemStack icon = ItemStack.EMPTY;
@@ -564,8 +511,11 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         private boolean selected;
 
         private CategoryTabButton(int x, int y, OnPress action) {
-            super(x, y, 22, 23, Component.empty(), action,
-                    DEFAULT_NARRATION);
+            //? if >=1.19.3 {
+            super(x, y, 22, 23, Component.empty(), action, DEFAULT_NARRATION);
+            //?} else {
+            /*super(x, y, 22, 23, Component.empty(), action);
+            *///?}
         }
 
         private String categoryId() {
@@ -589,23 +539,18 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         protected void renderContents(GuiGraphics context, int mouseX, int mouseY, float delta) {
             renderDefaultSprite(context);
         }
-        *///?} else {
-        @Override
-        protected void renderWidget(GuiGraphics context, int mouseX,
-                                    int mouseY, float delta) {
-            super.renderWidget(context, mouseX, mouseY, delta);
-        }
-        //?}
+        *///?}
 
-        private void renderIconOverlay(GuiGraphics context) {
+        private void drawIcon(Canvas canvas) {
             if (icon.isEmpty()) {
                 return;
             }
+            int x = Widgets.x(this);
+            int y = Widgets.y(this);
             if (selected) {
-                context.fill(getX() + 2, getY() + 20,
-                        getX() + 20, getY() + 22, 0xFFFFFFFF);
+                canvas.fill(x + 2, y + 20, x + 20, y + 22, 0xFFFFFFFF);
             }
-            context.renderItem(icon, getX() + 3, getY() + 3);
+            canvas.item(icon, x + 3, y + 3);
         }
     }
 
@@ -628,7 +573,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
     /** Handles a click the terminal takes itself; false passes it to the screen. */
     private boolean clickTerminal(double mouseX, double mouseY, Predicate<Button> clickButton) {
         if (searchField != null && !searchField.isMouseOver(mouseX, mouseY)) {
-            searchField.setFocused(false);
+            Widgets.setFocused(searchField, false);
         }
         if (settingsOpen) {
             if (clickButton.test(settingsButton)) {
@@ -733,7 +678,7 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
         });
     }
 
-    private void drawStoredCounts(GuiGraphics context) {
+    private void drawStoredCounts(Canvas canvas) {
         for (int index = 0; index < TerminalScreenHandler.PAGE_SIZE; index++) {
             long count = menu.displayCount(index);
             if (count <= 1) {
@@ -747,39 +692,8 @@ abstract class AbstractTerminalScreen<H extends TerminalScreenHandler>
             float scale = Math.min(baseScale, widthScale);
             float rightEdge = slot.x + 17.0f;
             float drawY = slot.y + 17.0f - font.lineHeight * scale;
-
-            //? if >=1.21.6 {
-            /*context.pose().pushMatrix();
-            context.pose().translate(rightEdge, drawY);
-            context.pose().scale(scale, scale);
-            context.drawString(font, label, -labelWidth, 0, 0xFFFFFFFF, true);
-            context.pose().popMatrix();
-            *///?} else {
-            context.pose().pushPose();
-            context.pose().translate(rightEdge, drawY, STORED_COUNT_Z);
-            context.pose().scale(scale, scale, 1.0f);
-            context.drawString(font, label, -labelWidth, 0, 0xFFFFFF, true);
-            context.pose().popPose();
-            //?}
+            canvas.countLabel(font, label, rightEdge, drawY, scale);
         }
-    }
-
-    protected static void drawVanillaPanel(GuiGraphics context,
-                                           int left, int top, int right, int bottom) {
-        context.fill(left, top, right, bottom, 0xFF373737);
-        context.fill(left + 1, top + 1, right - 1, bottom - 1, 0xFFC6C6C6);
-        context.fill(left + 1, top + 1, right - 1, top + 2, 0xFFFFFFFF);
-        context.fill(left + 1, top + 1, left + 2, bottom - 1, 0xFFFFFFFF);
-        context.fill(left + 1, bottom - 2, right - 1, bottom - 1, 0xFF555555);
-        context.fill(right - 2, top + 1, right - 1, bottom - 1, 0xFF555555);
-    }
-
-    protected static void drawSlotFrame(GuiGraphics context, int left, int top) {
-        context.fill(left, top, left + 18, top + 18, 0xFF8B8B8B);
-        context.fill(left, top, left + 18, top + 1, 0xFF373737);
-        context.fill(left, top, left + 1, top + 18, 0xFF373737);
-        context.fill(left, top + 17, left + 18, top + 18, 0xFFFFFFFF);
-        context.fill(left + 17, top, left + 18, top + 18, 0xFFFFFFFF);
     }
 
     private static String compact(long count) {

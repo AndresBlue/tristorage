@@ -7,7 +7,6 @@ import com.andresblue.tristorage.platform.Registrar;
 import com.andresblue.tristorage.storage.RemoteTerminalMode;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import com.andresblue.tristorage.TestStacks;
@@ -28,8 +27,7 @@ class RemoteTabletItemTest {
     private static final BlockPos LINKER = new BlockPos(12, 64, -9);
 
     private static ResourceKey<Level> dimension() {
-        return ResourceKey.create(Registries.DIMENSION,
-                Ids.of("minecraft", "overworld"));
+        return Ids.dimension(Ids.of("minecraft", "overworld"));
     }
 
     @BeforeAll

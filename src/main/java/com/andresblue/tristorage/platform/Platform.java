@@ -14,6 +14,12 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.BlockPos;
 import java.util.function.BiFunction;
+//? if <1.20 {
+/*import java.util.List;
+import java.util.function.Supplier;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ItemLike;
+*///?}
 
 import java.nio.file.Path;
 import java.util.Optional;
@@ -50,10 +56,18 @@ public final class Platform {
             return Optional.empty();
         }
 
+        //? if >=1.20 {
         @Override
         public CreativeModeTab.Builder creativeTabBuilder() {
             throw missing();
         }
+        //?} else {
+        /*@Override
+        public CreativeModeTab creativeTab(ResourceLocation id, Supplier<ItemStack> icon,
+                                           Supplier<List<ItemLike>> items) {
+            throw missing();
+        }
+        *///?}
 
         @Override
         public <T extends BlockEntity> BlockEntityType<T> blockEntityType(

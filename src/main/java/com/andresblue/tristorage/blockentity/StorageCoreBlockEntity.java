@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.registries.BuiltInRegistries;
+import com.andresblue.tristorage.version.GameRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -611,7 +611,7 @@ public final class StorageCoreBlockEntity extends BlockEntity implements MenuPro
         HolderLookup.Provider registries = null;
     //?}
         CompoundTag nbt = new CompoundTag();
-        ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(getType());
+        ResourceLocation id = GameRegistries.BLOCK_ENTITY_TYPE.getKey(getType());
         if (id != null) {
             nbt.putString("id", id.toString());
         }

@@ -71,8 +71,15 @@ tasks {
             "java" to requiredJava.majorVersion,
         )
         inputs.property("dataPackMinecraft", minecraft)
+        inputs.property("emi", findProperty("deps.emi") != null)
         inputs.properties(props)
         filesMatching("fabric.mod.json") { expand(props) }
+        // Without an EMI build for this version there is no plugin class to name.
+        if (findProperty("deps.emi") == null) {
+            filesMatching("fabric.mod.json") {
+                filter { line -> if (line.contains("\"emi\"")) "" else line }
+            }
+        }
         upgradeDataPack(minecraft)
         filterVersionedMixins(minecraft)
         // Fabric remaps mixins without a refmap; the entry is only for Forge.

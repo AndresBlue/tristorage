@@ -1,5 +1,6 @@
 package com.andresblue.tristorage.item;
 
+import com.andresblue.tristorage.version.Ids;
 import com.andresblue.tristorage.version.Players;
 
 import com.andresblue.tristorage.version.Nbt;
@@ -9,7 +10,6 @@ import com.andresblue.tristorage.storage.RemoteTerminalMode;
 import com.andresblue.tristorage.storage.StorageNetwork;
 import com.andresblue.tristorage.version.Stacks;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -101,7 +101,7 @@ public final class RemoteTabletItem extends Item {
         if (dimensionId == null || !(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResult.FAIL;
         }
-        ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, dimensionId);
+        ResourceKey<Level> dimension = Ids.dimension(dimensionId);
         ServerLevel targetWorld = Players.server(serverPlayer).getLevel(dimension);
         BlockPos linkerPos = BlockPos.of(Nbt.getLong(nbt, POSITION_KEY));
         if (targetWorld == null) {

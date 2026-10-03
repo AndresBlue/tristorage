@@ -14,6 +14,12 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.BlockPos;
 import java.util.function.BiFunction;
+//? if <1.20 {
+/*import java.util.List;
+import java.util.function.Supplier;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ItemLike;
+*///?}
 
 import java.nio.file.Path;
 import java.util.Optional;
@@ -27,8 +33,15 @@ public interface PlatformHooks {
     /** Display name of an installed mod, used for search text and category labels. */
     Optional<String> modName(String modId);
 
+    //? if >=1.20 {
     /** A creative tab builder the loader places in its own tab pages. */
     CreativeModeTab.Builder creativeTabBuilder();
+    //?} else {
+    /*// A creative tab that lists these items in order. Before 1.20 a tab is
+    // created, not registered, and takes its place in the tab pages at once.
+    CreativeModeTab creativeTab(ResourceLocation id, Supplier<ItemStack> icon,
+                                Supplier<List<ItemLike>> items);
+    *///?}
 
     /** A block entity type for these blocks; vanilla builds them differently since 1.21.2. */
     <T extends BlockEntity> BlockEntityType<T> blockEntityType(

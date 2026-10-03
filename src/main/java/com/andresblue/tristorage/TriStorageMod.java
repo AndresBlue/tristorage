@@ -30,7 +30,9 @@ import com.andresblue.tristorage.storage.RemoteChunkLease;
 import com.andresblue.tristorage.network.TerminalPackets;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.SimpleParticleType;
-import net.minecraft.core.registries.Registries;
+//? if >=1.21.2 {
+/*import net.minecraft.core.registries.Registries;
+*///?}
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
@@ -38,13 +40,17 @@ import net.minecraft.resources.ResourceKey;
 /*import net.minecraft.server.level.TicketType;
 *///?}
 import net.minecraft.world.entity.player.Player;
+//? if >=1.19.3 {
 import net.minecraft.world.flag.FeatureFlags;
+//?}
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -52,6 +58,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+
+import java.util.List;
 
 /**
  * Loader-independent content and initialization. The loader entrypoints
@@ -177,32 +185,46 @@ public final class TriStorageMod {
 
     public static void registerMenus(Registrar<MenuType<?>> registrar) {
         CORE_SCREEN_HANDLER = registrar.register("storage_core",
-                new MenuType<>(CoreScreenHandler::new, FeatureFlags.VANILLA_SET));
+                menuType(CoreScreenHandler::new));
         TERMINAL_SCREEN_HANDLER = registrar.register("storage_terminal",
-                new MenuType<>(TerminalScreenHandler::new, FeatureFlags.VANILLA_SET));
+                menuType(TerminalScreenHandler::new));
         CRAFTING_TERMINAL_SCREEN_HANDLER = registrar.register("crafting_terminal",
-                new MenuType<>(CraftingTerminalScreenHandler::new, FeatureFlags.VANILLA_SET));
+                menuType(CraftingTerminalScreenHandler::new));
         LINKER_SCREEN_HANDLER = registrar.register("storage_linker",
-                new MenuType<>(LinkerScreenHandler::new, FeatureFlags.VANILLA_SET));
+                menuType(LinkerScreenHandler::new));
     }
 
+    //? if >=1.20 {
     public static void registerCreativeTabs(Registrar<CreativeModeTab> registrar) {
         TRISTORAGE_ITEM_GROUP = registrar.register("tristorage", Platform.get().creativeTabBuilder()
                 .title(Component.translatable("itemGroup.tristorage"))
                 .icon(() -> new ItemStack(TERMINAL))
-                .displayItems((context, entries) -> {
-                    entries.accept(IRON_CORE);
-                    entries.accept(DIAMOND_CORE);
-                    entries.accept(BLAZE_CORE);
-                    entries.accept(COSMIC_CORE);
-                    entries.accept(TERMINAL);
-                    entries.accept(CRAFTING_TERMINAL);
-                    entries.accept(LINKER);
-                    entries.accept(DIMENSIONAL_ANTENNA);
-                    entries.accept(REMOTE_TABLET);
-                    entries.accept(WIRELESS_CRAFTING_TERMINAL);
-                })
+                .displayItems((context, entries) -> creativeTabItems().forEach(entries::accept))
                 .build());
+    }
+    //?} else {
+    /*// Before 1.20 a creative tab is created rather than registered, and every
+    // item names the tab it sits in, so the tab has to exist before the items.
+    public static void createCreativeTab() {
+        TRISTORAGE_ITEM_GROUP = Platform.get().creativeTab(id("tristorage"),
+                () -> new ItemStack(TERMINAL), TriStorageMod::creativeTabItems);
+    }
+    *///?}
+
+    /** The tab's contents, in display order. */
+    private static List<ItemLike> creativeTabItems() {
+        return List.of(IRON_CORE, DIAMOND_CORE, BLAZE_CORE, COSMIC_CORE, TERMINAL,
+                CRAFTING_TERMINAL, LINKER, DIMENSIONAL_ANTENNA, REMOTE_TABLET,
+                WIRELESS_CRAFTING_TERMINAL);
+    }
+
+    private static <T extends AbstractContainerMenu> MenuType<T> menuType(
+            MenuType.MenuSupplier<T> factory) {
+        //? if >=1.19.3 {
+        return new MenuType<>(factory, FeatureFlags.VANILLA_SET);
+        //?} else {
+        /*return new MenuType<>(factory);
+        *///?}
     }
 
     /**
@@ -263,6 +285,9 @@ public final class TriStorageMod {
 
     private static Item.Properties itemProperties(String path) {
         Item.Properties properties = new Item.Properties();
+        //? if <1.20 {
+        /*properties.tab(TRISTORAGE_ITEM_GROUP);
+        *///?}
         //? if >=1.21.2 {
         /*properties.setId(ResourceKey.create(Registries.ITEM, id(path)));
         *///?}
